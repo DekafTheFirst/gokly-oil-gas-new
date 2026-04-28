@@ -1,17 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { Users, GraduationCap, BadgeCheck, ShieldCheck, Calendar, Download, MoreVertical, Cloud } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
 import { ACTIVITY, TRAINEES, TRENDS } from "@/lib/mock-data";
-
-export const Route = createFileRoute("/admin")({
-  head: () => ({
-    meta: [
-      { title: "Administrative Overview — EduCert Pro" },
-      { name: "description", content: "Real-time platform performance, certification trends, and compliance tracking for administrators." },
-    ],
-  }),
-  component: Admin,
-});
 
 const metrics = [
   { label: "Total Active Users", value: "12,842", chip: "+12.5%", icon: Users, accent: "border-l-primary" },
@@ -20,7 +9,7 @@ const metrics = [
   { label: "Compliance Score", value: "98.2%", chip: "Stable", icon: ShieldCheck, accent: "border-l-primary-deep" },
 ];
 
-function Admin() {
+export default function Admin() {
   return (
     <PageShell withSidebar searchPlaceholder="Search audit logs...">
       <div className="flex flex-wrap items-end justify-between gap-4">

@@ -1,19 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { Flame, Clock, BadgeCheck, Trophy, Download, MoreVertical } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
 import rigImg from "@/assets/course-rig.jpg";
 import subseaImg from "@/assets/course-subsea.jpg";
 import hazmatImg from "@/assets/course-hazmat.jpg";
-
-export const Route = createFileRoute("/dashboard")({
-  head: () => ({
-    meta: [
-      { title: "Trainee Dashboard — EduCert Pro" },
-      { name: "description", content: "Track ongoing training modules, certifications, and compliance progress for your terminal." },
-    ],
-  }),
-  component: Dashboard,
-});
 
 const stats = [
   { label: "Training Streak", value: "14 Days", icon: Flame, sub: "Top 5% of Terminal 4 staff", tone: "text-energy-foreground" },
@@ -22,7 +12,7 @@ const stats = [
   { label: "Global Rank", value: "#242", icon: Trophy, sub: "Across all offshore facilities", tone: "text-primary-deep" },
 ];
 
-function Dashboard() {
+export default function Dashboard() {
   return (
     <PageShell withSidebar searchPlaceholder="Search safety procedures...">
       {/* Welcome banner */}
@@ -56,7 +46,7 @@ function Dashboard() {
         <div>
           <div className="flex items-end justify-between">
             <h2 className="text-2xl font-bold">Ongoing Training Modules</h2>
-            <Link to="/courses" className="text-sm font-semibold text-primary hover:text-primary-deep">View Course Catalog →</Link>
+            <Link to="/training/courses" className="text-sm font-semibold text-primary hover:text-primary-deep">View Course Catalog →</Link>
           </div>
 
           <div className="mt-5 grid gap-5 sm:grid-cols-2">

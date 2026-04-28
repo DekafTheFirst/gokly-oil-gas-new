@@ -1,23 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { Star, Plus, BarChart3, ArrowRight, BadgeCheck } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
 import { COURSES } from "@/lib/mock-data";
 import heroImg from "@/assets/hero-control-room.jpg";
 
-export const Route = createFileRoute("/courses")({
-  head: () => ({
-    meta: [
-      { title: "Course Catalog — EduCert Pro" },
-      { name: "description", content: "Browse accredited HSE, offshore, technical, and environmental training modules for oil & gas professionals." },
-    ],
-  }),
-  component: Courses,
-});
-
 const categories = ["All Modules", "HSE & Safety", "Offshore Ops", "Technical Tools", "Environmental"];
 const tiers = ["Basic (T3)", "Advanced (T2)", "Expert (T1)"];
 
-function Courses() {
+export default function Courses() {
   return (
     <PageShell searchPlaceholder="Search courses...">
       <div className="mx-auto max-w-[1280px] px-6 py-10">
@@ -48,7 +38,7 @@ function Courses() {
             <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
               <h3 className="font-bold">Quick Access</h3>
               <p className="mt-1 text-sm text-muted-foreground">Jump back into your active training modules.</p>
-              <Link to="/dashboard" className="mt-4 flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm font-semibold text-primary-deep hover:bg-muted">
+              <Link to="/training/dashboard" className="mt-4 flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm font-semibold text-primary-deep hover:bg-muted">
                 Drilling Fluids Engineering <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -84,7 +74,7 @@ function Courses() {
               <BarChart3 className="h-6 w-6 text-energy" />
               <h4 className="mt-3 font-bold">Track Progress</h4>
               <p className="mt-1 text-xs text-primary-foreground/80">Monitor your organization's compliance score in real-time.</p>
-              <Link to="/admin" className="mt-4 block w-full rounded-md bg-primary-foreground py-2 text-center text-sm font-semibold text-primary-deep hover:bg-primary-foreground/90">View Analytics</Link>
+              <Link to="/training/admin" className="mt-4 block w-full rounded-md bg-primary-foreground py-2 text-center text-sm font-semibold text-primary-deep hover:bg-primary-foreground/90">View Analytics</Link>
             </div>
           </aside>
 

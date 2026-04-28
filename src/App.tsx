@@ -13,6 +13,11 @@ import Services from "./pages/Services";
 import Contact from "./pages/Contact";
 import Feedbacks from "./pages/Feedbacks";
 import NotFound from "./pages/NotFound";
+import TrainingHome from "./routes/index";
+import TrainingCourses from "./routes/courses";
+import TrainingDashboard from "./routes/dashboard";
+import TrainingVerify from "./routes/verify";
+import TrainingAdmin from "./routes/admin";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +35,11 @@ const App = () => (
           <Route path="/services" element={<Services />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/feedbacks" element={<Feedbacks />} />
+          <Route path="/training" element={<TrainingHome />} />
+          <Route path="/training/courses" element={<TrainingCourses />} />
+          <Route path="/training/dashboard" element={<TrainingDashboard />} />
+          <Route path="/training/verify" element={<TrainingVerify />} />
+          <Route path="/training/admin" element={<TrainingAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Footer />

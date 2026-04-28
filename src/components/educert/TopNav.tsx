@@ -1,13 +1,13 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { Bell, HelpCircle, Search } from "lucide-react";
 import { Logo } from "./Logo";
 
 const links = [
-  { to: "/" as const, label: "Home" },
-  { to: "/courses" as const, label: "Courses" },
-  { to: "/dashboard" as const, label: "Dashboard" },
-  { to: "/verify" as const, label: "Certifications" },
-  { to: "/admin" as const, label: "Support" },
+  { to: "/training" as const, label: "Home" },
+  { to: "/training/courses" as const, label: "Courses" },
+  { to: "/training/dashboard" as const, label: "Dashboard" },
+  { to: "/training/verify" as const, label: "Certifications" },
+  { to: "/training/admin" as const, label: "Support" },
 ];
 
 export function TopNav({ searchPlaceholder = "Search certificates..." }: { searchPlaceholder?: string }) {

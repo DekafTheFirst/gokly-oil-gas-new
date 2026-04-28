@@ -1,24 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { ShieldCheck, BarChart3, Stethoscope, Headphones, ScanLine, BadgeCheck } from "lucide-react";
 import { TopNav } from "@/components/educert/TopNav";
 import { Footer } from "@/components/educert/Footer";
 import heroImg from "@/assets/hero-control-room.jpg";
 import verifyImg from "@/assets/verify-engineer.jpg";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "EduCert Pro — Master the Field with Professional Precision" },
-      { name: "description", content: "Accredited oil & gas certified compliance modules for high-performance operations and environmental responsibility." },
-      { property: "og:title", content: "EduCert Pro — Oil & Gas Training Portal" },
-      { property: "og:description", content: "Accredited HSE certification, instant credentials, and public verification for field operations." },
-    ],
-  }),
-  component: HomePage,
-});
-
-function HomePage() {
+export default function HomePage() {
   const [tab, setTab] = useState<"trainee" | "admin">("trainee");
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -39,10 +27,10 @@ function HomePage() {
               EduCert Pro Oil &amp; Gas certified compliance modules. Designed for high-performance operations and environmental responsibility.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/verify" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90">
+              <Link to="/training/verify" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90">
                 <ScanLine className="h-4 w-4" /> Verify a Certificate
               </Link>
-              <Link to="/courses" className="inline-flex items-center rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-5 py-3 font-semibold text-primary-foreground backdrop-blur transition hover:bg-primary-foreground/20">
+              <Link to="/training/courses" className="inline-flex items-center rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-5 py-3 font-semibold text-primary-foreground backdrop-blur transition hover:bg-primary-foreground/20">
                 View Course Catalog
               </Link>
             </div>
@@ -84,7 +72,7 @@ function HomePage() {
                 </label>
                 <a href="#" className="font-semibold text-primary">Forgot password?</a>
               </div>
-              <Link to="/dashboard" className="block w-full rounded-md bg-primary py-3 text-center text-sm font-semibold text-primary-foreground transition hover:bg-primary-deep">
+              <Link to="/training/dashboard" className="block w-full rounded-md bg-primary py-3 text-center text-sm font-semibold text-primary-foreground transition hover:bg-primary-deep">
                 Access Portal
               </Link>
               <p className="text-center text-xs text-muted-foreground">
@@ -155,7 +143,7 @@ function HomePage() {
             </p>
             <form onSubmit={(e) => e.preventDefault()} className="mt-6 flex flex-wrap items-center gap-2">
               <input className="h-11 min-w-[260px] flex-1 rounded-md bg-primary-foreground/10 px-3 text-sm text-primary-foreground placeholder:text-primary-foreground/60 focus:outline-none focus:ring-2 focus:ring-energy" placeholder="Enter Certificate ID" />
-              <Link to="/verify" className="inline-flex items-center gap-2 rounded-md bg-primary-foreground px-5 py-3 text-sm font-semibold text-primary-deep transition hover:bg-primary-foreground/90">
+              <Link to="/training/verify" className="inline-flex items-center gap-2 rounded-md bg-primary-foreground px-5 py-3 text-sm font-semibold text-primary-deep transition hover:bg-primary-foreground/90">
                 <Stethoscope className="h-4 w-4" /> Check
               </Link>
             </form>

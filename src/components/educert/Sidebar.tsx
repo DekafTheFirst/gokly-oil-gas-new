@@ -1,14 +1,14 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { BookOpen, ShieldCheck, BarChart3, BadgeCheck, Settings, LogOut, ClipboardList, FilePlus2, type LucideIcon } from "lucide-react";
 
-type Item = { to: "/dashboard" | "/courses" | "/admin" | "/verify"; label: string; icon: LucideIcon };
+type Item = { to: "/training/dashboard" | "/training/courses" | "/training/admin" | "/training/verify"; label: string; icon: LucideIcon };
 
 const items: Item[] = [
-  { to: "/dashboard", label: "Training Modules", icon: BookOpen },
-  { to: "/admin", label: "Admin Panel", icon: ShieldCheck },
-  { to: "/verify", label: "Safety Reports", icon: ClipboardList },
-  { to: "/courses", label: "Analytics", icon: BarChart3 },
-  { to: "/admin", label: "Compliance", icon: BadgeCheck },
+  { to: "/training/dashboard", label: "Training Modules", icon: BookOpen },
+  { to: "/training/admin", label: "Admin Panel", icon: ShieldCheck },
+  { to: "/training/verify", label: "Safety Reports", icon: ClipboardList },
+  { to: "/training/courses", label: "Analytics", icon: BarChart3 },
+  { to: "/training/admin", label: "Compliance", icon: BadgeCheck },
 ];
 
 export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS" }: { terminal?: string; subtitle?: string }) {

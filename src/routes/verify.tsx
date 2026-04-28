@@ -1,20 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { ShieldCheck, QrCode, BadgeCheck, Download, Share2, Database, Lock, FileCheck2, Award } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
 import trainingImg from "@/assets/course-pipeline.jpg";
 
-export const Route = createFileRoute("/verify")({
-  head: () => ({
-    meta: [
-      { title: "Verify Official Credentials — EduCert Pro" },
-      { name: "description", content: "Instantly validate EduCert Pro oil & gas certifications. Open ledger for contractors and HSE inspectors." },
-    ],
-  }),
-  component: Verify,
-});
-
-function Verify() {
+export default function Verify() {
   const [id, setId] = useState("ECP-2024-8842");
   return (
     <PageShell searchPlaceholder="Search certificates...">

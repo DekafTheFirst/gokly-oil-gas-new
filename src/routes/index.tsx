@@ -25,7 +25,7 @@ export default function HomePage() {
                 Master the Field with Professional Precision.
               </h1>
               <p className="mt-6 max-w-lg text-lg text-primary-foreground/85">
-                EduCert Pro Oil &amp; Gas certified compliance modules. Designed for high-performance operations and environmental responsibility.
+                Gokly Oil &amp; Gas certified compliance modules. Designed for high-performance operations and environmental responsibility.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link to="/training/verify" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90">
@@ -73,7 +73,7 @@ export default function HomePage() {
                   Access Portal
                 </Link>
                 <p className="text-center text-xs text-muted-foreground">
-                  By logging in, you agree to the EduCert Pro <a className="text-primary" href="#">System Standards</a> and <a className="text-primary" href="#">Conduct Policy</a>.
+                  By logging in, you agree to the Gokly <a className="text-primary" href="#">System Standards</a> and <a className="text-primary" href="#">Conduct Policy</a>.
                 </p>
               </form>
             </div>

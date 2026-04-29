@@ -11,7 +11,7 @@ export default function Verify() {
         <header className="text-center">
           <h1 className="text-5xl font-extrabold leading-tight md:text-6xl">Verify Official Credentials</h1>
           <p className="mx-auto mt-5 max-w-2xl text-muted-foreground">
-            Instantly validate EduCert Pro oil &amp; gas certifications. Our high-performance compliance system ensures the integrity of field operations through secure, immutable records.
+            Instantly validate Gokly oil &amp; gas certifications. Our high-performance compliance system ensures the integrity of field operations through secure, immutable records.
           </p>
         </header>
 

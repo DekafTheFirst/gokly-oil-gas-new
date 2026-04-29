@@ -18,9 +18,10 @@ import TrainingCourses from "./routes/courses";
 import TrainingDashboard from "./routes/dashboard";
 import TrainingVerify from "./routes/verify";
 import TrainingAdmin from "./routes/admin";
+import { TopNav } from "./components/educert/TopNav";
 
 const queryClient = new QueryClient();
-
+const showNavbar = !window.location.pathname.startsWith("/training");
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -28,7 +29,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ScrollToTop />
-        <Navbar />
+        {showNavbar && <Navbar />}
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/about" element={<About />} />
@@ -42,7 +43,7 @@ const App = () => (
           <Route path="/training/admin" element={<TrainingAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <Footer />
+        {showNavbar && <Footer />}
         <ChatBot />
       </BrowserRouter>
     </TooltipProvider>

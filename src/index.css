@@ -34,6 +34,14 @@
     --input: 140 15% 88%;
     --ring: 145 63% 32%;
 
+    --surface: 0 0% 100%;
+    --surface-container: 210 20% 96%;
+    --primary-deep: 145 50% 22%;
+    --energy: 40 85% 55%;
+    --energy-foreground: 40 100% 16%;
+    --success: 145 60% 35%;
+    --success-foreground: 0 0% 100%;
+
     --radius: 0.5rem;
 
     --gokly-green: 145 63% 32%;
@@ -86,6 +94,13 @@
     --border: 200 12% 22%;
     --input: 200 12% 22%;
     --ring: 145 55% 45%;
+    --surface: 200 20% 12%;
+    --surface-container: 210 16% 20%;
+    --primary-deep: 145 40% 20%;
+    --energy: 40 90% 60%;
+    --energy-foreground: 0 0% 10%;
+    --success: 145 40% 45%;
+    --success-foreground: 0 0% 100%;
     --sidebar-background: 200 20% 10%;
     --sidebar-foreground: 0 0% 90%;
     --sidebar-primary: 145 55% 45%;

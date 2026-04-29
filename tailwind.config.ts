@@ -51,6 +51,19 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "primary-deep": "hsl(var(--primary-deep))",
+        energy: {
+          DEFAULT: "hsl(var(--energy))",
+          foreground: "hsl(var(--energy-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          container: "hsl(var(--surface-container))",
+        },
         gokly: {
           green: "hsl(var(--gokly-green))",
           "green-light": "hsl(var(--gokly-green-light))",

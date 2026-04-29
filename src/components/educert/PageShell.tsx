@@ -4,7 +4,7 @@ import { Sidebar } from "./Sidebar";
 
 export function PageShell({ children, withSidebar = false, searchPlaceholder }: { children: React.ReactNode; withSidebar?: boolean; searchPlaceholder?: string }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background" style={{backgroundColor: '#f7f8f9'}}>
       <TopNav searchPlaceholder={searchPlaceholder} />
       {withSidebar ? (
         <div className="mx-auto flex w-full max-w-[1440px] flex-1">

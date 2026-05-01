@@ -1,6 +1,7 @@
 import { Users, GraduationCap, BadgeCheck, ShieldCheck, Calendar, Download, MoreVertical, Cloud } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
 import { ACTIVITY, TRAINEES, TRENDS } from "@/lib/mock-data";
+import { AdminPageShell } from "@/components/educert/AdminPageShell";
 
 const metrics = [
   { label: "Total Active Users", value: "12,842", chip: "+12.5%", icon: Users, accent: "border-l-primary" },
@@ -11,7 +12,7 @@ const metrics = [
 
 export default function Admin() {
   return (
-    <PageShell withSidebar searchPlaceholder="Search audit logs...">
+    <AdminPageShell withSidebar searchPlaceholder="Search audit logs...">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">Administrative Overview</h1>
@@ -184,6 +185,6 @@ export default function Admin() {
           ))}
         </div>
       </section>
-    </PageShell>
+    </AdminPageShell>
   );
 }

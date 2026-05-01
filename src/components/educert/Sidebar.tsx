@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { BookOpen, ShieldCheck, BarChart3, BadgeCheck, Settings, LogOut, ClipboardList, FilePlus2, type LucideIcon } from "lucide-react";
 
 type Item = { to: "/training/dashboard" | "/training/courses" | "/training/admin" | "/training/verify"; label: string; icon: LucideIcon };
@@ -8,7 +8,6 @@ const items: Item[] = [
   { to: "/training/admin", label: "Admin Panel", icon: ShieldCheck },
   { to: "/training/verify", label: "Safety Reports", icon: ClipboardList },
   { to: "/training/courses", label: "Analytics", icon: BarChart3 },
-  { to: "/training/admin", label: "Compliance", icon: BadgeCheck },
 ];
 
 export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS" }: { terminal?: string; subtitle?: string }) {
@@ -20,15 +19,18 @@ export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS"
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {items.map((it, i) => (
-          <Link
+          <NavLink
             key={i}
             to={it.to}
-            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-foreground/75 transition hover:bg-muted"
-            activeProps={{ className: "bg-primary text-primary-foreground hover:bg-primary" }}
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition ${
+                isActive ? "bg-primary text-primary-foreground hover:bg-primary" : "text-foreground/75 hover:bg-muted"
+              }`
+            }
           >
             <it.icon className="h-4 w-4" />
             {it.label}
-          </Link>
+          </NavLink>
         ))}
       </nav>
       <div className="space-y-3 px-4 pb-6">

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import logo from "@/assets/logo.png";
 
 const navItems = [
@@ -16,6 +17,8 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -32,7 +35,7 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      className={` z-50 transition-all duration-500 ${
         scrolled ? "nav-glass-scrolled" : "nav-glass"
       }`}
     >
@@ -84,12 +87,33 @@ const Navbar = () => {
                 </Link>
               );
             })}
-            <Link
-              to="/contact"
-              className="ml-4 px-6 py-2.5 bg-primary text-primary-foreground font-heading font-semibold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft"
-            >
-              Get in Touch
-            </Link>
+            {user ? (
+              <div className="ml-4 flex items-center gap-2">
+                <Link
+                  to="/training/dashboard"
+                  className="px-5 py-2.5 text-sm font-heading font-semibold text-foreground rounded-full border border-input hover:bg-secondary transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    navigate("/");
+                  }}
+                  className="px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/auth/login"
+                className="ml-4 px-6 py-2.5 bg-primary text-primary-foreground font-heading font-semibold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft"
+              >
+                Login
+              </Link>
+            )}
           </nav>
 
           {/* Mobile Toggle */}
@@ -136,6 +160,35 @@ const Navbar = () => {
                   </motion.div>
                 );
               })}
+              <div className="mt-4 space-y-2">
+                {user ? (
+                  <>
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-3 rounded-lg bg-secondary text-secondary-foreground text-center font-medium hover:bg-secondary/90"
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        logout();
+                        navigate("/");
+                      }}
+                      className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/auth/login"
+                    className="block px-4 py-3 rounded-lg bg-primary text-primary-foreground text-center font-medium hover:bg-primary/90"
+                  >
+                    Login
+                  </Link>
+                )}
+              </div>
             </nav>
           </motion.div>
         )}

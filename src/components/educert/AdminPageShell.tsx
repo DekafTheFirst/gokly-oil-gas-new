@@ -1,12 +1,13 @@
 import { TopNav } from "./TopNav";
 import { Footer } from "./Footer";
 import { Sidebar } from "./Sidebar";
+import { AdminTopNav } from "./AdminTopNav";
 
-export function PageShell({ children, withSidebar = false, searchPlaceholder }: { children: React.ReactNode; withSidebar?: boolean; searchPlaceholder?: string }) {
+export function AdminPageShell({ children, withSidebar = false, searchPlaceholder }: { children: React.ReactNode; withSidebar?: boolean; searchPlaceholder?: string }) {
   return (
     <div className="flex min-h-screen flex-col bg-background" style={{backgroundColor: '#f7f8f9'}}>
-      <TopNav searchPlaceholder={searchPlaceholder} />
-      {false ? (
+      <AdminTopNav searchPlaceholder={searchPlaceholder} />
+      {withSidebar ? (
         <div className="mx-auto flex w-full max-w-[1440px] flex-1">
           <Sidebar />
           <main className="flex-1 px-6 py-10 lg:px-10">{children}</main>

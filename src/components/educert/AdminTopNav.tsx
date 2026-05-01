@@ -3,29 +3,19 @@ import { Bell, HelpCircle, Search } from "lucide-react";
 import { Logo } from "./Logo";
 
 const links = [
+  { to: "/training" as const, label: "Home" },
+  { to: "/training/courses" as const, label: "Courses" },
   { to: "/training/dashboard" as const, label: "Dashboard" },
-  { to: "/training/verify" as const, label: "Certifications" },];
+  { to: "/training/verify" as const, label: "Certifications" },
+  { to: "/training/admin" as const, label: "Support" },
+];
 
-export function TopNav({ searchPlaceholder = "Search certificates..." }: { searchPlaceholder?: string }) {
+export function AdminTopNav({ searchPlaceholder = "Search certificates..." }: { searchPlaceholder?: string }) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6 px-6">
         <Logo />
-        <nav className="hidden items-center gap-6 md:flex">
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              className={({ isActive }) =>
-                `text-sm font-medium transition ${
-                  isActive ? "text-primary-deep border-b-2 border-primary pb-1" : "text-foreground/70 hover:text-primary-deep"
-                }`
-              }
-            >
-              {l.label}
-            </NavLink>
-          ))}
-        </nav>
+      
         <div className="ml-auto flex items-center gap-3">
           <div className="relative hidden lg:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

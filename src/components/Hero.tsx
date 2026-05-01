@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Shield, Zap, Globe } from "lucide-react";
+import { ArrowRight, Shield, Zap, Globe, ScanLine } from "lucide-react";
 import heroImage from "@/assets/hero-oil-rig.jpg";
 
 const Hero = () => {
@@ -33,7 +33,7 @@ const Hero = () => {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="font-heading font-extrabold text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-tight mb-6 text-primary-foreground"
+            className="font-heading font-extrabold text-3xl sm:text-5xl lg:text-6xl xl:text-7xl leading-tight mb-6 text-primary-foreground"
           >
             Powering the Future of{" "}
             <span className="text-gokly-gold">Energy</span>
@@ -43,9 +43,9 @@ const Hero = () => {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="text-lg sm:text-xl text-primary-foreground/85 font-body leading-relaxed mb-10 max-w-2xl"
+            className="text-md sm:text-lg text-primary-foreground/85 font-body leading-relaxed mb-10 max-w-2xl"
           >
-            Delivering exceptional downstream, midstream and upstream oil and gas solutions
+            Delivering exceptional downstream, midstream and upstream oil and gas solutions and trainings
             with integrity, excellence, and innovation across Nigeria and beyond.
           </motion.p>
 
@@ -56,20 +56,17 @@ const Hero = () => {
             className="flex flex-wrap gap-4"
           >
             <Link
-              to="/services"
+              to="/training/verify"
               className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground font-heading font-bold text-sm rounded-full hover:opacity-90 transition-all shadow-elevated group"
             >
-              Explore Our Services
-              <ArrowRight
-                size={18}
-                className="group-hover:translate-x-1 transition-transform"
-              />
+              <ScanLine className="h-4 w-4" /> Verify a Certificate
+
             </Link>
             <Link
-              to="/about"
+              to="/training/dashboard"
               className="inline-flex items-center gap-2 px-8 py-4 border-2 border-primary-foreground/30 text-primary-foreground font-heading font-bold text-sm rounded-full hover:bg-primary-foreground/10 transition-all backdrop-blur-sm"
             >
-              Learn About Us
+              Access Training Portal
             </Link>
           </motion.div>
         </div>

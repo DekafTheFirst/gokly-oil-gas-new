@@ -31,8 +31,12 @@ const AuthLogin = () => {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      await login(values);
-      navigate("/");
+      const payload = await login(values);
+      if (payload.user?.role === "ADMIN") {
+        navigate("/training/admin");
+      } else {
+        navigate("/training/courses");
+      }
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to log in.");
     }

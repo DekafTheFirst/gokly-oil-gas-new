@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Star, Plus, BarChart3, ArrowRight, BadgeCheck } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
+import { useAuth } from "@/context/AuthContext";
+import { enrollInCourse } from "@/lib/courses";
 import { COURSES } from "@/lib/mock-data";
 import heroImg from "@/assets/hero-control-room.jpg";
 
@@ -8,6 +11,23 @@ const categories = ["All Modules", "HSE & Safety", "Offshore Ops", "Technical To
 const tiers = ["Basic (T3)", "Advanced (T2)", "Expert (T1)"];
 
 export default function Courses() {
+  const { user } = useAuth();
+  const [alertMessage, setAlertMessage] = useState("");
+  const [loadingCourse, setLoadingCourse] = useState<number | null>(null);
+
+  const handleEnroll = async (courseId: number) => {
+    setAlertMessage("");
+    setLoadingCourse(courseId);
+    try {
+      await enrollInCourse(courseId);
+      setAlertMessage("Course enrollment successful. Check your dashboard for updates.");
+    } catch (error) {
+      setAlertMessage(error instanceof Error ? error.message : "Unable to enroll.");
+    } finally {
+      setLoadingCourse(null);
+    }
+  };
+
   return (
     <PageShell searchPlaceholder="Search courses...">
       <div className="mx-auto max-w-[1280px] px-6 py-10">
@@ -79,9 +99,12 @@ export default function Courses() {
           </aside>
 
           <div>
-            <div className="flex items-end justify-between">
-              <h2 className="text-3xl font-extrabold">Course Catalog</h2>
-              <span className="text-sm text-muted-foreground">Showing {COURSES.length} of 128 courses</span>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-3xl font-extrabold">Course Catalog</h2>
+                <p className="text-sm text-muted-foreground">Showing {COURSES.length} of 128 courses</p>
+              </div>
+              {alertMessage ? <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 shadow-sm">{alertMessage}</div> : null}
             </div>
             <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {COURSES.map((c) => (
@@ -99,9 +122,20 @@ export default function Courses() {
                     <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{c.blurb}</p>
                     <div className="mt-auto flex items-center justify-between pt-5">
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" />{c.tier}</span>
-                      <button aria-label="Enroll" className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary-deep">
-                        <Plus className="h-4 w-4" />
-                      </button>
+                      {user?.role === "ADMIN" ? (
+                        <button disabled className="rounded-full bg-muted px-4 py-2 text-xs font-semibold text-muted-foreground">
+                          Admin view
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleEnroll(c.id)}
+                          disabled={loadingCourse === c.id}
+                          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {loadingCourse === c.id ? "Enrolling..." : "Enroll"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>

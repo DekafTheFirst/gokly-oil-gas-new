@@ -37,6 +37,10 @@ const Profile = () => {
                   <strong className="block text-foreground">Email</strong>
                   <span className="text-muted-foreground">{user.email}</span>
                 </div>
+                <div>
+                  <strong className="block text-foreground">Role</strong>
+                  <span className="text-muted-foreground capitalize">{user.role}</span>
+                </div>
               </div>
             </div>
           </CardContent>

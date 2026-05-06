@@ -13,6 +13,7 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Enter a valid email."),
   password: z.string().min(8, "Password must be at least 8 characters."),
+  role: z.enum(["USER", "ADMIN"]).default("USER"),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -32,8 +33,12 @@ const AuthRegister = () => {
 
   const onSubmit = async (values: RegisterFormValues) => {
     try {
-      await registerAccount(values);
-      navigate("/");
+      const payload = await registerAccount(values);
+      if (payload.user?.role === "ADMIN") {
+        navigate("/training/admin");
+      } else {
+        navigate("/training/courses");
+      }
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to register.");
     }
@@ -64,6 +69,14 @@ const AuthRegister = () => {
                 <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" placeholder="Create a password" {...register("password")} />
                 {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="role">Account type</Label>
+                <select id="role" className="h-11 rounded-md border border-border bg-input px-3 text-sm" {...register("role")}> 
+                  <option value="USER">USER</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+                {errors.role ? <p className="text-sm text-destructive">{errors.role.message}</p> : null}
               </div>
             </div>
           </CardContent>

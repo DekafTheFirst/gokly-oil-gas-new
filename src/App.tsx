@@ -46,7 +46,7 @@ const AppRoutes = () => {
         <Route path="/training" element={<TrainingHome />} />
         <Route path="/training/courses" element={<ProtectedRoute><TrainingCourses /></ProtectedRoute>} />
         <Route path="/training/dashboard" element={<ProtectedRoute><TrainingDashboard /></ProtectedRoute>} />
-        <Route path="/training/admin" element={<ProtectedRoute><TrainingAdmin /></ProtectedRoute>} />
+        <Route path="/training/admin" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingAdmin /></ProtectedRoute>} />
         <Route path="/training/verify" element={<TrainingVerify />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

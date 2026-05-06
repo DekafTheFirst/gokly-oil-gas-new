@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Users, GraduationCap, BadgeCheck, ShieldCheck, Calendar, Download, MoreVertical, Cloud } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
 import { ACTIVITY, TRAINEES, TRENDS } from "@/lib/mock-data";
+import { createCourse } from "@/lib/courses";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 
 const metrics = [
@@ -11,6 +13,37 @@ const metrics = [
 ];
 
 export default function Admin() {
+  const [courseForm, setCourseForm] = useState({
+    title: "",
+    category: "",
+    tier: "",
+    hours: "",
+    image: "",
+    blurb: "",
+  });
+  const [statusMessage, setStatusMessage] = useState("");
+  const [creatingCourse, setCreatingCourse] = useState(false);
+
+  const handleCreateCourse = async (event) => {
+    event.preventDefault();
+    setStatusMessage("");
+    if (!courseForm.title || !courseForm.category || !courseForm.tier || !courseForm.hours || !courseForm.blurb) {
+      setStatusMessage("Please complete all required course fields.");
+      return;
+    }
+
+    try {
+      setCreatingCourse(true);
+      const response = await createCourse(courseForm);
+      setStatusMessage(`Course created: ${response.course.title}`);
+      setCourseForm({ title: "", category: "", tier: "", hours: "", image: "", blurb: "" });
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to create course.");
+    } finally {
+      setCreatingCourse(false);
+    }
+  };
+
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search audit logs...">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -42,6 +75,83 @@ export default function Admin() {
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="mt-8 rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold">Course Creation</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Create training modules that users can enroll in.</p>
+          </div>
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">Admin only</span>
+        </div>
+
+        <form onSubmit={handleCreateCourse} className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <label className="text-sm font-semibold">Course title</label>
+            <input
+              value={courseForm.title}
+              onChange={(event) => setCourseForm((prev) => ({ ...prev, title: event.target.value }))}
+              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+              placeholder="Advanced Well Control"
+            />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-semibold">Category</label>
+            <input
+              value={courseForm.category}
+              onChange={(event) => setCourseForm((prev) => ({ ...prev, category: event.target.value }))}
+              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+              placeholder="Offshore Ops"
+            />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-semibold">Tier</label>
+            <input
+              value={courseForm.tier}
+              onChange={(event) => setCourseForm((prev) => ({ ...prev, tier: event.target.value }))}
+              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+              placeholder="T1 Certified"
+            />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-semibold">Hours</label>
+            <input
+              value={courseForm.hours}
+              onChange={(event) => setCourseForm((prev) => ({ ...prev, hours: event.target.value }))}
+              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+              placeholder="24"
+            />
+          </div>
+          <div className="sm:col-span-2 grid gap-2">
+            <label className="text-sm font-semibold">Course image URL</label>
+            <input
+              value={courseForm.image}
+              onChange={(event) => setCourseForm((prev) => ({ ...prev, image: event.target.value }))}
+              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+              placeholder="https://example.com/course.jpg"
+            />
+          </div>
+          <div className="sm:col-span-2 grid gap-2">
+            <label className="text-sm font-semibold">Short description</label>
+            <textarea
+              value={courseForm.blurb}
+              onChange={(event) => setCourseForm((prev) => ({ ...prev, blurb: event.target.value }))}
+              className="min-h-[108px] rounded-md border border-border bg-background px-3 py-3 text-sm"
+              placeholder="Describe the training and certification objectives."
+            />
+          </div>
+          <div className="sm:col-span-2 flex flex-col gap-3">
+            {statusMessage ? <p className="text-sm text-muted-foreground">{statusMessage}</p> : null}
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-deep"
+              disabled={creatingCourse}
+            >
+              {creatingCourse ? "Creating course..." : "Create course"}
+            </button>
+          </div>
+        </form>
       </section>
 
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">

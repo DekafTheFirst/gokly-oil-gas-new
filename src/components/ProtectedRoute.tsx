@@ -5,9 +5,10 @@ import { useAuth } from "@/context/AuthContext";
 type ProtectedRouteProps = {
   children: ReactNode;
   redirectTo?: string;
+  allowedRoles?: string[];
 };
 
-const ProtectedRoute = ({ children, redirectTo = "/auth/login" }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, redirectTo = "/auth/login", allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -21,6 +22,10 @@ const ProtectedRoute = ({ children, redirectTo = "/auth/login" }: ProtectedRoute
 
   if (!user) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/training" replace />;
   }
 
   return <>{children}</>;

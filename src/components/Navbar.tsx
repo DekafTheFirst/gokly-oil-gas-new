@@ -87,7 +87,7 @@ const Navbar = () => {
                 </Link>
               );
             })}
-            {user ? (
+            {/* {user ? (
               <div className="ml-4 flex items-center gap-2">
                 <Link
                   to="/training/dashboard"
@@ -113,7 +113,14 @@ const Navbar = () => {
               >
                 Login
               </Link>
-            )}
+            )} */}
+
+            <Link
+              to="/contact"
+              className="ml-4 px-6 py-2.5 bg-primary text-primary-foreground font-heading font-semibold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft"
+            >
+              Get in Touch
+            </Link>
           </nav>
 
           {/* Mobile Toggle */}

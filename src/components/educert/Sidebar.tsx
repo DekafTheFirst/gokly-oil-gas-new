@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { BookOpen, ShieldCheck, BarChart3, BadgeCheck, Settings, LogOut, ClipboardList, FilePlus2, type LucideIcon } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 type Item = { to: "/training/dashboard" | "/training/courses" | "/training/admin" | "/training/verify"; label: string; icon: LucideIcon };
 
@@ -8,8 +9,10 @@ const items: Item[] = [
 ];
 
 export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS" }: { terminal?: string; subtitle?: string }) {
+  const logout = useAuth().logout;
+
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">
+    <aside className="w-60 shrink-0 flex-col border-r border-border bg-card lg:flex" >
       <div className="border-b border-border px-6 py-6">
         <p className="font-display text-lg font-bold leading-tight">{terminal}</p>
         <p className="label-eyebrow mt-1">{subtitle}</p>
@@ -38,7 +41,7 @@ export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS"
           <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted">
             <Settings className="h-4 w-4" /> Settings
           </button>
-          <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted">
+          <button onClick={() => {logout()}} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted">
             <LogOut className="h-4 w-4" /> Log Out
           </button>
         </div>

@@ -35,7 +35,7 @@ const AuthLogin = () => {
       if (payload.user?.role === "ADMIN") {
         navigate("/training/admin");
       } else if (payload.user?.role === "TRAINER") {
-        navigate("/training/trainer");
+        navigate("/training/trainer-dashboard");
       } else {
         navigate("/training/courses");
       }

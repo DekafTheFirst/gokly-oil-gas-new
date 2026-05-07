@@ -14,10 +14,10 @@ export const clearAuthToken = () => {
   window.localStorage.removeItem(TOKEN_KEY);
 };
 
-export const register = async ({ name, email, password }) => {
+export const register = async ({ name, email, password, role }) => {
   const payload = await apiFetch("/auth/register", {
     method: "POST",
-    body: { name, email, password },
+    body: { name, email, password, role },
   });
   if (payload.token) {
     setAuthToken(payload.token);

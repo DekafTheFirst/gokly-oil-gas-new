@@ -5,17 +5,14 @@ import { AdminTopNav } from "./AdminTopNav";
 
 export function AdminPageShell({ children, withSidebar = false, searchPlaceholder }: { children: React.ReactNode; withSidebar?: boolean; searchPlaceholder?: string }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background" style={{backgroundColor: '#f7f8f9'}}>
+    <div className="flex min-h-screen flex-col bg-background" style={{backgroundColor: '#f7f8f9', }}>
       <AdminTopNav searchPlaceholder={searchPlaceholder} />
-      {withSidebar ? (
         <div className="mx-auto flex w-full max-w-[1440px] flex-1">
-          <Sidebar />
-          <main className="flex-1 px-6 py-10 lg:px-10">{children}</main>
+          {withSidebar && <Sidebar />}
+          <main className="px-6 py-10 lg:px-10" style={{ height: 'calc(100vh - 64px)', overflow: 'auto'}}>{children}</main>
         </div>
-      ) : (
-        <main className="flex-1 px-6 py-0">{children}</main>
-      )}
-      <Footer />
+     
+      {/* <Footer /> */}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <footer className="mt-20 border-t border-border bg-background">
+    <footer className=" border-t border-border bg-background">
       <div className="mx-auto flex max-w-[1280px] flex-col items-start justify-between gap-3 px-6 py-8 md:flex-row md:items-center">
         <div>
           <p className="font-display font-bold text-foreground">Gokly Oil and Gas</p>

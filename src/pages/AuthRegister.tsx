@@ -33,11 +33,15 @@ const AuthRegister = () => {
 
   const onSubmit = async (values: RegisterFormValues) => {
     try {
+      console.log("payload:", values);
+
       const payload = await registerAccount(values);
+
+
       if (payload.user?.role === "ADMIN") {
         navigate("/training/admin");
       } else if (payload.user?.role === "TRAINER") {
-        navigate("/training/trainer");
+        navigate("/training/trainer-dashboard");
       } else {
         navigate("/training/courses");
       }
@@ -74,7 +78,7 @@ const AuthRegister = () => {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="role">Account type</Label>
-                <select id="role" className="h-11 rounded-md border border-border bg-input px-3 text-sm" {...register("role")}> 
+                <select id="role" className="h-11 rounded-md border border-border bg-input px-3 text-sm" {...register("role")}>
                   <option value="STUDENT">Student</option>
                   <option value="TRAINER">Trainer</option>
                   <option value="ADMIN">Admin</option>

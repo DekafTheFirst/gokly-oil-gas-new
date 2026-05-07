@@ -56,23 +56,19 @@ const Hero = () => {
             className="flex flex-wrap gap-4"
           >
             <Link
-              to="/services"
+              to="/training/verify"
               className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground font-heading font-bold text-sm rounded-full hover:opacity-90 transition-all shadow-elevated group"
             >
-              Explore Our Services
-              <ArrowRight
-                size={18}
-                className="group-hover:translate-x-1 transition-transform"
-              />
+              <ScanLine className="h-4 w-4" /> Verify a Certificate
+
             </Link>
             <Link
-              to="/about"
+              to="/training/dashboard"
               className="inline-flex items-center gap-2 px-8 py-4 border-2 border-primary-foreground/30 text-primary-foreground font-heading font-bold text-sm rounded-full hover:bg-primary-foreground/10 transition-all backdrop-blur-sm"
             >
-              Learn About Us
+              Access Training Portal
             </Link>
           </motion.div>
-
         </div>
 
         {/* Stats Row */}

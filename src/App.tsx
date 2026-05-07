@@ -22,6 +22,7 @@ import TrainingCourses from "./routes/courses";
 import TrainingDashboard from "./routes/dashboard";
 import TrainingVerify from "./routes/verify";
 import TrainingAdmin from "./routes/admin";
+import TrainingTrainer from "./routes/trainer";
 import { AuthProvider } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const AppRoutes = () => {
         <Route path="/training" element={<TrainingHome />} />
         <Route path="/training/courses" element={<ProtectedRoute><TrainingCourses /></ProtectedRoute>} />
         <Route path="/training/dashboard" element={<ProtectedRoute><TrainingDashboard /></ProtectedRoute>} />
+        <Route path="/training/trainer" element={<ProtectedRoute allowedRoles={["TRAINER"]}><TrainingTrainer /></ProtectedRoute>} />
         <Route path="/training/admin" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingAdmin /></ProtectedRoute>} />
         <Route path="/training/verify" element={<TrainingVerify />} />
         <Route path="*" element={<NotFound />} />

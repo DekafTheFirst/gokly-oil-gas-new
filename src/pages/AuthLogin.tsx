@@ -34,6 +34,8 @@ const AuthLogin = () => {
       const payload = await login(values);
       if (payload.user?.role === "ADMIN") {
         navigate("/training/admin");
+      } else if (payload.user?.role === "TRAINER") {
+        navigate("/training/trainer");
       } else {
         navigate("/training/courses");
       }

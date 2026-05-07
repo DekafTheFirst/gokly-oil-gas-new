@@ -13,7 +13,7 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Enter a valid email."),
   password: z.string().min(8, "Password must be at least 8 characters."),
-  role: z.enum(["USER", "ADMIN"]).default("USER"),
+  role: z.enum(["STUDENT", "TRAINER", "ADMIN"]).default("STUDENT"),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -36,6 +36,8 @@ const AuthRegister = () => {
       const payload = await registerAccount(values);
       if (payload.user?.role === "ADMIN") {
         navigate("/training/admin");
+      } else if (payload.user?.role === "TRAINER") {
+        navigate("/training/trainer");
       } else {
         navigate("/training/courses");
       }
@@ -73,8 +75,9 @@ const AuthRegister = () => {
               <div className="grid gap-2">
                 <Label htmlFor="role">Account type</Label>
                 <select id="role" className="h-11 rounded-md border border-border bg-input px-3 text-sm" {...register("role")}> 
-                  <option value="USER">USER</option>
-                  <option value="ADMIN">ADMIN</option>
+                  <option value="STUDENT">Student</option>
+                  <option value="TRAINER">Trainer</option>
+                  <option value="ADMIN">Admin</option>
                 </select>
                 {errors.role ? <p className="text-sm text-destructive">{errors.role.message}</p> : null}
               </div>

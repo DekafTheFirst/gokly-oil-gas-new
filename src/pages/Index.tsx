@@ -16,15 +16,7 @@ const Index = () => {
       <ServicesSection limit={8} />
 
       {/* CTA to see all services */}
-      <div className="text-center pb-16 bg-section-gradient">
-        <Link
-          to="/services"
-          className="inline-flex items-center gap-2 px-8 py-3.5 bg-primary text-primary-foreground font-heading font-bold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft group"
-        >
-          View All Services
-          <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-        </Link>
-      </div>
+      
 
       {/* Why Choose Us */}
       <section className="py-20">

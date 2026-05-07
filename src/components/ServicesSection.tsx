@@ -16,6 +16,8 @@ import fabricationImg from "@/assets/services/fabrication.jpg";
 import tankImg from "@/assets/services/tank.jpg";
 import auditImg from "@/assets/services/audit.jpg";
 import gasPipelineImg from "@/assets/services/project.jpg";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 const services = [
   { image: trainingImg, title: "Specialized Oil & Gas Training", desc: "Comprehensive industry training programs including metal fabrication and pipe fitting." },
@@ -96,6 +98,15 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
             </motion.div>
           ))}
         </div>
+      </div>
+
+      <div className="text-center pt-16">
+        <Link to="/services"
+          className="inline-flex items-center gap-2 px-8 py-3.5 bg-primary text-primary-foreground font-heading font-bold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft group"
+        >
+          View All Services
+          <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+        </Link>
       </div>
     </section>
   );

@@ -56,7 +56,7 @@ const Hero = () => {
             className="flex flex-wrap gap-4"
           >
             <Link
-              to="/training/verify"
+              to="/public-verification"
               className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground font-heading font-bold text-sm rounded-full hover:opacity-90 transition-all shadow-elevated group"
             >
               <ScanLine className="h-4 w-4" /> Verify a Certificate

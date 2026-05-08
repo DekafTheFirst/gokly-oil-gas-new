@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { BookOpen, ShieldCheck, BarChart3, BadgeCheck, Settings, LogOut, ClipboardList, FilePlus2, type LucideIcon } from "lucide-react";
+import { BookOpen, ShieldCheck, BarChart3, BadgeCheck, Settings, LogOut, ClipboardList, FilePlus2, Award, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 type Item = { to: "/training/dashboard" | "/training/courses" | "/training/admin" | "/training/verify"; label: string; icon: LucideIcon };
 
 const items: Item[] = [
-  { to: "/training/admin", label: "Analytics", icon: ShieldCheck },
+  { to: "/training/admin", label: "Dashboard", icon: ShieldCheck },
+  { to: "/training/certificate-management", label: "Certificate Management", icon: Award },
 ];
 
 export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS" }: { terminal?: string; subtitle?: string }) {
@@ -13,10 +14,7 @@ export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS"
 
   return (
     <aside className="w-60 shrink-0 flex-col border-r border-border bg-card lg:flex" >
-      <div className="border-b border-border px-6 py-6">
-        <p className="font-display text-lg font-bold leading-tight">{terminal}</p>
-        <p className="label-eyebrow mt-1">{subtitle}</p>
-      </div>
+      
       <nav className="flex-1 space-y-1 px-3 py-4">
         {items.map((it, i) => (
           <NavLink

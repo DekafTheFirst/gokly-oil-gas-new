@@ -37,7 +37,7 @@ const AuthLogin = () => {
       } else if (payload.user?.role === "TRAINER") {
         navigate("/training/trainer-dashboard");
       } else {
-        navigate("/training/courses");
+        navigate("/training/dashboard");
       }
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to log in.");

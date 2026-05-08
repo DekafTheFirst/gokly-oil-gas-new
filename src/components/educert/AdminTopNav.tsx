@@ -13,7 +13,7 @@ const links = [
 export function AdminTopNav({ searchPlaceholder = "Search certificates..." }: { searchPlaceholder?: string }) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6 px-6">
+      <div className="mx-auto flex h-16  items-center gap-6 px-6">
         <Logo />
       
         <div className="ml-auto flex items-center gap-3">

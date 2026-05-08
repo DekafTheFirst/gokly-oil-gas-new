@@ -77,84 +77,9 @@ export default function Admin() {
         ))}
       </section>
 
-      <section className="mt-8 rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold">Course Creation</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Create training modules that users can enroll in.</p>
-          </div>
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">Admin only</span>
-        </div>
+     
 
-        <form onSubmit={handleCreateCourse} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold">Course title</label>
-            <input
-              value={courseForm.title}
-              onChange={(event) => setCourseForm((prev) => ({ ...prev, title: event.target.value }))}
-              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="Advanced Well Control"
-            />
-          </div>
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold">Category</label>
-            <input
-              value={courseForm.category}
-              onChange={(event) => setCourseForm((prev) => ({ ...prev, category: event.target.value }))}
-              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="Offshore Ops"
-            />
-          </div>
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold">Tier</label>
-            <input
-              value={courseForm.tier}
-              onChange={(event) => setCourseForm((prev) => ({ ...prev, tier: event.target.value }))}
-              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="T1 Certified"
-            />
-          </div>
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold">Hours</label>
-            <input
-              value={courseForm.hours}
-              onChange={(event) => setCourseForm((prev) => ({ ...prev, hours: event.target.value }))}
-              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="24"
-            />
-          </div>
-          <div className="sm:col-span-2 grid gap-2">
-            <label className="text-sm font-semibold">Course image URL</label>
-            <input
-              value={courseForm.image}
-              onChange={(event) => setCourseForm((prev) => ({ ...prev, image: event.target.value }))}
-              className="h-11 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="https://example.com/course.jpg"
-            />
-          </div>
-          <div className="sm:col-span-2 grid gap-2">
-            <label className="text-sm font-semibold">Short description</label>
-            <textarea
-              value={courseForm.blurb}
-              onChange={(event) => setCourseForm((prev) => ({ ...prev, blurb: event.target.value }))}
-              className="min-h-[108px] rounded-md border border-border bg-background px-3 py-3 text-sm"
-              placeholder="Describe the training and certification objectives."
-            />
-          </div>
-          <div className="sm:col-span-2 flex flex-col gap-3">
-            {statusMessage ? <p className="text-sm text-muted-foreground">{statusMessage}</p> : null}
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-deep"
-              disabled={creatingCourse}
-            >
-              {creatingCourse ? "Creating course..." : "Create course"}
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <section className="mt-8 grid gap-6">
         <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
           <div className="flex items-start justify-between">
             <div>
@@ -180,31 +105,11 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
-          <h2 className="text-xl font-bold">Platform Health</h2>
-          {[
-            { l: "Server Latency", v: "24ms (Optimal)", pct: 90, tone: "bg-primary" },
-            { l: "Storage Usage", v: "78%", pct: 78, tone: "bg-energy" },
-            { l: "Database Sync", v: "Active", pct: 100, tone: "bg-primary" },
-          ].map((h) => (
-            <div key={h.l} className="mt-5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{h.l}</span>
-                <span className="font-semibold text-muted-foreground">{h.v}</span>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div className={`h-full rounded-full ${h.tone}`} style={{ width: `${h.pct}%` }} />
-              </div>
-            </div>
-          ))}
-          <div className="mt-6 flex items-center gap-3 rounded-md bg-primary/10 p-4 text-sm font-semibold text-primary-deep">
-            <Cloud className="h-5 w-5 text-primary" /> All Systems Operational
-          </div>
-        </div>
+        
       </section>
 
       {/* Certificate Mgmt preview */}
-      <section className="mt-8 rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
+      {/* <section className="mt-8 rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold">Certificate Management</h2>
@@ -262,10 +167,10 @@ export default function Admin() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section> */}
 
       {/* Recent Platform Activity */}
-      <section className="mt-8 rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
+      {/* <section className="mt-8 rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold">Recent Platform Activity</h2>
@@ -294,7 +199,7 @@ export default function Admin() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
     </AdminPageShell>
   );
 }

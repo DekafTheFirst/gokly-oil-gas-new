@@ -13,7 +13,7 @@ export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS"
   const logout = useAuth().logout;
 
   return (
-    <aside className="w-60 shrink-0 flex-col border-r border-border bg-card lg:flex" >
+    <aside className="w-60 flex shrink-0 flex-col border-r border-border bg-card lg:flex" >
       
       <nav className="flex-1 space-y-1 px-3 py-4">
         {items.map((it, i) => (
@@ -32,9 +32,6 @@ export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS"
         ))}
       </nav>
       <div className="space-y-3 px-4 pb-6">
-        <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)] transition hover:bg-primary-deep">
-          <FilePlus2 className="h-4 w-4" /> Request Certification
-        </button>
         <div className="space-y-1 text-sm">
           <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted">
             <Settings className="h-4 w-4" /> Settings

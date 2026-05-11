@@ -260,6 +260,7 @@ export default function CertificateManagement() {
                 <div className="grid gap-2">
                   <Label htmlFor="file">Select File</Label>
                   <Input
+                    className="cursor-pointer"
                     id="file"
                     type="file"
                     accept=".csv,.xlsx,.xls"

@@ -108,7 +108,7 @@ export const getBatchStatus = async (batchId: number): Promise<CertificateBatch>
 
 // Download bulk upload template
 export const downloadCertificateTemplate = (): void => {
-  const csvContent = "Name,Course,Phone Number,Email\nJohn Doe,Introduction to Training,123-456-7890,john.doe@example.com\n";
+  const csvContent = "Name,Course,Phone Number,Email\nJohn Doe,FIFTY PIPE FITTERS IN RIVERS STATE,123-456-7890,john.doe@example.com\n";
   const blob = new Blob([csvContent], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');

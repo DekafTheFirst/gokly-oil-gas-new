@@ -56,13 +56,36 @@ export interface BulkUploadResult {
   errors?: string[];
 }
 
-// Get all certificates for admin management
-export const fetchAllCertificates = async (): Promise<Certificate[]> => {
+export interface CertificatePagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface CertificateResponse {
+  certificates: Certificate[];
+  pagination: CertificatePagination;
+}
+
+// Get all certificates for admin management with pagination and search
+export const fetchAllCertificates = async (
+  page: number = 1,
+  limit: number = 10,
+  search: string = "",
+  status: string = "all"
+): Promise<CertificateResponse> => {
   const token = getAuthToken();
-  const data = await apiFetch("/certificates/admin/all", {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search,
+    status,
+  });
+  const data = await apiFetch(`/certificates/admin/all?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  return data.certificates || [];
+  return data;
 };
 
 // Revoke a certificate

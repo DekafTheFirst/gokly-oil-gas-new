@@ -35,7 +35,9 @@ import {
   type Certificate,
   type CertificateUploadRow,
   type CertificateBatch,
-  type BulkUploadResult
+  type BulkUploadResult,
+  type CertificateResponse,
+  type CertificatePagination,
 } from "@/lib/certificates";
 
 export default function CertificateManagement() {
@@ -45,6 +47,7 @@ export default function CertificateManagement() {
   const [successMessage, setSuccessMessage] = useState("");
   const [revokingId, setRevokingId] = useState<number | null>(null);
   const [unrevokingId, setUnrevokingId] = useState<number | null>(null);
+  const [pagination, setPagination] = useState<CertificatePagination | null>(null);
 
   // Bulk upload states
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -63,7 +66,7 @@ export default function CertificateManagement() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchCertificates();
+    fetchCertificates(1, searchTerm, statusFilter);
   }, []);
 
   useEffect(() => {
@@ -83,11 +86,13 @@ export default function CertificateManagement() {
     return () => clearInterval(interval);
   }, [currentBatch]);
 
-  const fetchCertificates = async () => {
+  const fetchCertificates = async (page: number = 1, search: string = "", status: string = "all") => {
     try {
       setLoading(true);
-      const data = await fetchAllCertificates();
-      setCertificates(data);
+      const response: CertificateResponse = await fetchAllCertificates(page, rowsPerPage, search, status);
+      setCertificates(response.certificates);
+      setPagination(response.pagination);
+      setCurrentPage(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load certificates");
     } finally {
@@ -101,7 +106,7 @@ export default function CertificateManagement() {
       await revokeCertificate(certificateId, reason);
       setSuccessMessage("Certificate revoked successfully");
       setTimeout(() => setSuccessMessage(""), 3000);
-      fetchCertificates();
+      fetchCertificates(currentPage, searchTerm, statusFilter);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to revoke certificate");
       setTimeout(() => setError(""), 3000);
@@ -116,13 +121,27 @@ export default function CertificateManagement() {
       await unrevokeCertificate(certificateId);
       setSuccessMessage("Certificate restored successfully");
       setTimeout(() => setSuccessMessage(""), 3000);
-      fetchCertificates();
+      fetchCertificates(currentPage, searchTerm, statusFilter);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to restore certificate");
       setTimeout(() => setError(""), 3000);
     } finally {
       setUnrevokingId(null);
     }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    fetchCertificates(1, value, statusFilter);
+  };
+
+  const handleStatusFilterChange = (value: 'all' | 'active' | 'revoked') => {
+    setStatusFilter(value);
+    fetchCertificates(1, searchTerm, value);
+  };
+
+  const handlePageChange = (page: number) => {
+    fetchCertificates(page, searchTerm, statusFilter);
   };
 
   const normalizeKey = (key: string) => key.trim().toLowerCase().replace(/\s+/g, "_");
@@ -217,16 +236,6 @@ export default function CertificateManagement() {
   const paginatedRows = parsedRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
   const showingFrom = parsedRows.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const showingTo = Math.min(parsedRows.length, currentPage * rowsPerPage);
-
-  const filteredCertificates = certificates.filter(cert => {
-    const matchesStatus = statusFilter === 'all' || cert.status === statusFilter;
-    const matchesSearch = searchTerm === "" ||
-      cert.certificate_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cert.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cert.course_title.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchesStatus && matchesSearch;
-  });
 
   const downloadTemplate = () => {
     downloadCertificateTemplate();
@@ -438,21 +447,21 @@ export default function CertificateManagement() {
           <Button
             variant={statusFilter === 'all' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setStatusFilter('all')}
+            onClick={() => handleStatusFilterChange('all')}
           >
             All ({certificates.length})
           </Button>
           <Button
             variant={statusFilter === 'active' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setStatusFilter('active')}
+            onClick={() => handleStatusFilterChange('active')}
           >
             Active ({certificates.filter(c => c.status === 'active').length})
           </Button>
           <Button
             variant={statusFilter === 'revoked' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setStatusFilter('revoked')}
+            onClick={() => handleStatusFilterChange('revoked')}
           >
             Revoked ({certificates.filter(c => c.status === 'revoked').length})
           </Button>
@@ -460,7 +469,7 @@ export default function CertificateManagement() {
         <Input
           placeholder="Search certificates..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="max-w-xs"
         />
       </div>
@@ -471,7 +480,7 @@ export default function CertificateManagement() {
           <div className="p-8 text-center">
             <p className="text-muted-foreground">Loading certificates...</p>
           </div>
-        ) : filteredCertificates.length === 0 ? (
+        ) : certificates.length === 0 ? (
           <div className="p-8 text-center">
             <ShieldCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">No certificates found</p>
@@ -491,7 +500,7 @@ export default function CertificateManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredCertificates.map((cert) => (
+                {certificates.map((cert) => (
                   <tr key={cert.id} className="hover:bg-muted/30">
                     <td className="px-6 py-4 text-sm font-mono">{cert.certificate_number}</td>
                     <td className="px-6 py-4 text-sm">{cert.student_name}</td>
@@ -573,6 +582,49 @@ export default function CertificateManagement() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 bg-muted/50 border-t">
+            <div className="text-sm text-muted-foreground">
+              Showing {pagination.from} to {pagination.to} of {pagination.total} certificates
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(pagination.totalPages - 4, currentPage - 2)) + i;
+                  if (pageNum > pagination.totalPages) return null;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === pagination.totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>

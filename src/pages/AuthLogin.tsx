@@ -31,14 +31,8 @@ const AuthLogin = () => {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      const payload = await login(values);
-      if (payload.user?.role === "ADMIN") {
-        navigate("/training/admin");
-      } else if (payload.user?.role === "TRAINER") {
-        navigate("/training/trainer-dashboard");
-      } else {
-        navigate("/training/dashboard");
-      }
+      await login(values);
+      navigate("/training/dashboard");
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to log in.");
     }

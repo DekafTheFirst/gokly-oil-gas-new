@@ -15,7 +15,7 @@ import Feedbacks from "./pages/Feedbacks";
 import AuthLogin from "./pages/AuthLogin";
 import AuthRegister from "./pages/AuthRegister";
 import Profile from "./pages/Profile";
-import ProtectedRoute from "./components/ProtectedRoute";
+import DashboardRouter from "./components/DashboardRouter";
 import NotFound from "./pages/NotFound";
 import TrainingHome from "./routes/index";
 import TrainingCourses from "./routes/courses";
@@ -26,6 +26,7 @@ import TrainingTrainer from "./routes/trainer";
 import TrainingBulkCertificateIssuance from "./routes/certificate-management";
 import { AuthProvider } from "./context/AuthContext";
 import PublicVerification from "./routes/public-verification";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -48,7 +49,7 @@ const AppRoutes = () => {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/training" element={<TrainingHome />} />
         <Route path="/training/courses" element={<ProtectedRoute><TrainingCourses /></ProtectedRoute>} />
-        <Route path="/training/dashboard" element={<ProtectedRoute><TrainingDashboard /></ProtectedRoute>} />
+        <Route path="/training/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
         <Route path="/training/trainer-dashboard" element={<ProtectedRoute allowedRoles={["TRAINER"]}><TrainingTrainer /></ProtectedRoute>} />
         <Route path="/training/admin" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingAdmin /></ProtectedRoute>} />
         <Route path="/training/certificate-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBulkCertificateIssuance /></ProtectedRoute>} />

@@ -37,14 +37,7 @@ const AuthRegister = () => {
 
       const payload = await registerAccount(values);
 
-
-      if (payload.user?.role === "ADMIN") {
-        navigate("/training/admin");
-      } else if (payload.user?.role === "TRAINER") {
-        navigate("/training/trainer-dashboard");
-      } else {
-        navigate("/training/courses");
-      }
+      navigate("/training/dashboard");
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to register.");
     }

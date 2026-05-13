@@ -78,7 +78,6 @@ export default function PublicVerification() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background" style={{ backgroundColor: '#f7f8f9' }}>
-      {!user && <Navbar />}
       <div className="mx-auto max-w-[1200px] px-6 py-16">
         <header className="text-center">
           <h1 className="text-5xl font-extrabold leading-tight md:text-6xl">Verify Official Credentials</h1>

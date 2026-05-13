@@ -28,6 +28,7 @@ jobs:
           VITE_EMAILJS_TEMPLATE_ID_CONTACT: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID_CONTACT }}
           VITE_EMAILJS_TEMPLATE_ID_FEEDBACK: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID_FEEDBACK }}
           VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
       - name: Deploy via rsync
         run: |

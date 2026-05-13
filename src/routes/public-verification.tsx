@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { ShieldCheck, QrCode, Download, Share2, Database, Lock, FileCheck2, Award, AlertCircle, Loader } from "lucide-react";
-import { PageShell } from "@/components/educert/PageShell";
 import { useAuth } from "@/context/AuthContext";
-import Navbar from "@/components/Navbar";
 import { verifyCertificate } from "@/lib/certificates";
 import { useLocation } from "react-router-dom";
 
@@ -80,7 +78,7 @@ export default function PublicVerification() {
     <div className="flex min-h-screen flex-col bg-background" style={{ backgroundColor: '#f7f8f9' }}>
       <div className="mx-auto max-w-[1200px] px-6 py-16">
         <header className="text-center">
-          <h1 className="text-5xl font-extrabold leading-tight md:text-6xl">Verify Official Credentials</h1>
+          <h1 className="text-3xl font-extrabold leading-tight md:text-4xl lg:text-5xl">Verify Official Credentials</h1>
           <p className="mx-auto mt-5 max-w-2xl text-muted-foreground">
             Instantly validate Gokly oil &amp; gas certifications. Our high-performance compliance system ensures the integrity of field operations through secure, immutable records.
           </p>
@@ -126,7 +124,7 @@ export default function PublicVerification() {
 
           {error && (
             <div className="rounded-2xl bg-destructive/10 p-8 shadow-[var(--shadow-card)] border border-destructive/20">
-              <div className="flex items-start gap-3">
+              <div className="flex items-start flex-wrap gap-3">
                 <AlertCircle className="h-6 w-6 text-destructive shrink-0 mt-1" />
                 <div>
                   <h3 className="font-bold text-destructive">Verification Failed</h3>
@@ -146,13 +144,13 @@ export default function PublicVerification() {
 
           {verificationStatus && certificateData && (
             <article className="rounded-2xl bg-card p-8 shadow-[var(--shadow-card)]">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start flex-wrap justify-between gap-3">
                 <div className="flex items-center gap-4">
                   <div className={`grid h-14 w-14 place-items-center rounded-full ${verificationStatus === 'revoked' ? 'bg-destructive/15 text-destructive' : 'bg-primary/15 text-primary'}`}>
                     <Award className="h-7 w-7" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-extrabold">{certificateData.course_title || "Certificate"}</h2>
+                    <h2 className="text-lg md:text-2xl font-extrabold">{certificateData.course_title || "Certificate"}</h2>
                     <p className={`mt-1 text-xs font-bold uppercase tracking-wider ${verificationStatus === 'revoked' ? 'text-destructive' : 'text-primary'}`}>
                       Credential {verificationStatus === 'revoked' ? 'Revoked' : 'Valid'}
                     </p>

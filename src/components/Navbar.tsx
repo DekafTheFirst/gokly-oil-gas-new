@@ -36,9 +36,8 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className={` z-50 transition-all duration-500 ${
-        scrolled ? "nav-glass-scrolled" : "nav-glass"
-      }`}
+      className={` z-50 transition-all duration-500 ${scrolled ? "nav-glass-scrolled" : "nav-glass"
+        }`}
     >
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-20">
@@ -88,7 +87,7 @@ const Navbar = () => {
                 </Link>
               );
             })}
-            {user ? (
+            {/* {user ? (
               <div className="ml-4 flex items-center gap-2">
                 <Link
                   to="/training/dashboard"
@@ -114,7 +113,14 @@ const Navbar = () => {
               >
                 Login
               </Link>
-            )}
+            )} */}
+
+            <Link
+              to="/contact"
+              className="ml-4 px-6 py-2.5 bg-primary text-primary-foreground font-heading font-semibold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft"
+            >
+              Get in Touch
+            </Link>
           </nav>
 
           {/* Mobile Toggle */}
@@ -150,11 +156,10 @@ const Navbar = () => {
                   >
                     <Link
                       to={item.path}
-                      className={`block px-4 py-3 rounded-lg font-heading font-medium text-base transition-colors ${
-                        isActive
+                      className={`block px-4 py-3 rounded-lg font-heading font-medium text-base transition-colors ${isActive
                           ? "bg-primary text-primary-foreground"
                           : "text-foreground hover:bg-secondary"
-                      }`}
+                        }`}
                     >
                       {item.label}
                     </Link>
@@ -162,7 +167,7 @@ const Navbar = () => {
                 );
               })}
               <div className="mt-4 space-y-2">
-                {user ? (
+                {/* {user ? (
                   <>
                     <Link
                       to="/profile"
@@ -188,7 +193,14 @@ const Navbar = () => {
                   >
                     Login
                   </Link>
-                )}
+                )} */}
+
+                <Link
+                  to="/contact"
+                  className="ml-4 px-6 py-2.5 bg-primary text-primary-foreground font-heading font-semibold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft"
+                >
+                  Get in Touch
+                </Link>
               </div>
             </nav>
           </motion.div>

@@ -62,11 +62,18 @@ const Hero = () => {
               <ScanLine className="h-4 w-4" /> Verify a Certificate
 
             </Link>
-            <Link
+            {/* <Link
               to="/training/dashboard"
               className="inline-flex items-center gap-2 px-8 py-4 border-2 border-primary-foreground/30 text-primary-foreground font-heading font-bold text-sm rounded-full hover:bg-primary-foreground/10 transition-all backdrop-blur-sm"
             >
               Access Training Portal
+            </Link> */}
+
+            <Link
+              to="/about"
+              className="inline-flex items-center gap-2 px-8 py-4 border-2 border-primary-foreground/30 text-primary-foreground font-heading font-bold text-sm rounded-full hover:bg-primary-foreground/10 transition-all backdrop-blur-sm"
+            >
+              Learn About Us
             </Link>
           </motion.div>
         </div>

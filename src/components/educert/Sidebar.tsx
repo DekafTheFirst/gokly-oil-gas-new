@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { BookOpen, ShieldCheck, BarChart3, BadgeCheck, Settings, LogOut, ClipboardList, FilePlus2, Award, type LucideIcon } from "lucide-react";
+import { BookOpen, ShieldCheck, BarChart3, BadgeCheck, Settings, LogOut, ClipboardList, FilePlus2, Award, type LucideIcon, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 type Item = { to: "/training/dashboard" | "/training/courses" | "/training/admin" | "/training/verify"; label: string; icon: LucideIcon };
@@ -7,6 +7,8 @@ type Item = { to: "/training/dashboard" | "/training/courses" | "/training/admin
 const items: Item[] = [
   { to: "/training/admin", label: "Dashboard", icon: ShieldCheck },
   { to: "/training/certificate-management", label: "Certificate Management", icon: Award },
+  { to: "/training/user-management", label: "User Management", icon: User },
+  { to: "/training/course-management", label: "Course Management", icon: BookOpen },
 ];
 
 export function Sidebar({ terminal = "Terminal 4", subtitle = "FIELD OPERATIONS" }: { terminal?: string; subtitle?: string }) {

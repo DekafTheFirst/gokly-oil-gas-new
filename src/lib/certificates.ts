@@ -139,7 +139,6 @@ export const downloadCertificateTemplate = (): void => {
   a.download = 'certificate_bulk_upload_template.csv';
   a.click();
   window.URL.revokeObjectURL(url);
-  
 };
 
 // Verify certificate (public endpoint)

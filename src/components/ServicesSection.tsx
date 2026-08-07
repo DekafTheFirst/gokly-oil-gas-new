@@ -10,6 +10,7 @@ import constructionImg from "@/assets/services/construction.jpg";
 import procurementImg from "@/assets/services/procurement.jpg";
 import environmentalImg from "@/assets/services/environmental.jpg";
 import pipelineImg from "@/assets/services/pipeline.jpg";
+import coursepipelineImg from "@/assets/course-pipeline.jpg";
 import offshoreImg from "@/assets/services/offshore.jpg";
 import wasteImg from "@/assets/services/waste.jpg";
 import inspectionImg from "@/assets/services/inspection.jpg";
@@ -31,116 +32,183 @@ import {
 
 const services = [
   {
-    image: trainingImg,
-    title: "Specialized Oil & Gas Training",
-    desc: "Comprehensive industry training programs including metal fabrication and pipe fitting.",
-    details:
-      "Specialized Oil and Gas Training involves the design and delivery of professional development programs tailored to the needs of personnel working within the oil and gas industry. These training programs cover technical, operational, safety, environmental, and management disciplines required for efficient and safe industry operations. Areas of focus may include drilling operations, well intervention, process plant operations, HSE management, pipeline integrity, offshore safety, emergency response, and regulatory compliance. The objective is to equip employees and contractors with the knowledge, skills, and competencies necessary to perform their duties effectively while minimizing operational risks. Training can be delivered through classroom instruction, practical workshops, simulations, on-the-job coaching, and certification programs.",
-  },
-  {
     image: facilityImg,
-    title: "Facility Management",
-    desc: "End-to-end facility management for oil and gas installations.",
-    details:
-      "Facility Management encompasses the coordinated management, operation, maintenance, and improvement of physical assets and infrastructure within oil and gas facilities. This includes office buildings, production facilities, warehouses, workshops, accommodation camps, and utility systems. The service aims to ensure that all facilities remain functional, safe, reliable, and cost-effective throughout their lifecycle. Activities may include preventive and corrective maintenance, asset management, utility monitoring, security coordination, housekeeping, environmental control, and emergency preparedness. Effective facility management helps reduce operational downtime, extend equipment lifespan, optimize resource utilization, and maintain compliance with health, safety, and environmental regulations.",
-  },
-  {
-    image: consultingImg,
-    title: "Oil & Gas Consulting",
-    desc: "Strategic consulting services to optimize operations and maximize output.",
-    details:
-      "Oil and Gas Consulting provides specialized advisory services to support clients in making informed technical, operational, financial, and strategic decisions. Consultants assist organizations in areas such as project planning, field development, asset management, operational optimization, regulatory compliance, risk management, and business process improvement. The service involves conducting feasibility studies, technical assessments, performance evaluations, market analyses, and project reviews to identify opportunities and challenges. Consultants work closely with clients to develop practical solutions that improve efficiency, reduce costs, enhance safety performance, and maximize asset value.",
-  },
-  {
-    image: safetyImg,
-    title: "Industrial Safety Management",
-    desc: "General industrial safety management ensuring HSE compliance.",
-    details:
-      "Industrial Safety Management focuses on identifying, assessing, and controlling workplace hazards to ensure the health and safety of personnel, assets, and the environment. The service includes the development and implementation of safety policies, risk assessments, permit-to-work systems, emergency response plans, safety audits, incident investigations, and workforce safety training. It aims to foster a strong safety culture where all employees understand their responsibilities and actively contribute to accident prevention. Industrial Safety Management ensures compliance with local and international safety regulations and industry standards.",
-  },
-  {
-    image: drillingImg,
-    title: "Drilling & Well Engineering",
-    desc: "Full lifecycle drilling and well engineering solutions.",
-    details:
-      "Drilling and Well Engineering involves the planning, design, execution, and optimization of drilling operations and well construction activities. This service covers all stages of the well lifecycle, including well design, drilling program preparation, casing and cementing design, drilling fluid management, directional drilling, completion engineering, and well intervention. The primary objective is to ensure that wells are drilled safely, efficiently, and economically while maximizing hydrocarbon recovery.",
-  },
-  {
-    image: constructionImg,
-    title: "Construction Services",
-    desc: "Industrial construction services for the energy sector.",
-    details:
-      "Construction Services involve the planning, management, and execution of infrastructure and facility development projects within the oil and gas industry. These services include civil works, structural fabrication, mechanical installation, electrical works, pipeline construction, facility upgrades, and commissioning activities. Construction projects are carried out in accordance with engineering specifications, safety standards, quality requirements, and project schedules.",
-  },
-  {
-    image: procurementImg,
-    title: "Procurement & Supplies",
-    desc: "Procurement and supply of oil and gas equipment and materials.",
-    details:
-      "Procurement and Supplies services involve the sourcing, purchasing, expediting, storage, and delivery of equipment, materials, spare parts, and consumables required for oil and gas operations. The service ensures that clients receive quality products from reliable suppliers at competitive prices while maintaining compliance with technical specifications and industry standards. Procurement activities include supplier evaluation, contract management, inventory control, logistics coordination, and quality inspections.",
-  },
-  {
-    image: environmentalImg,
-    title: "Environmental Management",
-    desc: "Environmental management studies and sustainable solutions.",
-    details:
-      "Environmental Management focuses on minimizing the environmental impact of oil and gas operations while ensuring compliance with environmental regulations and sustainability objectives. The service includes environmental impact assessments, monitoring programs, pollution prevention measures, waste management planning, remediation activities, and environmental audits. Through proactive environmental stewardship, companies can reduce liabilities, maintain regulatory compliance, and contribute to the protection of ecosystems and local communities.",
-  },
-  {
-    image: pipelineImg,
-    title: "Pipeline Installation",
-    desc: "Off-site pipe rack steel structure installation, onshore and offshore.",
-    details:
-      "Pipeline Installation involves the engineering, construction, testing, and commissioning of pipelines used for transporting oil, gas, water, and related products. The process includes route surveys, trenching, pipe laying, welding, coating, hydrostatic testing, and commissioning. Proper installation practices help ensure long-term reliability, minimize leaks, and maintain the integrity of pipeline systems.",
-  },
-  {
-    image: offshoreImg,
-    title: "Offshore Maintenance",
-    desc: "Offshore facilities maintenance, painting, and revamp projects.",
-    details:
-      "Offshore Maintenance involves the inspection, repair, servicing, and upkeep of offshore platforms, vessels, subsea systems, and associated facilities. Maintenance activities include structural inspections, mechanical repairs, corrosion control, electrical maintenance, instrumentation servicing, and asset integrity management. The objective is to ensure continuous production, maintain safety standards, and extend the operational lifespan of offshore assets.",
-  },
-  {
-    image: wasteImg,
-    title: "Waste Management",
-    desc: "Comprehensive waste management services for industrial operations.",
-    details:
-      "Waste Management involves the systematic collection, segregation, handling, treatment, transportation, recycling, and disposal of waste generated from oil and gas operations. The service covers both hazardous and non-hazardous waste streams, including drilling cuttings, sludge, contaminated soil, wastewater, chemicals, scrap metals, and domestic waste from operational sites. Effective waste management practices are essential for protecting the environment and ensuring regulatory compliance.",
-  },
-  {
-    image: inspectionImg,
-    title: "Inspection & Calibration",
-    desc: "EPCI crude oil pipeline inspection, integrity test, and calibration.",
-    details:
-      "Inspection and Calibration services are critical for ensuring the accuracy, reliability, safety, and compliance of equipment, instruments, and operational systems used in the oil and gas industry. Inspection activities involve the examination and testing of assets such as pressure vessels, pipelines, storage tanks, lifting equipment, valves, and structural components. Calibration ensures measuring instruments provide accurate readings within specified tolerances.",
-  },
-  {
-    image: fabricationImg,
-    title: "Fabrication & FPSO",
-    desc: "Fabrication and maintenance contract services for FPSO vessels.",
-    details:
-      "Fabrication and FPSO Services involve the design, manufacturing, assembly, installation, maintenance, and modification of structures and equipment used in oil and gas operations, particularly offshore facilities. Fabrication activities include the construction of process skids, pressure vessels, pipe spools, platforms, structural steel works, and specialized production equipment. These services support efficient hydrocarbon production and asset longevity.",
-  },
-  {
-    image: tankImg,
-    title: "Tank Dewatering",
-    desc: "Crude oil tank dewatering and tank farm revamp projects.",
-    details:
-      "Tank Dewatering involves the removal of accumulated water, sludge, sediments, and contaminants from storage tanks used for crude oil, refined petroleum products, chemicals, and other industrial fluids. The process may also include tank cleaning, sludge treatment, waste disposal, and condition assessments to ensure optimal tank performance. Regular tank dewatering helps maintain asset integrity and improve product quality.",
-  },
-  {
-    image: auditImg,
-    title: "Audit & Documentation",
-    desc: "Comprehensive audit and documentation services.",
-    details:
-      "Audit and Documentation services provide organizations with structured processes for evaluating operational performance, regulatory compliance, management systems, and project execution activities. Documentation services involve the preparation, review, control, and maintenance of technical reports, policies, procedures, manuals, project records, engineering documents, and compliance submissions. These practices strengthen governance and support continuous improvement.",
+    title: "FACILITY MANAGEMENT AND MAINTENANCE",
+    desc: "We provide comprehensive facility management and maintenance services designed to ensure the safe, efficient, and reliable operation of industrial, commercial, and residential facilities.",
+    details: `We provide comprehensive facility management and maintenance services designed to ensure the safe, efficient, and reliable operation of industrial, commercial, and residential facilities. Our solutions focus on maximizing asset performance, reducing downtime, and extending the operational lifespan of critical infrastructure.
+
+Our services include:
+
+• Preventive and corrective maintenance
+• Mechanical, electrical, and plumbing (MEP) maintenance
+• Building and infrastructure maintenance
+• Facility inspections and condition assessments
+• Utilities management
+• Asset lifecycle management
+• HVAC maintenance
+• Grounds and environmental maintenance
+• Emergency maintenance services
+`,
   },
   {
     image: gasPipelineImg,
-    title: "Gas Pipeline Projects",
-    desc: "Gas pipeline projects for onshore and offshore facilities.",
-    details:
-      "Gas Pipeline Services encompass the design, construction, installation, inspection, maintenance, repair, and integrity management of natural gas transmission and distribution systems. Activities may include route surveys, engineering design, welding, coating, hydrostatic testing, leak detection, cathodic protection, pipeline rehabilitation, and emergency response support. These services ensure safe and efficient gas transportation while maintaining regulatory compliance.",
+    title: "ENGINEERING, PROCUREMENT, CONSTRUCTION, AND INSTALLATION (EPCI)",
+    desc: "We deliver integrated Engineering, Procurement, Construction, and Installation (EPCI) solutions for oil and gas, energy, and infrastructure projects.",
+    details: `We deliver integrated Engineering, Procurement, Construction, and Installation (EPCI) solutions for oil and gas, energy, and infrastructure projects. Our experienced professionals ensure that projects are executed safely, efficiently, within budget, and in accordance with international quality standards.
+
+Our capabilities include:
+
+• Engineering design and consultancy
+• Project planning and management
+• Procurement and supply chain management
+• Civil, mechanical, and electrical construction
+• Pipeline and flowline installation
+• Plant and facility construction
+• Equipment installation and commissioning
+• Brownfield and greenfield project execution
+• Project close-out and handover
+`,
+  },
+  {
+    image: safetyImg,
+    title: "HEALTH, SAFETY, SECURITY, AND ENVIRONMENTAL (HSSE) STUDIES",
+    desc: "We provide professional HSSE consulting services that help organizations identify risks, improve operational safety, protect the environment, and achieve regulatory compliance.",
+    details: `We provide professional HSSE consulting services that help organizations identify risks, improve operational safety, protect the environment, and achieve regulatory compliance.
+
+Our services include:
+
+• Environmental Impact Assessment (EIA)
+• Environmental Audit (EA)
+• Hazard Identification and Risk Assessment (HIRA)
+• Job Hazard Analysis (JHA)
+• Health Impact Assessment (HIA)
+• Safety Case Development
+• Fire Risk Assessment
+• Emergency Response Planning
+• HSSE Management System Development
+• Environmental Monitoring and Reporting
+• Waste Management Planning
+• Pollution Prevention Studies
+• Preliminary Environmental Risk Assessment(PERA)
+`,
+  },
+  {
+    image: inspectionImg,
+    title: "INSPECTION, TESTING, AND INTEGRITY SERVICES",
+    desc: "Our inspection and integrity management services ensure that industrial assets remain safe, reliable, and compliant throughout their operational lifecycle.",
+    details: `Our inspection and integrity management services ensure that industrial assets remain safe, reliable, and compliant throughout their operational lifecycle.
+
+Our services include:
+
+• Non-Destructive Testing (NDT)
+• Pipeline integrity inspection
+• Pressure vessel inspection
+• Storage tank inspection
+• Lifting equipment inspection and certification
+• Valve testing and certification
+• Welding inspection
+• Coating and corrosion inspection
+• Mechanical integrity assessment
+• Equipment calibration
+• Fitness-for-Service (FFS) assessment
+• Integrity management programs
+• Leak detection Test
+• Pressure Test
+• Calibration
+`,
+  },
+  {
+    image: fabricationImg,
+    title: "FABRICATION",
+    desc: "We offer high-quality fabrication services for the oil and gas, marine, construction, and industrial sectors.",
+    details: `We offer high-quality fabrication services for the oil and gas, marine, construction, and industrial sectors, utilizing modern equipment and qualified personnel to deliver durable and precision-engineered products.
+
+Our fabrication capabilities include:
+
+• Structural steel fabrication
+• Pipe spool fabrication
+• Pressure vessel fabrication
+• Skid fabrication
+• Tank fabrication
+• Platform fabrication
+• Pipe supports and brackets
+• Metal cutting and profiling
+• Welding and metal joining
+• Surface preparation and protective coating
+• Equipment assembly and installation
+`,
+  },
+  {
+    image: coursepipelineImg,
+    title: "OIL AND GAS CONSULTING AND TECHNICAL ADVISORY",
+    desc: "We provide strategic consulting and technical advisory services that support clients in achieving operational excellence, regulatory compliance, project success, and sustainable business growth.",
+    details: `We provide strategic consulting and technical advisory services that support clients in achieving operational excellence, regulatory compliance, project success, and sustainable business growth throughout the oil and gas value chain.
+
+Our consulting services include:
+
+• Project management consulting
+• Technical feasibility studies
+• Field development planning
+• Operations optimization
+• Asset management advisory
+• HSSE consulting
+• Process improvement
+• Risk management
+• Procurement advisory
+• Contract management
+• Technical manpower support
+• Business development support
+`,
+  },
+  {
+    image: trainingImg,
+    title: "TRAINING AND CAPACITY DEVELOPMENT",
+    desc: "We deliver industry-focused training programs that enhance technical competence, operational efficiency, and regulatory compliance.",
+    details: `We deliver industry-focused training programs that enhance technical competence, operational efficiency, and regulatory compliance for individuals and organizations within the oil and gas industry.
+
+Our training programs include:
+
+• Health, Safety, Security, and Environment (HSSE)
+• Basic and Advanced First Aid
+• Fire Fighting and Fire Prevention
+• Permit to Work (PTW)
+• Working at Height
+• Confined Space Entry
+• H₂S Awareness
+• Defensive Driving
+• Lifting and Rigging
+• Basic Offshore Safety
+• Pipeline Operations
+• Environmental Management
+• Leadership and Supervisory Skills
+• Technical Skills Development
+• Emergency Response Training
+• Minimum Industry Safety Training and Capacity development(MISTDO)
+• Pipefitting and Fabrication Training
+`,
+  },
+  {
+    image: consultingImg,
+    title: "REGULATORY COMPLIANCE AND NIGERIAN CONTENT ADVISORY",
+    desc: "We assist organizations in navigating Nigeria's regulatory framework while ensuring compliance with applicable legislation and promoting the objectives of the NOGICD Act.",
+    details: `We assist organizations in navigating Nigeria's regulatory framework while ensuring compliance with applicable legislation and promoting the objectives of the Nigerian Oil and Gas Industry Content Development (NOGICD) Act.
+
+Our advisory services include:
+
+• Nigerian Content (Local Content) compliance
+• NUPRC regulatory compliance
+• NCDMB compliance advisory
+• DPR legacy compliance support
+• Environmental permitting and approvals
+• HSSE regulatory compliance
+• Vendor registration and prequalification
+• ISO Management System implementation
+• Corporate compliance audits
+• Statutory permit processing
+• Regulatory documentation and reporting
+• Compliance monitoring and gap analysis
+• Government liaison and stakeholder engagement
+`,
   },
 ];
 
@@ -157,6 +225,65 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
   const openServiceModal = (service: typeof services[number]) => {
     setSelectedService(service);
     setIsModalOpen(true);
+  };
+
+  const renderDetails = (details?: string | null) => {
+    if (!details) return null;
+    const lines = details.split(/\r?\n/);
+    const blocks: Array<any> = [];
+    let paraBuf: string[] = [];
+    let listBuf: string[] = [];
+
+    const flushPara = () => {
+      if (paraBuf.length) {
+        blocks.push({ type: "p", text: paraBuf.join(" ") });
+        paraBuf = [];
+      }
+    };
+
+    const flushList = () => {
+      if (listBuf.length) {
+        blocks.push({ type: "ul", items: listBuf });
+        listBuf = [];
+      }
+    };
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) {
+        flushList();
+        flushPara();
+        continue;
+      }
+
+      if (line.startsWith("•") || line.startsWith("-")) {
+        // list item
+        const item = line.replace(/^\s*[•\-]\s*/, "");
+        listBuf.push(item);
+      } else {
+        // normal paragraph text
+        if (listBuf.length) {
+          flushList();
+        }
+        paraBuf.push(line);
+      }
+    }
+
+    flushList();
+    flushPara();
+
+    return blocks.map((b: any, idx: number) => {
+      if (b.type === "p") return (
+        <p key={idx} className="text-sm text-muted-foreground">{b.text}</p>
+      );
+      return (
+        <ul key={idx} className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+          {b.items.map((it: string, i: number) => (
+            <li key={i}>{it}</li>
+          ))}
+        </ul>
+      );
+    });
   };
 
   return (
@@ -238,20 +365,28 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
         setIsModalOpen(open);
         if (!open) setSelectedService(null);
       }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selectedService?.title}</DialogTitle>
-            <DialogDescription>{selectedService?.desc}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4 text-sm text-muted-foreground">
-            <p>{selectedService?.details}</p>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>{selectedService?.title}</DialogTitle>
+              <DialogDescription>{selectedService?.desc}</DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 space-y-6">
+              {selectedService?.image && (
+                <div className="w-full h-48 overflow-hidden rounded-md">
+                  <img src={selectedService.image} alt={selectedService.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              <div className="max-h-[50vh] overflow-y-auto space-y-4">
+                {renderDetails(selectedService?.details)}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
       </Dialog>
 
       {showTitle && <div className="text-center pt-16">

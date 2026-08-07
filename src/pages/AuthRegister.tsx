@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
+  first_name: z.string().min(2, "First name must be at least 2 characters."),
+  middle_name: z.string().optional(),
+  last_name: z.string().min(2, "Last name must be at least 2 characters."),
   email: z.string().email("Enter a valid email."),
   password: z.string().min(8, "Password must be at least 8 characters."),
   role: z.enum(["STUDENT", "TRAINER", "ADMIN"]).default("STUDENT"),
@@ -55,9 +57,19 @@ const AuthRegister = () => {
             {serverError ? <p className="text-sm text-destructive">{serverError}</p> : null}
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" type="text" placeholder="Enter your name" {...register("name")} />
-                {errors.name ? <p className="text-sm text-destructive">{errors.name.message}</p> : null}
+                <Label htmlFor="first_name">First Name</Label>
+                <Input id="first_name" type="text" placeholder="Enter your first name" {...register("first_name")} />
+                {errors.first_name ? <p className="text-sm text-destructive">{errors.first_name.message}</p> : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="middle_name">Middle Name</Label>
+                <Input id="middle_name" type="text" placeholder="Enter your middle name (optional)" {...register("middle_name")} />
+                {errors.middle_name ? <p className="text-sm text-destructive">{errors.middle_name.message}</p> : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="last_name">Last Name</Label>
+                <Input id="last_name" type="text" placeholder="Enter your last name" {...register("last_name")} />
+                {errors.last_name ? <p className="text-sm text-destructive">{errors.last_name.message}</p> : null}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>

@@ -316,7 +316,7 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              className="group rounded-xl bg-card-gradient border border-border hover:shadow-card transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
+              className="group flex flex-col rounded-xl bg-card-gradient border border-border hover:shadow-card transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
               onClick={() => openServiceModal(service)}
               role="button"
               tabIndex={0}
@@ -335,8 +335,8 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
               </div>
-              <div className="p-5 flex flex-col gap-4">
-                <div>
+              <div className="p-5 flex flex-1 flex-col gap-4 ">
+                <div className="">
                   <h3 className="font-heading font-semibold text-sm text-foreground mb-2">
                     {service.title}
                   </h3>

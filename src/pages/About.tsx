@@ -23,7 +23,7 @@ const stats = [
   { value: "10+", label: "Years of Excellence" },
   { value: "600+", label: "Projects Delivered" },
   { value: "50+", label: "Expert Professionals" },
-  { value: "16+", label: "Service Areas" },
+  { value: "9+", label: "Service Areas" },
 ];
 
 const milestones = [
@@ -34,9 +34,9 @@ const milestones = [
 
 const About = () => {
   return (
-    <main className="pt-20">
+    <main className="">
       {/* Hero Banner */}
-      <section className="relative h-80 flex items-center overflow-hidden">
+      {/* <section className="relative h-80 flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <img src={drillingImg} alt="Engineers at work" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gokly-dark/70" />
@@ -54,10 +54,10 @@ const About = () => {
             </p>
           </motion.div>
         </div>
-      </section>
+      </section> */}
 
       {/* Stats Bar */}
-      <section className="bg-primary py-8">
+      {/* <section className="bg-primary py-8">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map((stat, i) => (
@@ -75,7 +75,7 @@ const About = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Company Overview */}
       <section className="py-20">
@@ -83,22 +83,22 @@ const About = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <span className="inline-block px-4 py-1 rounded-full bg-secondary text-secondary-foreground font-heading font-medium text-xs mb-4 tracking-wider uppercase">
-                Our Story
+                About Us
               </span>
               <h2 className="font-heading font-bold text-3xl text-foreground mb-6">
-                A Leading Provider of Comprehensive Oil & Gas Solutions
+                Overview Of Gokly Oil And Gas Services Limited
               </h2>
               <p className="text-muted-foreground font-body leading-relaxed mb-5">
-                Gokly Oil and Gas Services Limited is a leading provider of comprehensive solutions to the oil and gas industry. Our mission is to deliver exceptional services that enhance operational efficiency, safety, sustainability, and stakeholders' collaboration.
+                Gokly Oil and Gas Services Limited is a leading provider of comprehensive solutions to the oil and gas industry. Incorporated in 2020, the company commenced operations with a small portfolio of clients, driven by a commitment to excellence, professionalism, and innovation.
               </p>
               <p className="text-muted-foreground font-body leading-relaxed mb-5">
-                At Gokly Oil and Gas Services Limited, we believe in integrity, excellence, and innovation. Our track record speaks for itself, with a history of successful projects and satisfied clients. We understand the intricacies of the oil and gas industry, and our team is always ready to collaborate with you to achieve your goals.
+                Through the consistent delivery of quality services and unwavering dedication to client satisfaction, Gokly has experienced remarkable growth and has built a client base of over 100 organizations across Nigeria's energy sector and related industries. The company has successfully rendered professional services across the Upstream, Midstream, and Downstream sectors of the oil and gas industry, demonstrating its expertise, reliability, and commitment to delivering value-driven solutions that meet the highest industry standards.
               </p>
               <p className="text-muted-foreground font-body leading-relaxed mb-5">
-                Operating across Nigeria's midstream and upstream sectors, we bring decades of combined experience to every project, ensuring world-class outcomes for our clients and communities. Our portfolio spans over 16 specialized service areas including drilling, well engineering, EPCI pipeline projects, fabrication and maintenance contracts for FPSOs, and comprehensive environmental management.
+                Our core services include Facility Management and Maintenance; Engineering, Procurement, Construction and Installation (EPCI); Health, Safety, Security and Environment (HSSE); Environmental Studies; Inspection, Testing and Integrity Services; Fabrication; Oil and Gas Consulting and Technical Advisory; Training and Capacity Development; and Regulatory Compliance and Nigerian Content Advisory.
               </p>
               <p className="text-muted-foreground font-body leading-relaxed">
-                We take pride in our commitment to local content development, working closely with host communities and regulatory bodies such as NCDMB and NMDPRA to ensure compliance, capacity building, and sustainable value creation across Nigeria's energy landscape.
+                At Gokly Oil and Gas Services Limited, we believe in integrity, excellence, and innovation. Our track record speaks for itself, with a history of successfully executed projects and satisfied clients. We understand the complexities of the oil and gas industry, and our team of experienced professionals is always ready to collaborate with clients to deliver safe, efficient, compliant, and sustainable solutions that create lasting value.
               </p>
             </motion.div>
 

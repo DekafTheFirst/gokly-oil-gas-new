@@ -43,15 +43,22 @@ const Footer = () => {
             <h4 className="font-heading font-bold text-base mb-5">Our Services</h4>
             <nav className="flex flex-col gap-3">
               {[
-                "Oil & Gas Training",
-                "Facility Management",
-                "Consulting Services",
-                "Drilling & Well Engineering",
-                "Environmental Management",
+                "FACILITY MANAGEMENT AND MAINTENANCE",
+                "ENGINEERING, PROCUREMENT, CONSTRUCTION, AND INSTALLATION (EPCI)",
+                "HEALTH, SAFETY, SECURITY, AND ENVIRONMENTAL (HSSE) STUDIES",
+                "INSPECTION, TESTING, AND INTEGRITY SERVICES",
+                "FABRICATION",
+                "OIL AND GAS CONSULTING AND TECHNICAL ADVISORY",
+                "TRAINING AND CAPACITY DEVELOPMENT",
+                "REGULATORY COMPLIANCE AND NIGERIAN CONTENT ADVISORY",
               ].map((service) => (
-                <span key={service} className="text-sm opacity-70 font-body">
+                <Link
+                  key={service}
+                  to={{ pathname: "/services", search: `?service=${encodeURIComponent(service)}` }}
+                  className="text-sm opacity-70 hover:opacity-100 transition-opacity font-body"
+                >
                   {service}
-                </span>
+                </Link>
               ))}
             </nav>
           </div>
@@ -78,10 +85,17 @@ const Footer = () => {
 
             {/* Social */}
             <div className="flex gap-3 mt-6">
-              {[Facebook, Twitter, Linkedin, Instagram].map((Icon, i) => (
+              {[
+                { Icon: Facebook, href: "#" },
+                { Icon: Twitter, href: "https://x.com/GoklyL" },
+                { Icon: Linkedin, href: "https://www.linkedin.com/in/gokly-oil-and-gas-a86452426" },
+                { Icon: Instagram, href: "https://www.instagram.com/goklyoil_/" },
+              ].map(({ Icon, href }, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
                   className="w-9 h-9 rounded-full bg-primary-foreground/10 flex items-center justify-center hover:bg-primary transition-colors"
                 >
                   <Icon size={16} />

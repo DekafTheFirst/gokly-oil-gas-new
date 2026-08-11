@@ -1,8 +1,12 @@
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import ServicesSection from "@/components/ServicesSection";
 import offshoreImg from "@/assets/offshore-platform.jpg";
 
 const Services = () => {
+  const [searchParams] = useSearchParams();
+  const initialService = searchParams.get("service");
+
   return (
     <main className="pt-20">
       {/* Hero Banner */}
@@ -25,7 +29,7 @@ const Services = () => {
           </motion.div>
         </div>
       </section>
-      <ServicesSection showTitle={false} />
+      <ServicesSection showTitle={false} initialService={initialService} />
      
       {/* Host Community */}
       <section className="py-16">

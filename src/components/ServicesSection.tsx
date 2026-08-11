@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import trainingImg from "@/assets/services/training.jpg";
 import facilityImg from "@/assets/services/management.png";
@@ -40,7 +40,7 @@ const services = [
 Our services include:
 
 • Preventive and corrective maintenance
-• Mechanical, electrical, and plumbing (MEP) maintenance
+• Mechanical, electrical, and plumbing maintenance
 • Building and infrastructure maintenance
 • Facility inspections and condition assessments
 • Utilities management
@@ -64,9 +64,8 @@ Our capabilities include:
 • Civil, mechanical, and electrical construction
 • Pipeline and flowline installation
 • Plant and facility construction
-• Equipment installation and commissioning
-• Brownfield and greenfield project execution
-• Project close-out and handover
+• Heavy Duty Equipment Supply, Installation and Maintenance
+• Solar System Installation
 `,
   },
   {
@@ -78,6 +77,8 @@ Our capabilities include:
 Our services include:
 
 • Environmental Impact Assessment (EIA)
+• Preliminary Environmental Risk Assessment (PERA)
+• Environmental Site Assessment (ESA)
 • Environmental Audit (EA)
 • Hazard Identification and Risk Assessment (HIRA)
 • Job Hazard Analysis (JHA)
@@ -89,7 +90,6 @@ Our services include:
 • Environmental Monitoring and Reporting
 • Waste Management Planning
 • Pollution Prevention Studies
-• Preliminary Environmental Risk Assessment(PERA)
 `,
   },
   {
@@ -111,10 +111,6 @@ Our services include:
 • Mechanical integrity assessment
 • Equipment calibration
 • Fitness-for-Service (FFS) assessment
-• Integrity management programs
-• Leak detection Test
-• Pressure Test
-• Calibration
 `,
   },
   {
@@ -146,7 +142,7 @@ Our fabrication capabilities include:
 
 Our consulting services include:
 
-• Project management consulting
+• Project management
 • Technical feasibility studies
 • Field development planning
 • Operations optimization
@@ -169,22 +165,21 @@ Our consulting services include:
 Our training programs include:
 
 • Health, Safety, Security, and Environment (HSSE)
+• Pipe fitting and Fabrication
+• Digital Oilfield Technologies and IoT for Upstream Operations
+• Engineering, Procurement, Construction and Installation
 • Basic and Advanced First Aid
 • Fire Fighting and Fire Prevention
 • Permit to Work (PTW)
+• Fundamentals of Operational Technology (OT)
 • Working at Height
 • Confined Space Entry
-• H₂S Awareness
 • Defensive Driving
 • Lifting and Rigging
 • Basic Offshore Safety
+• GIS and Geomatics for Pipeline and Asset Mapping
 • Pipeline Operations
-• Environmental Management
-• Leadership and Supervisory Skills
-• Technical Skills Development
-• Emergency Response Training
-• Minimum Industry Safety Training and Capacity development(MISTDO)
-• Pipefitting and Fabrication Training
+• NEBOSH International General Certificate (IGC) Preparation
 `,
   },
   {
@@ -195,32 +190,44 @@ Our training programs include:
 
 Our advisory services include:
 
-• Nigerian Content (Local Content) compliance
-• NUPRC regulatory compliance
-• NCDMB compliance advisory
-• DPR legacy compliance support
-• Environmental permitting and approvals
-• HSSE regulatory compliance
-• Vendor registration and prequalification
-• ISO Management System implementation
-• Corporate compliance audits
-• Statutory permit processing
-• Regulatory documentation and reporting
-• Compliance monitoring and gap analysis
-• Government liaison and stakeholder engagement
+• Rehabilitation/Upgrade/Fabrication Works
+• Nigerian Manpower Supply
+• Installation and Maintenance
+• Non-Movable Assets
+• Construction & Movable Equipment
+• Onshore Waste Management
+• Chemical/Mud Testing
+• Haulage
+• Major Construction
+• Quality Control Inspection and Testing
+• Specialized Global Mobility
+• Environmental Restoration
+• Waste Management Facility Operations
+• Engineering Design/Support
+• Decommissioning
 `,
-  },
+  }
 ];
 
 interface ServicesSectionProps {
   limit?: number;
   showTitle?: boolean;
+  initialService?: string | null;
 }
 
-const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
+const ServicesSection = ({ limit, showTitle = true, initialService }: ServicesSectionProps) => {
   const [selectedService, setSelectedService] = useState<typeof services[number] | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const displayedServices = limit ? services.slice(0, limit) : services;
+
+  useEffect(() => {
+    if (!initialService) return;
+    const match = services.find((service) => service.title === initialService);
+    if (match) {
+      setSelectedService(match);
+      setIsModalOpen(true);
+    }
+  }, [initialService]);
 
   const openServiceModal = (service: typeof services[number]) => {
     setSelectedService(service);
@@ -335,14 +342,14 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
               </div>
-              <div className="p-5 flex flex-1 flex-col gap-4 ">
+              <div className="p-5 flex flex-1 flex-col gap-3 ">
                 <div className="">
                   <h3 className="font-heading font-semibold text-sm text-foreground mb-2">
                     {service.title}
                   </h3>
-                  <p className="text-muted-foreground font-body text-sm leading-relaxed">
+                  {/* <p className="text-muted-foreground font-body text-sm leading-relaxed">
                     {service.desc}
-                  </p>
+                  </p> */}
                 </div>
                 <Button
                   variant="outline"
@@ -351,9 +358,9 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
                     event.stopPropagation();
                     openServiceModal(service);
                   }}
-                  className="mt-auto self-start"
+                  className="mt-auto  self-start"
                 >
-                  View details
+                  See More
                 </Button>
               </div>
             </motion.div>
@@ -368,7 +375,7 @@ const ServicesSection = ({ limit, showTitle = true }: ServicesSectionProps) => {
         <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>{selectedService?.title}</DialogTitle>
-              <DialogDescription>{selectedService?.desc}</DialogDescription>
+              {/* <DialogDescription>{selectedService?.desc}</DialogDescription> */}
             </DialogHeader>
             <div className="mt-4 space-y-6">
               {selectedService?.image && (

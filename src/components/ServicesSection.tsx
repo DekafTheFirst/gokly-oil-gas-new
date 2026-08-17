@@ -34,29 +34,24 @@ const services = [
   {
     image: facilityImg,
     title: "FACILITY MANAGEMENT AND MAINTENANCE",
-    desc: "We provide comprehensive facility management and maintenance services designed to ensure the safe, efficient, and reliable operation of industrial, commercial, and residential facilities.",
-    details: `We provide comprehensive facility management and maintenance services designed to ensure the safe, efficient, and reliable operation of industrial, commercial, and residential facilities. Our solutions focus on maximizing asset performance, reducing downtime, and extending the operational lifespan of critical infrastructure.
-
-Our services include:
+    desc: "Comprehensive facility management and maintenance services to ensure safe and efficient operation of industrial facilities.",
+    details: `Comprehensive facility management and maintenance services to ensure safe and efficient operation of industrial facilities.
 
 • Preventive and corrective maintenance
-• Mechanical, electrical, and plumbing maintenance
-• Building and infrastructure maintenance
+• Mechanical Installation maintenance and material
 • Facility inspections and condition assessments
 • Utilities management
-• Asset lifecycle management
-• HVAC maintenance
-• Grounds and environmental maintenance
 • Emergency maintenance services
+• Leak Repair
+• Sectional Replacement
+• Facility Upgrade
 `,
   },
   {
     image: gasPipelineImg,
     title: "ENGINEERING, PROCUREMENT, CONSTRUCTION, AND INSTALLATION (EPCI)",
-    desc: "We deliver integrated Engineering, Procurement, Construction, and Installation (EPCI) solutions for oil and gas, energy, and infrastructure projects.",
-    details: `We deliver integrated Engineering, Procurement, Construction, and Installation (EPCI) solutions for oil and gas, energy, and infrastructure projects. Our experienced professionals ensure that projects are executed safely, efficiently, within budget, and in accordance with international quality standards.
-
-Our capabilities include:
+    desc: "Integrated EPCI solutions for oil and gas, energy, and infrastructure projects.",
+    details: `Integrated EPCI solutions for oil and gas, energy, and infrastructure projects.
 
 • Engineering design and consultancy
 • Project planning and management
@@ -64,22 +59,30 @@ Our capabilities include:
 • Civil, mechanical, and electrical construction
 • Pipeline and flowline installation
 • Plant and facility construction
-• Heavy Duty Equipment Supply, Installation and Maintenance
-• Solar System Installation
+`,
+  },
+  {
+    image: environmentalImg,
+    title: "ENVIRONMENTAL (HSSE) STUDIES",
+    desc: "Professional environmental and social impact assessment and compliance services.",
+    details: `Professional environmental and social impact assessment and compliance services.
+
+• Environmental and Social Impact Assessment (EIA)
+• Preliminary Environmental Risk Assessment (PERA)
+• Environmental Site Assessment (ESA)
+• Environmental Audit (EA)
+• Environmental Evaluation Studies (EES)
+• Environmental Compliance Monitoring (ECM)
+• Post Impact Assessment (PIA)
+• Environmental Monitoring and Reporting
 `,
   },
   {
     image: safetyImg,
-    title: "HEALTH, SAFETY, SECURITY, AND ENVIRONMENTAL (HSSE) STUDIES",
-    desc: "We provide professional HSSE consulting services that help organizations identify risks, improve operational safety, protect the environment, and achieve regulatory compliance.",
-    details: `We provide professional HSSE consulting services that help organizations identify risks, improve operational safety, protect the environment, and achieve regulatory compliance.
+    title: "HEALTH, SAFETY, AND SECURITY STUDIES",
+    desc: "Comprehensive health, safety, and security assessment and management services.",
+    details: `Comprehensive health, safety, and security assessment and management services.
 
-Our services include:
-
-• Environmental Impact Assessment (EIA)
-• Preliminary Environmental Risk Assessment (PERA)
-• Environmental Site Assessment (ESA)
-• Environmental Audit (EA)
 • Hazard Identification and Risk Assessment (HIRA)
 • Job Hazard Analysis (JHA)
 • Health Impact Assessment (HIA)
@@ -87,7 +90,6 @@ Our services include:
 • Fire Risk Assessment
 • Emergency Response Planning
 • HSSE Management System Development
-• Environmental Monitoring and Reporting
 • Waste Management Planning
 • Pollution Prevention Studies
 `,
@@ -95,31 +97,27 @@ Our services include:
   {
     image: inspectionImg,
     title: "INSPECTION, TESTING, AND INTEGRITY SERVICES",
-    desc: "Our inspection and integrity management services ensure that industrial assets remain safe, reliable, and compliant throughout their operational lifecycle.",
-    details: `Our inspection and integrity management services ensure that industrial assets remain safe, reliable, and compliant throughout their operational lifecycle.
-
-Our services include:
+    desc: "Professional inspection and integrity management services for industrial assets.",
+    details: `Professional inspection and integrity management services for industrial assets.
 
 • Non-Destructive Testing (NDT)
 • Pipeline integrity inspection
 • Pressure vessel inspection
 • Storage tank inspection
-• Lifting equipment inspection and certification
-• Valve testing and certification
 • Welding inspection
 • Coating and corrosion inspection
 • Mechanical integrity assessment
-• Equipment calibration
 • Fitness-for-Service (FFS) assessment
+• Leak Detection of Underground and Surface Storage Tanks
+• Pressure testing of Underground and Surface Storage Tanks
+• Calibration Of Underground and Surface Storage Tanks
 `,
   },
   {
     image: fabricationImg,
     title: "FABRICATION",
-    desc: "We offer high-quality fabrication services for the oil and gas, marine, construction, and industrial sectors.",
-    details: `We offer high-quality fabrication services for the oil and gas, marine, construction, and industrial sectors, utilizing modern equipment and qualified personnel to deliver durable and precision-engineered products.
-
-Our fabrication capabilities include:
+    desc: "High-quality fabrication services for oil and gas, marine, construction, and industrial sectors.",
+    details: `High-quality fabrication services for oil and gas, marine, construction, and industrial sectors.
 
 • Structural steel fabrication
 • Pipe spool fabrication
@@ -137,18 +135,13 @@ Our fabrication capabilities include:
   {
     image: coursepipelineImg,
     title: "OIL AND GAS CONSULTING AND TECHNICAL ADVISORY",
-    desc: "We provide strategic consulting and technical advisory services that support clients in achieving operational excellence, regulatory compliance, project success, and sustainable business growth.",
-    details: `We provide strategic consulting and technical advisory services that support clients in achieving operational excellence, regulatory compliance, project success, and sustainable business growth throughout the oil and gas value chain.
-
-Our consulting services include:
+    desc: "Strategic consulting and technical advisory services for operational excellence and project success.",
+    details: `Strategic consulting and technical advisory services for operational excellence and project success.
 
 • Project management
 • Technical feasibility studies
-• Field development planning
 • Operations optimization
-• Asset management advisory
 • HSSE consulting
-• Process improvement
 • Risk management
 • Procurement advisory
 • Contract management
@@ -159,52 +152,26 @@ Our consulting services include:
   {
     image: trainingImg,
     title: "TRAINING AND CAPACITY DEVELOPMENT",
-    desc: "We deliver industry-focused training programs that enhance technical competence, operational efficiency, and regulatory compliance.",
-    details: `We deliver industry-focused training programs that enhance technical competence, operational efficiency, and regulatory compliance for individuals and organizations within the oil and gas industry.
-
-Our training programs include:
+    desc: "Industry-focused training programs to enhance technical competence and regulatory compliance.",
+    details: `Industry-focused training programs to enhance technical competence and regulatory compliance.
 
 • Health, Safety, Security, and Environment (HSSE)
 • Pipe fitting and Fabrication
-• Digital Oilfield Technologies and IoT for Upstream Operations
-• Engineering, Procurement, Construction and Installation
 • Basic and Advanced First Aid
 • Fire Fighting and Fire Prevention
-• Permit to Work (PTW)
-• Fundamentals of Operational Technology (OT)
-• Working at Height
-• Confined Space Entry
-• Defensive Driving
-• Lifting and Rigging
-• Basic Offshore Safety
-• GIS and Geomatics for Pipeline and Asset Mapping
-• Pipeline Operations
-• NEBOSH International General Certificate (IGC) Preparation
+• Minimum industry Safety Training For Downstream operations (MISTDO)
 `,
   },
   {
     image: consultingImg,
     title: "REGULATORY COMPLIANCE AND NIGERIAN CONTENT ADVISORY",
-    desc: "We assist organizations in navigating Nigeria's regulatory framework while ensuring compliance with applicable legislation and promoting the objectives of the NOGICD Act.",
-    details: `We assist organizations in navigating Nigeria's regulatory framework while ensuring compliance with applicable legislation and promoting the objectives of the Nigerian Oil and Gas Industry Content Development (NOGICD) Act.
+    desc: "Expert guidance on Nigerian regulatory frameworks and content development compliance.",
+    details: `Expert guidance on Nigerian regulatory frameworks and content development compliance.
 
-Our advisory services include:
-
-• Rehabilitation/Upgrade/Fabrication Works
-• Nigerian Manpower Supply
-• Installation and Maintenance
-• Non-Movable Assets
-• Construction & Movable Equipment
-• Onshore Waste Management
-• Chemical/Mud Testing
-• Haulage
-• Major Construction
-• Quality Control Inspection and Testing
-• Specialized Global Mobility
-• Environmental Restoration
-• Waste Management Facility Operations
-• Engineering Design/Support
-• Decommissioning
+• NUPRC Regulations, Guidelines and Permits
+• Nigeria Mainstream and Downstream PRA Regulations, Guidelines and Permits
+• Nigeria Content Development Management Board(NCDMB) Regulations, Guidelines, Certifications, Expatriate Quotas, Temporary work Permit
+• NCDF Compliance
 `,
   }
 ];
@@ -279,18 +246,15 @@ const ServicesSection = ({ limit, showTitle = true, initialService }: ServicesSe
     flushList();
     flushPara();
 
-    return blocks.map((b: any, idx: number) => {
-      if (b.type === "p") return (
-        <p key={idx} className="text-sm text-muted-foreground">{b.text}</p>
-      );
-      return (
+    return blocks
+      .filter((b: any) => b.type === "ul")
+      .map((b: any, idx: number) => (
         <ul key={idx} className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
           {b.items.map((it: string, i: number) => (
             <li key={i}>{it}</li>
           ))}
         </ul>
-      );
-    });
+      ));
   };
 
   return (

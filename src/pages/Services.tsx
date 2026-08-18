@@ -8,7 +8,7 @@ const Services = () => {
   const initialService = searchParams.get("service");
 
   return (
-    <main className="pt-20">
+    <main className="">
       {/* Hero Banner */}
       <section className="relative h-80 flex items-center overflow-hidden">
         <div className="absolute inset-0">

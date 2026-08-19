@@ -45,7 +45,7 @@ const Footer = () => {
               {[
                 "FACILITY MANAGEMENT AND MAINTENANCE",
                 "ENGINEERING, PROCUREMENT, CONSTRUCTION, AND INSTALLATION (EPCI)",
-                "ENVIRONMENTAL (HSSE) STUDIES",
+                "ENVIRONMENTAL STUDIES",
                 "HEALTH, SAFETY, AND SECURITY STUDIES",
                 "INSPECTION, TESTING, AND INTEGRITY SERVICES",
                 "FABRICATION",

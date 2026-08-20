@@ -29,7 +29,7 @@ const stats = [
 const milestones = [
   { img: expertiseImg, title: "Established Expertise", desc: "Over a decade of operational excellence across Nigeria's midstream and upstream oil and gas sectors." },
   { img: nationwideImg, title: "Nationwide Operations", desc: "Active operations spanning onshore and offshore facilities across key oil-producing regions including the Niger Delta." },
-  { img: fullCycleImg, title: "Full-Cycle Capabilities", desc: "From drilling and construction to FPSO maintenance and environmental management—we cover the complete value chain." },
+  // { img: fullCycleImg, title: "Full-Cycle Capabilities", desc: "From drilling and construction to FPSO maintenance and environmental management—we cover the complete value chain." },
 ];
 
 const About = () => {
@@ -126,7 +126,7 @@ const About = () => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 px-20">
             {milestones.map((m, i) => (
               <motion.div key={m.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
                 className="group rounded-2xl overflow-hidden shadow-card border border-border"
@@ -135,7 +135,7 @@ const About = () => {
                   <img src={m.img} alt={m.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 </div>
-                <div className="p-6 bg-card text-center">
+                <div className="p-6 bg-card h-full text-center">
                   <h3 className="font-heading font-bold text-lg text-foreground mb-3">{m.title}</h3>
                   <p className="text-muted-foreground font-body text-sm leading-relaxed">{m.desc}</p>
                 </div>
@@ -229,7 +229,7 @@ const About = () => {
       <section className="py-20 bg-section-gradient">
         <div className="container mx-auto px-4 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
-            <h2 className="font-heading font-bold text-3xl text-foreground mb-4">Our Expert Team</h2>
+            <h2 className="font-heading font-bold text-3xl text-foreground mb-4">Our Competent Team</h2>
             <p className="text-muted-foreground font-body max-w-xl mx-auto">Experienced professionals dedicated to delivering world-class oil and gas services across Nigeria's energy landscape.</p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>

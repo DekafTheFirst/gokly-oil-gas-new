@@ -57,16 +57,7 @@ const AboutPreview = () => {
               Nigeria's midstream and upstream sectors, we deliver exceptional services that 
               enhance operational efficiency, safety, sustainability, and stakeholders' collaboration.
             </p>
-            <p className="text-muted-foreground font-body leading-relaxed mb-4">
-              Our portfolio spans over 16 specialized service areas—from drilling and well engineering 
-              to  Engineering Procurement, Construction, and Installation (EPCI) pipeline projects, fabrication and maintenance contracts for Floating Production Storage and Offloading
-              (FPSOs), and comprehensive environmental management.Partnering with industry leaders like Shell, NNPC, and NCDMB, our track record of 
-              600+ successful projects speaks for itself.
-            </p>
-            <p className="text-muted-foreground font-body leading-relaxed mb-8">
-              We understand the intricacies of the oil and gas industry, and our team of 50+ 
-              expert professionals is always ready to collaborate with you to achieve your goals.
-            </p>
+        
 
             <div className="space-y-3 mb-8">
               {values.map((val, i) => (

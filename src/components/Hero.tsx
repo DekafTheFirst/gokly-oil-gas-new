@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Shield, Zap, Globe, ScanLine } from "lucide-react";
+import { ArrowRight, Shield, Zap, Globe, ScanLine, Check } from "lucide-react";
 import heroImage from "@/assets/hero-oil-rig.jpg";
 
 const Hero = () => {
@@ -87,7 +87,8 @@ const Hero = () => {
         >
           {[
             { icon: Shield, label: "Safety First", value: "100% HSE Compliant" },
-            { icon: Zap, label: "Excellence", value: "20+ Services" },
+            { icon: Zap, label: "Excellence", value: "100+ Services" },
+            { icon: Check, label: "Indigenous Capacity", value: "NCDMB Compliant" },
             { icon: Globe, label: "Reach", value: "Onshore & Offshore" },
           ].map((stat, i) => (
             <div

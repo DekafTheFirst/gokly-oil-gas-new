@@ -167,11 +167,13 @@ const services = [
     title: "REGULATORY COMPLIANCE AND NIGERIAN CONTENT ADVISORY",
     desc: "Expert guidance on Nigerian regulatory frameworks and content development compliance.",
     details: `Expert guidance on Nigerian regulatory frameworks and content development compliance.
+• Nigerian Upstream Petroleum Regulatory Commission(NUPRC) Regulations, Guidelines and Permits
 
-• NUPRC Regulations, Guidelines and Permits
-• Nigeria Mainstream and Downstream PRA Regulations, Guidelines and Permits
-• Nigeria Content Development Management Board(NCDMB) Regulations, Guidelines, Certifications, Expatriate Quotas, Temporary work Permit
-• NCDF Compliance
+• Nigerian Midstream and Downstream Petroleum Regulatory Authority (NMDPRA) Regulations, Guidelines and Permits
+
+• Nigerian Content Development and Monitoring Board (NCDMB) Regulations, Guidelines, Certifications, Expatriate Quota, Temporary Work Permits
+
+• Nigerian Content Development Fund (NCDF) Compliance
 `,
   }
 ];

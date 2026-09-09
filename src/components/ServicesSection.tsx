@@ -63,7 +63,7 @@ const services = [
   },
   {
     image: environmentalImg,
-    title: "ENVIRONMENTAL (HSSE) STUDIES",
+    title: "ENVIRONMENTAL STUDIES",
     desc: "Professional environmental and social impact assessment and compliance services.",
     details: `Professional environmental and social impact assessment and compliance services.
 
@@ -79,7 +79,7 @@ const services = [
   },
   {
     image: safetyImg,
-    title: "HEALTH, SAFETY, AND SECURITY STUDIES",
+    title: "HEALTH, SAFETY, SECURITY AND ENVIRONMENTAL (HSSE) STUDIES",
     desc: "Comprehensive health, safety, and security assessment and management services.",
     details: `Comprehensive health, safety, and security assessment and management services.
 

@@ -19,11 +19,21 @@ export interface UserPagination {
   limit: number;
   total: number;
   totalPages: number;
+  from: number;
+  to: number;
+}
+
+export interface UserRoleCounts {
+  all: number;
+  ADMIN: number;
+  TRAINER: number;
+  STUDENT: number;
 }
 
 export interface UserResponse {
   users: UserRecord[];
   pagination: UserPagination;
+  counts: UserRoleCounts;
 }
 
 export interface UserPayload {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, AlertTriangle, X, CheckCircle, User, PlusCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, PlusCircle, Search, BookOpen } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,13 +24,23 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { fetchCourses, createCourse, type CourseRecord } from "@/lib/courses";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { fetchAdminCourses, createCourse, type CourseRecord, type CoursePagination } from "@/lib/courses";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export default function CourseManagement() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [pagination, setPagination] = useState<CoursePagination | null>(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [title, setTitle] = useState("");
@@ -42,18 +52,23 @@ export default function CourseManagement() {
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    fetchCourseList();
+    fetchCourseList(1, "", pageSize);
   }, []);
 
   // placeholder for background tasks (batch polling removed)
 
-  const fetchCourseList = async () => {
+  const fetchCourseList = async (page: number = 1, search: string = "", size?: number) => {
     try {
       setLoading(true);
-      const data = await fetchCourses();
-      setCourses(data || []);
+      const limit = size ?? pageSize;
+      const response = await fetchAdminCourses(page, limit, search);
+      setCourses(response.courses || []);
+      setPagination(response.pagination);
+      setCurrentPage(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load courses");
       setTimeout(() => setError(""), 4000);
@@ -72,7 +87,7 @@ export default function CourseManagement() {
       setTimeout(() => setSuccessMessage(""), 3000);
       setShowCreateModal(false);
       setTitle(""); setCategory(""); setDescription(""); setTier(""); setHours("");
-      fetchCourseList();
+      fetchCourseList(1, searchTerm, pageSize);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create course");
       setTimeout(() => setError(""), 4000);
@@ -83,91 +98,98 @@ export default function CourseManagement() {
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
+    fetchCourseList(1, value, pageSize);
   };
 
   const handlePageChange = (page: number) => {
-    // placeholder for future pagination
+    fetchCourseList(page, searchTerm, pageSize);
   };
 
   // course management only: removed certificate bulk helpers
 
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search courses...">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">Course Management</h1>
-          <p className="mt-2 text-muted-foreground">Manage Courses</p>
+          <h1 className="admin-page-title">Course Management</h1>
+          <p className="admin-page-subtitle">Create and manage the courses available for enrollment.</p>
         </div>
-        <div className="flex gap-3">
-          <Button onClick={() => setShowCreateModal(true)}>
-            <PlusCircle className="h-4 w-4" /> Create New Course
-          </Button>
-        </div>
-        </div>
+        <Button onClick={() => setShowCreateModal(true)}>
+          <PlusCircle className="h-4 w-4" /> Create New Course
+        </Button>
+      </div>
 
       {/* Error/Success Messages */}
       {error && (
-        <div className="mt-6 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-800">
-          <AlertTriangle className="h-5 w-5" />
-          {error}
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="mt-6 flex items-center gap-3 rounded-lg bg-green-50 p-4 text-sm text-green-800">
-          <CheckCircle className="h-5 w-5" />
-          {successMessage}
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-success/20 bg-success/5 p-4 text-sm text-success">
+          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{successMessage}</span>
         </div>
       )}
 
       {/* Filters */}
-      <div className="mt-8 flex flex-wrap gap-4">
-        <Input
-          placeholder="Search courses..."
-          value={searchTerm}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="max-w-xs"
-        />
+      <div className="admin-toolbar mt-6">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search courses..."
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="admin-search-input pr-9"
+          />
+        </div>
       </div>
 
       {/* Courses Table */}
-      <div className="mt-6 rounded-2xl bg-card shadow-[var(--shadow-card)] overflow-hidden">
+      <div className="admin-card mt-6">
         {loading ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground">Loading certificates...</p>
+          <div className="admin-empty-state">
+            <p className="text-sm text-muted-foreground">Loading courses...</p>
           </div>
         ) : courses.length === 0 ? (
-          <div className="p-8 text-center">
-            <ShieldCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No courses found</p>
+          <div className="admin-empty-state">
+            <div className="admin-empty-icon">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">No courses yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Create your first course to get started.</p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Title</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Category</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Tier</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Hours</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Created</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Tier</th>
+                  <th>Hours</th>
+                  <th>Created</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {courses.map((course) => (
-                  <tr key={course.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4 text-sm font-medium">{course.title}</td>
-                    <td className="px-6 py-4 text-sm">{course.category}</td>
-                    <td className="px-6 py-4 text-sm">{course.tier}</td>
-                    <td className="px-6 py-4 text-sm">{course.hours}</td>
-                    <td className="px-6 py-4 text-sm">{new Date(course.created_at).toLocaleDateString()}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => { window.location.href = `/courses/${course.id}`; }}>
-                          View
-                        </Button>
-                      </div>
+                  <tr key={course.id}>
+                    <td className="font-medium text-foreground">{course.title}</td>
+                    <td className="text-muted-foreground">{course.category}</td>
+                    <td>
+                      {course.tier ? <Badge variant="muted">{course.tier}</Badge> : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="text-muted-foreground">{course.hours}</td>
+                    <td className="text-muted-foreground">{new Date(course.created_at).toLocaleDateString()}</td>
+                    <td className="text-right">
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => { window.location.href = `/courses/${course.id}`; }}>
+                        View
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -176,8 +198,77 @@ export default function CourseManagement() {
           </div>
         )}
 
-        {/* Pagination placeholder for future enhancement */}
-        <div className="px-6 py-4 bg-muted/50 border-t text-sm text-muted-foreground">Courses: {courses.length}</div>
+        {pagination && !loading && pagination.total > 0 && (
+          <div className="admin-pagination-bar">
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="font-medium text-foreground">{pagination.from}</span> to{" "}
+              <span className="font-medium text-foreground">{pagination.to}</span> of{" "}
+              <span className="font-medium text-foreground">{pagination.total}</span> courses
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">Per page</Label>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(val) => {
+                    const n = Number(val);
+                    setPageSize(n);
+                    fetchCourseList(1, searchTerm, n);
+                  }}
+                >
+                  <SelectTrigger className="w-24 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {pagination.totalPages > 1 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, index) => {
+                      const pageNumber = Math.max(1, Math.min(pagination.totalPages - 4, currentPage - 2)) + index;
+                      if (pageNumber > pagination.totalPages) {
+                        return null;
+                      }
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={pageNumber === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNumber)}
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === pagination.totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="max-w-lg w-full">
@@ -185,7 +276,7 @@ export default function CourseManagement() {
             <DialogTitle>Create New Course</DialogTitle>
             <DialogDescription>Add a new course. Modules and materials can be added later.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateCourse} className="grid gap-4 py-4">
+          <form onSubmit={handleCreateCourse} className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="course-title">Title</Label>
@@ -210,7 +301,7 @@ export default function CourseManagement() {
               {/* Image upload will be added later; leaving placeholder out for now */}
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="admin-dialog-footer">
               <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
               <Button type="submit" disabled={loading}>{loading ? "Creating..." : "Create course"}</Button>
             </div>

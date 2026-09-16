@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, AlertTriangle, PlusCircle, Edit3, Trash2, User } from "lucide-react";
+import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,13 +39,17 @@ import {
   type UserRecord,
   type UserPagination,
   type UserRole,
+  type UserRoleCounts,
 } from "@/lib/users";
 
 const userRoles: UserRole[] = ["ADMIN", "TRAINER", "STUDENT"];
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const EMPTY_COUNTS: UserRoleCounts = { all: 0, ADMIN: 0, TRAINER: 0, STUDENT: 0 };
 
 export default function UserManagement() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [pagination, setPagination] = useState<UserPagination | null>(null);
+  const [counts, setCounts] = useState<UserRoleCounts>(EMPTY_COUNTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -81,6 +85,9 @@ export default function UserManagement() {
       const response = await fetchAllUsers(page, limit, search, roleValue);
       setUsers(response.users);
       setPagination(response.pagination);
+      // Tab badges come from the server so they stay stable while switching tabs
+      // and still reflect the active search term.
+      setCounts(response.counts ?? EMPTY_COUNTS);
       setCurrentPage(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load users");
@@ -177,122 +184,108 @@ export default function UserManagement() {
     }
   };
 
-  const pageFrom = pagination ? (pagination.page - 1) * pagination.limit + 1 : 0;
-  const pageTo = pagination ? Math.min(pagination.total, pagination.page * pagination.limit) : 0;
-
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search users...">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">User Management</h1>
-          <p className="mt-2 text-muted-foreground">Manage admins, trainers and trainees from a single admin panel.</p>
+          <h1 className="admin-page-title">User Management</h1>
+          <p className="admin-page-subtitle">Manage admins, trainers and trainees from a single admin panel.</p>
         </div>
-        <div className="flex gap-3">
-          <Button onClick={openCreateModal}>
-            <PlusCircle className="h-4 w-4" /> Create New User
-          </Button>
-        </div>
+        <Button onClick={openCreateModal}>
+          <PlusCircle className="h-4 w-4" /> Create New User
+        </Button>
       </div>
 
       {error && (
-        <div className="mt-6 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-800">
-          <AlertTriangle className="h-5 w-5" />
-          {error}
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="mt-6 flex items-center gap-3 rounded-lg bg-green-50 p-4 text-sm text-green-800">
-          <Badge variant="default">Success</Badge>
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-success/20 bg-success/5 p-4 text-sm text-success">
+          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
-      <div className="mt-8 flex flex-wrap items-center gap-4">
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant={roleFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleRoleFilterChange("all")}
-          >
-            All ({users.length})
-          </Button>
-          <Button
-            variant={roleFilter === "ADMIN" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleRoleFilterChange("ADMIN")}
-          >
-            Admins
-          </Button>
-          <Button
-            variant={roleFilter === "TRAINER" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleRoleFilterChange("TRAINER")}
-          >
-            Trainers
-          </Button>
-          <Button
-            variant={roleFilter === "STUDENT" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleRoleFilterChange("STUDENT")}
-          >
-            Trainees
-          </Button>
+      <div className="admin-toolbar mt-6 justify-between">
+        <div className="admin-segmented">
+          <button type="button" data-active={roleFilter === "all"} onClick={() => handleRoleFilterChange("all")}>
+            All ({counts.all})
+          </button>
+          <button type="button" data-active={roleFilter === "ADMIN"} onClick={() => handleRoleFilterChange("ADMIN")}>
+            Admins ({counts.ADMIN})
+          </button>
+          <button type="button" data-active={roleFilter === "TRAINER"} onClick={() => handleRoleFilterChange("TRAINER")}>
+            Trainers ({counts.TRAINER})
+          </button>
+          <button type="button" data-active={roleFilter === "STUDENT"} onClick={() => handleRoleFilterChange("STUDENT")}>
+            Trainees ({counts.STUDENT})
+          </button>
         </div>
-        <Input
-          placeholder="Search users..."
-          value={searchTerm}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="max-w-xs"
-        />
-        
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="admin-search-input pr-9"
+          />
+        </div>
       </div>
 
-      <div className="mt-6 rounded-2xl bg-card shadow-[var(--shadow-card)] overflow-hidden">
+      <div className="admin-card mt-6">
         {loading ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground">Loading users...</p>
+          <div className="admin-empty-state">
+            <p className="text-sm text-muted-foreground">Loading users...</p>
           </div>
         ) : users.length === 0 ? (
-          <div className="p-8 text-center">
-            <ShieldCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No users found.</p>
+          <div className="admin-empty-state">
+            <div className="admin-empty-icon">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">No users found</p>
+              <p className="mt-1 text-sm text-muted-foreground">Try adjusting your search or filters.</p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-muted/50">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4 text-sm font-semibold">No.</th>
-                  <th className="px-6 py-4 text-sm font-semibold">Name</th>
-                  <th className="px-6 py-4 text-sm font-semibold">Email</th>
-                  <th className="px-6 py-4 text-sm font-semibold">Role</th>
-                  <th className="px-6 py-4 text-sm font-semibold">Joined</th>
-                  <th className="px-6 py-4 text-sm font-semibold">Actions</th>
+                  <th>No.</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Joined</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {users.map((user, index) => (
-                  <tr key={user.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4 text-sm">{pagination ? pageFrom + index : index + 1}</td>
-                    <td className="px-6 py-4 text-sm font-medium">{user.name}</td>
-                    <td className="px-6 py-4 text-sm">{user.email}</td>
-                    <td className="px-6 py-4">
-                      <Badge variant={user.role === "ADMIN" ? "default" : user.role === "TRAINER" ? "secondary" : "outline"}>
+                  <tr key={user.id}>
+                    <td className="text-muted-foreground">{pagination ? pagination.from + index : index + 1}</td>
+                    <td className="font-medium text-foreground">{user.name}</td>
+                    <td className="text-muted-foreground">{user.email}</td>
+                    <td>
+                      <Badge variant={user.role === "ADMIN" ? "info" : user.role === "TRAINER" ? "warning" : "muted"}>
                         {user.role}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 text-sm">
+                    <td className="text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openEditModal(user)}>
+                    <td className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEditModal(user)} title="Edit user">
                           <Edit3 className="h-3.5 w-3.5" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
+                            <Button size="sm" variant="outline" className="h-8 w-8 border-destructive/40 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" title="Delete user">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </AlertDialogTrigger>
@@ -323,20 +316,22 @@ export default function UserManagement() {
           </div>
         )}
 
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 bg-muted/50 border-t">
+        {pagination && !loading && pagination.total > 0 && (
+          <div className="admin-pagination-bar">
             <div className="text-sm text-muted-foreground">
-              Showing {pageFrom} to {pageTo} of {pagination.total} users
+              Showing <span className="font-medium text-foreground">{pagination.from}</span> to{" "}
+              <span className="font-medium text-foreground">{pagination.to}</span> of{" "}
+              <span className="font-medium text-foreground">{pagination.total}</span> users
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Label className="text-sm">Per page</Label>
-                <Select value={String(pageSize)} onValueChange={(val) => { const n = Number(val); setPageSize(n); setCurrentPage(1); fetchUsers(1, searchTerm, roleFilter, n); }}>
+                <Label className="text-sm text-muted-foreground">Per page</Label>
+                <Select value={String(pageSize)} onValueChange={(val) => { const n = Number(val); setPageSize(n); fetchUsers(1, searchTerm, roleFilter, n); }}>
                   <SelectTrigger className="w-24 h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[10, 25, 50, 100].map((n) => (
+                    {PAGE_SIZE_OPTIONS.map((n) => (
                       <SelectItem key={n} value={String(n)}>
                         {n}
                       </SelectItem>
@@ -344,42 +339,44 @@ export default function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchUsers(Math.max(1, currentPage - 1), searchTerm, roleFilter, pageSize)}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, index) => {
-                    const pageNumber = Math.max(1, Math.min(pagination.totalPages - 4, currentPage - 2)) + index;
-                    if (pageNumber > pagination.totalPages) {
-                      return null;
-                    }
-                    return (
-                      <Button
-                        key={pageNumber}
-                        variant={pageNumber === currentPage ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => fetchUsers(pageNumber, searchTerm, roleFilter, pageSize)}
-                      >
-                        {pageNumber}
-                      </Button>
-                    );
-                  })}
+              {pagination.totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchUsers(Math.max(1, currentPage - 1), searchTerm, roleFilter, pageSize)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, index) => {
+                      const pageNumber = Math.max(1, Math.min(pagination.totalPages - 4, currentPage - 2)) + index;
+                      if (pageNumber > pagination.totalPages) {
+                        return null;
+                      }
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={pageNumber === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => fetchUsers(pageNumber, searchTerm, roleFilter, pageSize)}
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchUsers(Math.min(pagination.totalPages, currentPage + 1), searchTerm, roleFilter, pageSize)}
+                    disabled={currentPage === pagination.totalPages}
+                  >
+                    Next
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchUsers(Math.min(pagination.totalPages, currentPage + 1), searchTerm, roleFilter, pageSize)}
-                  disabled={currentPage === pagination.totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -393,7 +390,7 @@ export default function UserManagement() {
               {isEditing ? "Update user details and optionally change the password." : "Add a new admin, trainer, or trainee."}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSaveUser} className="grid gap-4 py-4">
+          <form onSubmit={handleSaveUser} className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="user-first-name">First name</Label>
@@ -466,7 +463,7 @@ export default function UserManagement() {
               </div>
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="admin-dialog-footer">
               <Button type="button" variant="outline" onClick={closeModal}>
                 Cancel
               </Button>

@@ -61,11 +61,20 @@ export interface CertificatePagination {
   limit: number;
   total: number;
   totalPages: number;
+  from: number;
+  to: number;
+}
+
+export interface CertificateStatusCounts {
+  all: number;
+  active: number;
+  revoked: number;
 }
 
 export interface CertificateResponse {
   certificates: Certificate[];
   pagination: CertificatePagination;
+  counts: CertificateStatusCounts;
 }
 
 // Get all certificates for admin management with pagination and search

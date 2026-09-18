@@ -43,8 +43,21 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const changePassword = async (values) => {
+    const payload = await authService.changePassword(values);
+    setError(null);
+    return payload;
+  };
+
+  const updateProfile = async (values) => {
+    const payload = await authService.updateProfile(values);
+    setUser(payload.user);
+    setError(null);
+    return payload;
+  };
+
   const value = useMemo(
-    () => ({ user, loading, error, login, register, logout, setError }),
+    () => ({ user, loading, error, login, register, logout, changePassword, updateProfile, setError }),
     [user, loading, error],
   );
 

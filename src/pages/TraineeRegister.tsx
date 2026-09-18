@@ -9,17 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 
-const registerSchema = z.object({
+const traineeRegisterSchema = z.object({
   first_name: z.string().min(2, "First name must be at least 2 characters."),
   middle_name: z.string().optional(),
   last_name: z.string().min(2, "Last name must be at least 2 characters."),
   email: z.string().email("Enter a valid email."),
   password: z.string().min(8, "Password must be at least 8 characters."),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().optional(),
 });
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type TraineeRegisterFormValues = z.infer<typeof traineeRegisterSchema>;
 
-const AuthRegister = () => {
+const TraineeRegister = () => {
   const [serverError, setServerError] = useState("");
   const navigate = useNavigate();
   const { register: registerAccount } = useAuth();
@@ -28,13 +32,14 @@ const AuthRegister = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+  } = useForm<TraineeRegisterFormValues>({
+    resolver: zodResolver(traineeRegisterSchema),
   });
 
-  const onSubmit = async (values: RegisterFormValues) => {
+  const onSubmit = async (values: TraineeRegisterFormValues) => {
     try {
       const payload = await registerAccount({ ...values, role: "TRAINEE" });
+      // Trainees always go to the main dashboard
       navigate("/training/dashboard");
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to register.");
@@ -46,8 +51,8 @@ const AuthRegister = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <Card className="mx-auto max-w-md border">
           <CardHeader>
-            <CardTitle>Create your account</CardTitle>
-            <CardDescription>Register as a trainee to start your learning journey.</CardDescription>
+            <CardTitle>Register as a Trainee</CardTitle>
+            <CardDescription>Create your trainee account to start your learning journey.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
             {serverError ? <p className="text-sm text-destructive">{serverError}</p> : null}
@@ -58,8 +63,8 @@ const AuthRegister = () => {
                 {errors.first_name ? <p className="text-sm text-destructive">{errors.first_name.message}</p> : null}
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="middle_name">Middle Name</Label>
-                <Input id="middle_name" type="text" placeholder="Enter your middle name (optional)" {...register("middle_name")} />
+                <Label htmlFor="middle_name">Middle Name (Optional)</Label>
+                <Input id="middle_name" type="text" placeholder="Enter your middle name" {...register("middle_name")} />
                 {errors.middle_name ? <p className="text-sm text-destructive">{errors.middle_name.message}</p> : null}
               </div>
               <div className="grid gap-2">
@@ -77,12 +82,31 @@ const AuthRegister = () => {
                 <Input id="password" type="password" placeholder="Create a password" {...register("password")} />
                 {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
               </div>
-
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Phone (Optional)</Label>
+                <Input id="phone" type="tel" placeholder="Enter your phone number" {...register("phone")} />
+                {errors.phone ? <p className="text-sm text-destructive">{errors.phone.message}</p> : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">Address (Optional)</Label>
+                <Input id="address" type="text" placeholder="Enter your address" {...register("address")} />
+                {errors.address ? <p className="text-sm text-destructive">{errors.address.message}</p> : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="city">City (Optional)</Label>
+                <Input id="city" type="text" placeholder="Enter your city" {...register("city")} />
+                {errors.city ? <p className="text-sm text-destructive">{errors.city.message}</p> : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="country">Country (Optional)</Label>
+                <Input id="country" type="text" placeholder="Enter your country" {...register("country")} />
+                {errors.country ? <p className="text-sm text-destructive">{errors.country.message}</p> : null}
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-0">
             <Button type="submit" className="w-full" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>
-              {isSubmitting ? "Creating account..." : "Create account"}
+              {isSubmitting ? "Creating account..." : "Create Trainee Account"}
             </Button>
             <p className="text-sm text-muted-foreground">
               Already have an account? <Link to="/auth/login" className="text-primary hover:underline">Sign in</Link>
@@ -94,4 +118,4 @@ const AuthRegister = () => {
   );
 };
 
-export default AuthRegister;
+export default TraineeRegister;

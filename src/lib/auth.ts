@@ -48,3 +48,33 @@ export const fetchProfile = async () => {
     },
   });
 };
+
+export const changePassword = async ({ currentPassword, newPassword }) => {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Missing auth token.");
+  }
+
+  return apiFetch("/auth/change-password", {
+    method: "POST",
+    body: { currentPassword, newPassword },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const updateProfile = async ({ first_name, middle_name, last_name, phone, address, city, country }) => {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Missing auth token.");
+  }
+
+  return apiFetch("/auth/profile", {
+    method: "PUT",
+    body: { first_name, middle_name, last_name, phone, address, city, country },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};

@@ -14,6 +14,7 @@ import Contact from "./pages/Contact";
 import Feedbacks from "./pages/Feedbacks";
 import AuthLogin from "./pages/AuthLogin";
 import AuthRegister from "./pages/AuthRegister";
+import TraineeRegister from "./pages/TraineeRegister";
 import Profile from "./pages/Profile";
 import DashboardRouter from "./components/DashboardRouter";
 import NotFound from "./pages/NotFound";
@@ -48,6 +49,7 @@ const AppRoutes = () => {
         <Route path="/feedbacks" element={<Feedbacks />} />
         <Route path="/auth/login" element={<AuthLogin />} />
         <Route path="/auth/register" element={<AuthRegister />} />
+        <Route path="/register" element={<TraineeRegister />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/training" element={<TrainingHome />} />
         <Route path="/training/courses" element={<ProtectedRoute><TrainingCourses /></ProtectedRoute>} />

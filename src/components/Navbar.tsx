@@ -87,7 +87,7 @@ const Navbar = () => {
                 </Link>
               );
             })}
-            {/* {user ? (
+            {user ? (
               <div className="ml-4 flex items-center gap-2">
                 <Link
                   to="/training/dashboard"
@@ -107,13 +107,21 @@ const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <Link
-                to="/auth/login"
-                className="ml-4 px-6 py-2.5 bg-primary text-primary-foreground font-heading font-semibold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft"
-              >
-                Login
-              </Link>
-            )} */}
+              <div className="ml-4 flex items-center gap-2">
+                <Link
+                  to="/auth/login"
+                  className="px-5 py-2.5 text-sm font-heading font-semibold text-foreground rounded-full border border-input hover:bg-secondary transition-colors"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-semibold hover:opacity-90 transition-opacity shadow-soft"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
 
             <Link
               to="/contact"
@@ -167,13 +175,13 @@ const Navbar = () => {
                 );
               })}
               <div className="mt-4 space-y-2">
-                {/* {user ? (
+                {user ? (
                   <>
                     <Link
-                      to="/profile"
+                      to="/training/dashboard"
                       className="block px-4 py-3 rounded-lg bg-secondary text-secondary-foreground text-center font-medium hover:bg-secondary/90"
                     >
-                      Profile
+                      Dashboard
                     </Link>
                     <button
                       type="button"
@@ -187,17 +195,25 @@ const Navbar = () => {
                     </button>
                   </>
                 ) : (
-                  <Link
-                    to="/auth/login"
-                    className="block px-4 py-3 rounded-lg bg-primary text-primary-foreground text-center font-medium hover:bg-primary/90"
-                  >
-                    Login
-                  </Link>
-                )} */}
+                  <>
+                    <Link
+                      to="/auth/login"
+                      className="block px-4 py-3 rounded-lg bg-secondary text-secondary-foreground text-center font-medium hover:bg-secondary/90"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="block px-4 py-3 rounded-lg bg-primary text-primary-foreground text-center font-medium hover:bg-primary/90"
+                    >
+                      Register
+                    </Link>
+                  </>
+                )}
 
                 <Link
                   to="/contact"
-                  className="ml-4 px-6 py-2.5 bg-primary text-primary-foreground font-heading font-semibold text-sm rounded-full hover:opacity-90 transition-opacity shadow-soft"
+                  className="block px-4 py-3 rounded-lg bg-primary text-primary-foreground text-center font-medium hover:bg-primary/90"
                 >
                   Get in Touch
                 </Link>

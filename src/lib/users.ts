@@ -1,7 +1,7 @@
 import { apiFetch } from "./api";
 import { getAuthToken } from "./auth";
 
-export type UserRole = "ADMIN" | "TRAINER" | "STUDENT";
+export type UserRole = "ADMIN" | "TRAINER" | "TRAINEE";
 
 export interface UserRecord {
   id: number;
@@ -11,6 +11,11 @@ export interface UserRecord {
   name: string;
   email: string;
   role: UserRole;
+  is_active: boolean;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
   created_at: string;
 }
 
@@ -27,7 +32,7 @@ export interface UserRoleCounts {
   all: number;
   ADMIN: number;
   TRAINER: number;
-  STUDENT: number;
+  TRAINEE: number;
 }
 
 export interface UserResponse {
@@ -43,6 +48,10 @@ export interface UserPayload {
   email: string;
   password: string;
   role: UserRole;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
 }
 
 export interface UserUpdatePayload {
@@ -52,6 +61,11 @@ export interface UserUpdatePayload {
   email?: string;
   role?: UserRole;
   password?: string;
+  is_active?: boolean;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
 }
 
 export const fetchAllUsers = async (
@@ -99,4 +113,14 @@ export const deleteUser = async (userId: number): Promise<void> => {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
+};
+
+export const toggleUserActivation = async (userId: number, isActive: boolean): Promise<UserRecord> => {
+  const token = getAuthToken();
+  const data = await apiFetch(`/auth/${userId}/activation`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: { is_active: isActive },
+  });
+  return data.user;
 };

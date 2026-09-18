@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users, Power, PowerOff } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,15 +36,16 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  toggleUserActivation,
   type UserRecord,
   type UserPagination,
   type UserRole,
   type UserRoleCounts,
 } from "@/lib/users";
 
-const userRoles: UserRole[] = ["ADMIN", "TRAINER", "STUDENT"];
+const userRoles: UserRole[] = ["ADMIN", "TRAINER", "TRAINEE"];
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-const EMPTY_COUNTS: UserRoleCounts = { all: 0, ADMIN: 0, TRAINER: 0, STUDENT: 0 };
+const EMPTY_COUNTS: UserRoleCounts = { all: 0, ADMIN: 0, TRAINER: 0, TRAINEE: 0 };
 
 export default function UserManagement() {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -66,7 +67,11 @@ export default function UserManagement() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("STUDENT");
+  const [role, setRole] = useState<UserRole>("TRAINEE");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -115,7 +120,11 @@ export default function UserManagement() {
     setLastName("");
     setEmail("");
     setPassword("");
-    setRole("STUDENT");
+    setRole("TRAINEE");
+    setPhone("");
+    setAddress("");
+    setCity("");
+    setCountry("");
     setShowUserModal(true);
   };
 
@@ -128,6 +137,10 @@ export default function UserManagement() {
     setEmail(user.email);
     setPassword("");
     setRole(user.role);
+    setPhone(user.phone ?? "");
+    setAddress(user.address ?? "");
+    setCity(user.city ?? "");
+    setCountry(user.country ?? "");
     setShowUserModal(true);
   };
 
@@ -152,10 +165,33 @@ export default function UserManagement() {
         if (password.trim().length > 0) {
           payload.password = password;
         }
+        if (phone.trim().length > 0) {
+          payload.phone = phone;
+        }
+        if (address.trim().length > 0) {
+          payload.address = address;
+        }
+        if (city.trim().length > 0) {
+          payload.city = city;
+        }
+        if (country.trim().length > 0) {
+          payload.country = country;
+        }
         await updateUser(editingUser.id, payload);
         setSuccessMessage("User updated successfully.");
       } else {
-        await createUser({ first_name: firstName, middle_name: middleName || undefined, last_name: lastName, email, password, role });
+        await createUser({ 
+          first_name: firstName, 
+          middle_name: middleName || undefined, 
+          last_name: lastName, 
+          email, 
+          password, 
+          role,
+          phone: phone || undefined,
+          address: address || undefined,
+          city: city || undefined,
+          country: country || undefined,
+        });
         setSuccessMessage("User created successfully.");
       }
       closeModal();
@@ -178,6 +214,21 @@ export default function UserManagement() {
       fetchUsers(currentPage, searchTerm, roleFilter, pageSize);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to delete user.");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleActivation = async (user: UserRecord) => {
+    try {
+      setActionLoading(true);
+      await toggleUserActivation(user.id, !user.is_active);
+      setSuccessMessage(`User ${!user.is_active ? "activated" : "deactivated"} successfully.`);
+      setTimeout(() => setSuccessMessage(""), 4000);
+      fetchUsers(currentPage, searchTerm, roleFilter, pageSize);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to change user status.");
       setTimeout(() => setError(""), 4000);
     } finally {
       setActionLoading(false);
@@ -221,8 +272,8 @@ export default function UserManagement() {
           <button type="button" data-active={roleFilter === "TRAINER"} onClick={() => handleRoleFilterChange("TRAINER")}>
             Trainers ({counts.TRAINER})
           </button>
-          <button type="button" data-active={roleFilter === "STUDENT"} onClick={() => handleRoleFilterChange("STUDENT")}>
-            Trainees ({counts.STUDENT})
+          <button type="button" data-active={roleFilter === "TRAINEE"} onClick={() => handleRoleFilterChange("TRAINEE")}>
+            Trainees ({counts.TRAINEE})
           </button>
         </div>
         <div className="relative w-full sm:max-w-xs">
@@ -260,6 +311,7 @@ export default function UserManagement() {
                   <th>Name</th>
                   <th>Email</th>
                   <th>Role</th>
+                  <th>Status</th>
                   <th>Joined</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -275,11 +327,25 @@ export default function UserManagement() {
                         {user.role}
                       </Badge>
                     </td>
+                    <td>
+                      <Badge variant={user.is_active ? "success" : "destructive"}>
+                        {user.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
                     <td className="text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 w-8 p-0" 
+                          onClick={() => handleToggleActivation(user)} 
+                          title={user.is_active ? "Deactivate user" : "Activate user"}
+                        >
+                          {user.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                        </Button>
                         <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEditModal(user)} title="Edit user">
                           <Edit3 className="h-3.5 w-3.5" />
                         </Button>
@@ -459,6 +525,43 @@ export default function UserManagement() {
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder={isEditing ? "Leave blank to keep password" : "Create a password"}
                   required={!isEditing}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="user-phone">Phone</Label>
+                <Input
+                  id="user-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="Phone number"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="user-address">Address</Label>
+                <Input
+                  id="user-address"
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                  placeholder="Address"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="user-city">City</Label>
+                <Input
+                  id="user-city"
+                  value={city}
+                  onChange={(event) => setCity(event.target.value)}
+                  placeholder="City"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="user-country">Country</Label>
+                <Input
+                  id="user-country"
+                  value={country}
+                  onChange={(event) => setCountry(event.target.value)}
+                  placeholder="Country"
                 />
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users, Power, PowerOff, User, Mail, Lock, Phone, MapPin, Building, Globe, Eye, EyeOff, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users, Power, PowerOff, User, Mail, Lock, Phone, MapPin, Building, Globe, Eye, EyeOff, Sparkles, MoreVertical } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   fetchAllUsers,
   createUser,
@@ -337,44 +345,64 @@ export default function UserManagement() {
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-8 w-8 p-0" 
-                          onClick={() => handleToggleActivation(user)} 
-                          title={user.is_active ? "Deactivate user" : "Activate user"}
-                        >
-                          {user.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEditModal(user)} title="Edit user">
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="h-8 w-8 border-destructive/40 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" title="Delete user">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete user</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete {user.name}? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0 data-[state=open]:bg-muted"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleToggleActivation(user)}>
+                            {user.is_active ? (
+                              <>
+                                <PowerOff className="mr-2 h-4 w-4" />
+                                <span>Deactivate</span>
+                              </>
+                            ) : (
+                              <>
+                                <Power className="mr-2 h-4 w-4" />
+                                <span>Activate</span>
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditModal(user)}>
+                            <Edit3 className="mr-2 h-4 w-4" />
+                            <span>Edit</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete user</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete {user.name}? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

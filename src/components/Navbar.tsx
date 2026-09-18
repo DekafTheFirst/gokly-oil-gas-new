@@ -87,7 +87,7 @@ const Navbar = () => {
                 </Link>
               );
             })}
-            {user ? (
+            {/* {user ? (
               <div className="ml-4 flex items-center gap-2">
                 <Link
                   to="/training/dashboard"
@@ -121,7 +121,7 @@ const Navbar = () => {
                   Register
                 </Link>
               </div>
-            )}
+            )} */}
 
             <Link
               to="/contact"
@@ -175,7 +175,7 @@ const Navbar = () => {
                 );
               })}
               <div className="mt-4 space-y-2">
-                {user ? (
+                {/* {user ? (
                   <>
                     <Link
                       to="/training/dashboard"
@@ -209,7 +209,7 @@ const Navbar = () => {
                       Register
                     </Link>
                   </>
-                )}
+                )} */}
 
                 <Link
                   to="/contact"

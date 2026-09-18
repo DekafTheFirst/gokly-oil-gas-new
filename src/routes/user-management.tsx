@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users, Power, PowerOff } from "lucide-react";
+import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users, Power, PowerOff, User, Mail, Lock, Phone, MapPin, Building, Globe, Eye, EyeOff, Sparkles } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +72,7 @@ export default function UserManagement() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -449,62 +450,96 @@ export default function UserManagement() {
       </div>
 
       <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-        <DialogContent className="max-w-lg w-full">
-          <DialogHeader>
-            <DialogTitle>{isEditing ? "Edit User" : "Create New User"}</DialogTitle>
-            <DialogDescription>
-              {isEditing ? "Update user details and optionally change the password." : "Add a new admin, trainer, or trainee."}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSaveUser} className="grid gap-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="user-first-name">First name</Label>
-                <Input
-                  id="user-first-name"
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  placeholder="Jane"
-                  required
-                />
+        <DialogContent className="max-w-2xl w-full border-0 shadow-xl bg-white/95 backdrop-blur-sm">
+          <DialogHeader className="space-y-2 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+                {isEditing ? <Edit3 className="w-6 h-6 text-white" /> : <Sparkles className="w-6 h-6 text-white" />}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-middle-name">Middle name</Label>
+              <div>
+                <DialogTitle className="text-2xl font-bold">{isEditing ? "Edit User" : "Create New User"}</DialogTitle>
+                <DialogDescription className="text-sm">
+                  {isEditing ? "Update user details and optionally change the password." : "Add a new admin, trainer, or trainee to the platform."}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <form onSubmit={handleSaveUser} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="user-first-name" className="text-sm font-medium">First Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="user-first-name"
+                    value={firstName}
+                    onChange={(event) => setFirstName(event.target.value)}
+                    placeholder="Jane"
+                    className="pl-10 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-middle-name" className="text-sm font-medium">Middle Name</Label>
                 <Input
                   id="user-middle-name"
                   value={middleName}
                   onChange={(event) => setMiddleName(event.target.value)}
-                  placeholder="A."
+                  placeholder="Optional"
+                  className="h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-last-name">Last name</Label>
+              <div className="space-y-2">
+                <Label htmlFor="user-last-name" className="text-sm font-medium">Last Name</Label>
                 <Input
                   id="user-last-name"
                   value={lastName}
                   onChange={(event) => setLastName(event.target.value)}
                   placeholder="Doe"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-email">Email address</Label>
-                <Input
-                  id="user-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="jane.doe@example.com"
+                  className="h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
                   required
                 />
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="user-role">Role</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="user-email" className="text-sm font-medium">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="user-email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="jane.doe@example.com"
+                    className="pl-10 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-phone" className="text-sm font-medium">Phone (Optional)</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="user-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    placeholder="+1 234 567 890"
+                    className="pl-10 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="user-role" className="text-sm font-medium">Role</Label>
                 <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
-                  <SelectTrigger id="user-role">
+                  <SelectTrigger id="user-role" className="h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -516,62 +551,93 @@ export default function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-password">Password</Label>
-                <Input
-                  id="user-password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder={isEditing ? "Leave blank to keep password" : "Create a password"}
-                  required={!isEditing}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-phone">Phone</Label>
-                <Input
-                  id="user-phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="Phone number"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-address">Address</Label>
-                <Input
-                  id="user-address"
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
-                  placeholder="Address"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-city">City</Label>
-                <Input
-                  id="user-city"
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
-                  placeholder="City"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="user-country">Country</Label>
-                <Input
-                  id="user-country"
-                  value={country}
-                  onChange={(event) => setCountry(event.target.value)}
-                  placeholder="Country"
-                />
+              <div className="space-y-2">
+                <Label htmlFor="user-password" className="text-sm font-medium">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="user-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder={isEditing ? "Leave blank to keep password" : "Create a password"}
+                    className="pl-10 pr-12 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
+                    required={!isEditing}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="admin-dialog-footer">
-              <Button type="button" variant="outline" onClick={closeModal}>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Location Information (Optional)</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="user-address"
+                      value={address}
+                      onChange={(event) => setAddress(event.target.value)}
+                      placeholder="Street address"
+                      className="pl-10 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="user-city"
+                      value={city}
+                      onChange={(event) => setCity(event.target.value)}
+                      placeholder="City"
+                      className="pl-10 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="user-country"
+                      value={country}
+                      onChange={(event) => setCountry(event.target.value)}
+                      placeholder="Country"
+                      className="pl-10 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={closeModal} className="h-11 px-6">
                 Cancel
               </Button>
-              <Button type="submit" disabled={actionLoading}>
-                {actionLoading ? "Saving..." : isEditing ? "Save changes" : "Create user"}
+              <Button 
+                type="submit" 
+                disabled={actionLoading}
+                className="h-11 px-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium shadow-lg shadow-green-500/25 transition-all duration-200"
+              >
+                {actionLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Saving...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    {isEditing ? "Save Changes" : "Create User"}
+                    <CheckCircle className="w-4 h-4" />
+                  </span>
+                )}
               </Button>
             </div>
           </form>

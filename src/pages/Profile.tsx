@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
+import { Eye, EyeOff } from "lucide-react";
 
 const profileSchema = z.object({
   first_name: z.string().min(2, "First name must be at least 2 characters."),
@@ -37,6 +38,9 @@ const Profile = () => {
   const navigate = useNavigate();
   const [profileMessage, setProfileMessage] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register: registerProfile,
@@ -207,17 +211,47 @@ const Profile = () => {
                 <form onSubmit={handleSubmitPassword(onPasswordSubmit)} className="space-y-4">
                   <div className="grid gap-2">
                     <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input id="currentPassword" type="password" {...registerPassword("currentPassword")} />
+                    <div className="relative">
+                      <Input id="currentPassword" type={showCurrentPassword ? "text" : "password"} className="pr-12" {...registerPassword("currentPassword")} />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     {passwordErrors.currentPassword && <p className="text-sm text-destructive">{passwordErrors.currentPassword.message}</p>}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="newPassword">New Password</Label>
-                    <Input id="newPassword" type="password" {...registerPassword("newPassword")} />
+                    <div className="relative">
+                      <Input id="newPassword" type={showNewPassword ? "text" : "password"} className="pr-12" {...registerPassword("newPassword")} />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     {passwordErrors.newPassword && <p className="text-sm text-destructive">{passwordErrors.newPassword.message}</p>}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input id="confirmPassword" type="password" {...registerPassword("confirmPassword")} />
+                    <div className="relative">
+                      <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} className="pr-12" {...registerPassword("confirmPassword")} />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     {passwordErrors.confirmPassword && <p className="text-sm text-destructive">{passwordErrors.confirmPassword.message}</p>}
                   </div>
 

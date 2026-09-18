@@ -6,10 +6,10 @@ export function PageShell({ children, withSidebar = false, searchPlaceholder }: 
   return (
     <div className="flex min-h-screen flex-col bg-background" style={{backgroundColor: '#f7f8f9'}}>
       <TopNav searchPlaceholder={searchPlaceholder} />
-      {false ? (
+      {withSidebar ? (
         <div className="mx-auto flex w-full max-w-[1440px] flex-1">
           <Sidebar />
-          <main className="flex-1 px-6 py-10 lg:px-10">{children}</main>
+          <main className="flex-1 px-6 py-10 lg:px-10 min-w-0">{children}</main>
         </div>
       ) : (
         <main className="flex-1 px-6 py-0">{children}</main>

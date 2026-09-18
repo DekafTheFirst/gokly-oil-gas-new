@@ -45,7 +45,7 @@ const AuthRegister = () => {
   const onSubmit = async (values: RegisterFormValues) => {
     try {
       const payload = await registerAccount({ ...values, role: "TRAINEE" });
-      navigate("/training/dashboard");
+      navigate("/training/trainee-dashboard");
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to register.");
     }

@@ -49,8 +49,8 @@ export default function ModuleDetail({ moduleId }: { moduleId: number }) {
   const fetchModuleDetails = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/modules/${moduleId}`, {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/modules/${moduleId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch module details");
@@ -74,8 +74,8 @@ export default function ModuleDetail({ moduleId }: { moduleId: number }) {
 
     try {
       setSubmittingAttendance(true);
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/modules/${moduleId}/attendance/qr`, {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/modules/${moduleId}/attendance/qr`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

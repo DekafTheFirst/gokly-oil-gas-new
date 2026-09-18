@@ -33,6 +33,8 @@ import CourseManagement from "./routes/course-management";
 
 const queryClient = new QueryClient();
 
+const TRAINEE_ROLES = ["TRAINEE", "STUDENT"];
+
 const AppRoutes = () => {
   const location = useLocation();
   const showNavbar = !location.pathname.startsWith("/training");
@@ -53,7 +55,11 @@ const AppRoutes = () => {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/training" element={<TrainingHome />} />
         <Route path="/training/courses" element={<ProtectedRoute><TrainingCourses /></ProtectedRoute>} />
-        <Route path="/training/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
+        {/* Generic entry-point: redirects to the correct dashboard for the logged-in role */}
+        <Route path="/training/home" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
+        {/* Trainee dashboard — canonical URL. /training/dashboard kept as alias for old links. */}
+        <Route path="/training/trainee-dashboard" element={<ProtectedRoute allowedRoles={TRAINEE_ROLES}><TrainingDashboard /></ProtectedRoute>} />
+        <Route path="/training/dashboard" element={<ProtectedRoute allowedRoles={TRAINEE_ROLES}><TrainingDashboard /></ProtectedRoute>} />
         <Route path="/training/trainer-dashboard" element={<ProtectedRoute allowedRoles={["TRAINER"]}><TrainingTrainer /></ProtectedRoute>} />
         <Route path="/training/admin" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingAdmin /></ProtectedRoute>} />
         <Route path="/training/certificate-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBulkCertificateIssuance /></ProtectedRoute>} />

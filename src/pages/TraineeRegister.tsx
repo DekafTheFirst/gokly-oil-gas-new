@@ -49,7 +49,7 @@ const TraineeRegister = () => {
     try {
       const payload = await registerAccount({ ...values, role: "TRAINEE" });
       // Trainees always go to the main dashboard
-      navigate("/training/dashboard");
+      navigate("/training/trainee-dashboard");
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Unable to register.");
     }

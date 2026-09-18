@@ -2,24 +2,30 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
+const normalizeRole = (role?: string) => (role || "").toUpperCase();
+
+const roleHome = (role?: string) => {
+  switch (normalizeRole(role)) {
+    case "ADMIN":
+      return "/training/admin";
+    case "TRAINER":
+      return "/training/trainer-dashboard";
+    case "TRAINEE":
+    case "STUDENT":
+    default:
+      return "/training/trainee-dashboard";
+  }
+};
+
+export const getHomePathForRole = roleHome;
+
 const DashboardRouter = () => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuth() as { user: { role?: string } | null; loading: boolean };
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && user) {
-      switch (user.role) {
-        case "ADMIN":
-          navigate("/training/admin", { replace: true });
-          break;
-        case "TRAINER":
-          navigate("/training/trainer-dashboard", { replace: true });
-          break;
-        case "STUDENT":
-        default:
-          navigate("/training/dashboard", { replace: true });
-          break;
-      }
+      navigate(roleHome(user.role), { replace: true });
     }
   }, [user, loading, navigate]);
 

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { getHomePathForRole } from "./DashboardRouter";
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -8,8 +9,20 @@ type ProtectedRouteProps = {
   allowedRoles?: string[];
 };
 
+const normalizeRole = (role?: string) => (role || "").toUpperCase();
+
+const roleMatches = (userRole: string | undefined, allowed: string[]) => {
+  const normalizedUser = normalizeRole(userRole);
+  const normalizedAllowed = allowed.map(normalizeRole);
+  // TRAINEE and STUDENT are the same learner role (legacy DB rows use STUDENT)
+  if (normalizedUser === "TRAINEE" || normalizedUser === "STUDENT") {
+    return normalizedAllowed.includes("TRAINEE") || normalizedAllowed.includes("STUDENT");
+  }
+  return normalizedAllowed.includes(normalizedUser);
+};
+
 const ProtectedRoute = ({ children, redirectTo = "/auth/login", allowedRoles }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuth() as { user: { role?: string } | null; loading: boolean };
   const location = useLocation();
 
   if (loading) {
@@ -24,8 +37,8 @@ const ProtectedRoute = ({ children, redirectTo = "/auth/login", allowedRoles }: 
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/training" replace />;
+  if (allowedRoles && !roleMatches(user.role, allowedRoles)) {
+    return <Navigate to={getHomePathForRole(user.role)} replace />;
   }
 
   return <>{children}</>;

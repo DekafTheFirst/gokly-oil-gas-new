@@ -35,13 +35,13 @@ const AuthLogin = () => {
     try {
       const payload = await login(values);
       // Role-based redirect
-      const userRole = payload.user.role;
+      const userRole = (payload.user.role || "").toUpperCase();
       if (userRole === "ADMIN") {
         navigate("/training/admin");
       } else if (userRole === "TRAINER") {
         navigate("/training/trainer-dashboard");
       } else {
-        navigate("/training/dashboard");
+        navigate("/training/trainee-dashboard");
       }
     } catch (error) {
       toast.error("Unable to log in", {

@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { Flame, Clock, BadgeCheck, Trophy, Download, MoreVertical } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
+import { useAuth } from "@/context/AuthContext";
 import rigImg from "@/assets/course-rig.jpg";
 import subseaImg from "@/assets/course-subsea.jpg";
 import hazmatImg from "@/assets/course-hazmat.jpg";
+import { AdminPageShell } from "@/components/educert/AdminPageShell";
 
 const stats = [
   { label: "Training Streak", value: "14 Days", icon: Flame, sub: "Top 5% of Terminal 4 staff", tone: "text-energy-foreground" },
@@ -12,14 +14,25 @@ const stats = [
   { label: "Global Rank", value: "#242", icon: Trophy, sub: "Across all offshore facilities", tone: "text-primary-deep" },
 ];
 
+function displayName(user: { first_name?: string; last_name?: string; name?: string; email?: string } | null | undefined) {
+  if (!user) return "Trainee";
+  const full = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  if (full) return full;
+  if (user.name) return user.name;
+  if (user.email) return user.email.split("@")[0];
+  return "Trainee";
+}
+
 export default function Dashboard() {
+  const { user } = useAuth() as { user: { first_name?: string; last_name?: string; name?: string; email?: string } | null };
+  const name = displayName(user);
   return (
-    <PageShell withSidebar searchPlaceholder="Search safety procedures...">
+    <AdminPageShell withSidebar searchPlaceholder="Search safety procedures...">
       {/* Welcome banner */}
       <section className="relative overflow-hidden rounded-2xl bg-primary-deep p-10 text-primary-foreground shadow-[var(--shadow-card)]">
         <img src={subseaImg} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15" loading="lazy" />
         <div className="relative max-w-2xl">
-          <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">Welcome back, Chief Inspector Marshall.</h1>
+          <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">Welcome back, {name}.</h1>
           <p className="mt-4 text-primary-foreground/85">
             Your HSE certification expires in 12 days. Complete the offshore safety refresher to maintain site compliance.
           </p>
@@ -109,7 +122,7 @@ export default function Dashboard() {
           </div>
         </aside>
       </section>
-    </PageShell>
+    </AdminPageShell>
   );
 }
 

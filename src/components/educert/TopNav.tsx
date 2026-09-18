@@ -1,12 +1,16 @@
 import { NavLink } from "react-router-dom";
 import { Bell, HelpCircle, Search } from "lucide-react";
 import { Logo } from "./Logo";
+import { useAuth } from "@/context/AuthContext";
 
 const links = [
-  { to: "/training/dashboard" as const, label: "Dashboard" },
+  { to: "/training/trainee-dashboard" as const, label: "Dashboard" },
+  { to: "/training/courses" as const, label: "Courses" },
   { to: "/training/verify" as const, label: "Certifications" },];
 
 export function TopNav({ searchPlaceholder = "Search certificates..." }: { searchPlaceholder?: string }) {
+  const { user } = useAuth() as { user: { first_name?: string; name?: string } | null };
+  const initials = (user?.first_name?.[0] || user?.name?.[0] || "T").toUpperCase();
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6 px-6">
@@ -43,7 +47,7 @@ export function TopNav({ searchPlaceholder = "Search certificates..." }: { searc
             <HelpCircle className="h-5 w-5" />
           </button>
           <div className="grid h-10 w-10 place-items-center rounded-full bg-primary-deep font-display text-sm font-bold text-primary-foreground">
-            RM
+            {initials}
           </div>
         </div>
       </div>

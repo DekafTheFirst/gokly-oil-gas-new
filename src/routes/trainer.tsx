@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { Users, BookOpen, CheckCircle2, AlertCircle, Plus, ChevronDown } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { useAuth } from "@/context/AuthContext";
+import { getAuthToken } from "@/lib/auth";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,8 +67,8 @@ export default function Trainer() {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
-        const response = await fetch("/api/courses/trainer/my-courses", {
+        const token = getAuthToken();
+        const response = await fetch(`${API_BASE_URL}/courses/trainer/my-courses`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) throw new Error("Failed to fetch courses");
@@ -85,8 +88,8 @@ export default function Trainer() {
   // Fetch course details with modules
   const fetchCourseDetails = async (courseId: number) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/courses/${courseId}`, {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch course details");
@@ -109,8 +112,8 @@ export default function Trainer() {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/modules", {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/modules`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -139,8 +142,8 @@ export default function Trainer() {
   // Generate QR attendance token
   const handleGenerateQrToken = async (moduleId: number) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/modules/${moduleId}/qr-token`, {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/modules/${moduleId}/qr-token`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

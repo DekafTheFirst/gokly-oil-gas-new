@@ -3,6 +3,10 @@ import { Link } from "react-router-dom";
 import { Star, Plus, BarChart3, ArrowRight, BadgeCheck, AlertCircle } from "lucide-react";
 import { PageShell } from "@/components/educert/PageShell";
 import { useAuth } from "@/context/AuthContext";
+import { getAuthToken } from "@/lib/auth";
+import { AdminPageShell } from "@/components/educert/AdminPageShell";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 
 interface Course {
   id: number;
@@ -19,7 +23,9 @@ const categories = ["All Modules", "HSE & Safety", "Offshore Ops", "Technical To
 const tiers = ["Basic (T3)", "Advanced (T2)", "Expert (T1)"];
 
 export default function Courses() {
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: { role?: string } | null };
+  const role = (user?.role || "").toUpperCase();
+  const dashboardLink = role === "ADMIN" ? "/training/admin" : role === "TRAINER" ? "/training/trainer-dashboard" : "/training/trainee-dashboard";
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,8 +36,8 @@ export default function Courses() {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
-        const response = await fetch("/api/courses", {
+        const token = getAuthToken();
+        const response = await fetch(`${API_BASE_URL}/courses`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!response.ok) throw new Error("Failed to fetch courses");
@@ -50,8 +56,8 @@ export default function Courses() {
   const handleEnroll = async (courseId: number) => {
     try {
       setEnrollingCourseId(courseId);
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/courses/${courseId}/enroll`, {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/courses/${courseId}/enroll`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -70,7 +76,7 @@ export default function Courses() {
   };
 
   return (
-    <PageShell searchPlaceholder="Search courses...">
+    <AdminPageShell withSidebar searchPlaceholder="Search courses...">
       <div className="mx-auto max-w-[1280px] px-6 py-10">
         {/* Featured + quick access */}
         <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
@@ -98,7 +104,7 @@ export default function Courses() {
             <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
               <h3 className="font-bold">Your Dashboard</h3>
               <p className="mt-1 text-sm text-muted-foreground">Track your enrolled courses and progress.</p>
-              <Link to="/training/dashboard" className="mt-4 flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm font-semibold text-primary-deep hover:bg-muted">
+              <Link to={dashboardLink} className="mt-4 flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm font-semibold text-primary-deep hover:bg-muted">
                 Go to Dashboard <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -204,6 +210,6 @@ export default function Courses() {
           </div>
         </div>
       </div>
-    </PageShell>
+    </AdminPageShell>
   );
 }

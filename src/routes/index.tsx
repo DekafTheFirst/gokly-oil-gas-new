@@ -69,7 +69,7 @@ export default function HomePage() {
                   </label>
                   <a href="#" className="font-semibold text-primary">Forgot password?</a>
                 </div>
-                <Link to="/training/dashboard" className="block w-full rounded-md bg-primary py-3 text-center text-sm font-semibold text-primary-foreground transition hover:bg-primary-deep">
+                <Link to="/training/home" className="block w-full rounded-md bg-primary py-3 text-center text-sm font-semibold text-primary-foreground transition hover:bg-primary-deep">
                   Access Portal
                 </Link>
                 <p className="text-center text-xs text-muted-foreground">

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { Lock, Mail, ArrowRight, Sparkles, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email."),
@@ -18,7 +19,6 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const AuthLogin = () => {
-  const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -44,7 +44,9 @@ const AuthLogin = () => {
         navigate("/training/dashboard");
       }
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "Unable to log in.");
+      toast.error("Unable to log in", {
+        description: error instanceof Error ? error.message : "Invalid credentials"
+      });
     }
   };
 
@@ -67,12 +69,6 @@ const AuthLogin = () => {
             <CardDescription>Enter your credentials to access your account</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {serverError && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-                {serverError}
-              </div>
-            )}
-            
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">Email</Label>

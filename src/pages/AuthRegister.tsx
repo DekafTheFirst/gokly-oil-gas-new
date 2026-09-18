@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { User, Mail, Lock, ArrowRight, Sparkles, Check, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 const registerSchema = z.object({
   first_name: z.string().min(2, "First name must be at least 2 characters."),

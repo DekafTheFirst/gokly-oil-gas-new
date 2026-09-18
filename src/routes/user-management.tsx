@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle, PlusCircle, Edit3, Trash2, Search, Users, Power, PowerOff, User, Mail, Lock, Phone, MapPin, Building, Globe, Eye, EyeOff, Sparkles, MoreVertical } from "lucide-react";
+import { toast } from "sonner";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,8 +61,6 @@ export default function UserManagement() {
   const [pagination, setPagination] = useState<UserPagination | null>(null);
   const [counts, setCounts] = useState<UserRoleCounts>(EMPTY_COUNTS);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -104,8 +103,9 @@ export default function UserManagement() {
       setCounts(response.counts ?? EMPTY_COUNTS);
       setCurrentPage(page);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users");
-      setTimeout(() => setError(""), 4000);
+      toast.error("Failed to load users", {
+        description: err instanceof Error ? err.message : "Unable to fetch users"
+      });
     } finally {
       setLoading(false);
     }
@@ -187,7 +187,7 @@ export default function UserManagement() {
           payload.country = country;
         }
         await updateUser(editingUser.id, payload);
-        setSuccessMessage("User updated successfully.");
+        toast.success("User updated successfully");
       } else {
         await createUser({ 
           first_name: firstName, 
@@ -201,14 +201,14 @@ export default function UserManagement() {
           city: city || undefined,
           country: country || undefined,
         });
-        setSuccessMessage("User created successfully.");
+        toast.success("User created successfully");
       }
       closeModal();
-      setTimeout(() => setSuccessMessage(""), 4000);
       fetchUsers(currentPage, searchTerm, roleFilter, pageSize);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to save user.");
-      setTimeout(() => setError(""), 4000);
+      toast.error("Unable to save user", {
+        description: err instanceof Error ? err.message : "Failed to save user"
+      });
     } finally {
       setActionLoading(false);
     }
@@ -218,12 +218,12 @@ export default function UserManagement() {
     try {
       setActionLoading(true);
       await deleteUser(userId);
-      setSuccessMessage("User deleted successfully.");
-      setTimeout(() => setSuccessMessage(""), 4000);
+      toast.success("User deleted successfully");
       fetchUsers(currentPage, searchTerm, roleFilter, pageSize);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete user.");
-      setTimeout(() => setError(""), 4000);
+      toast.error("Unable to delete user", {
+        description: err instanceof Error ? err.message : "Failed to delete user"
+      });
     } finally {
       setActionLoading(false);
     }
@@ -233,12 +233,12 @@ export default function UserManagement() {
     try {
       setActionLoading(true);
       await toggleUserActivation(user.id, !user.is_active);
-      setSuccessMessage(`User ${!user.is_active ? "activated" : "deactivated"} successfully.`);
-      setTimeout(() => setSuccessMessage(""), 4000);
+      toast.success(`User ${!user.is_active ? "activated" : "deactivated"} successfully`);
       fetchUsers(currentPage, searchTerm, roleFilter, pageSize);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to change user status.");
-      setTimeout(() => setError(""), 4000);
+      toast.error("Unable to change user status", {
+        description: err instanceof Error ? err.message : "Failed to change user status"
+      });
     } finally {
       setActionLoading(false);
     }
@@ -255,20 +255,6 @@ export default function UserManagement() {
           <PlusCircle className="h-4 w-4" /> Create New User
         </Button>
       </div>
-
-      {error && (
-        <div className="mt-6 flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="mt-6 flex items-start gap-3 rounded-xl border border-success/20 bg-success/5 p-4 text-sm text-success">
-          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{successMessage}</span>
-        </div>
-      )}
 
       <div className="admin-toolbar mt-6 justify-between">
         <div className="admin-segmented">

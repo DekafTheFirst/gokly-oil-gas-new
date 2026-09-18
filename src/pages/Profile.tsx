@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 const profileSchema = z.object({
   first_name: z.string().min(2, "First name must be at least 2 characters."),
@@ -36,8 +37,6 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 const Profile = () => {
   const { user, loading, logout, updateProfile, changePassword } = useAuth();
   const navigate = useNavigate();
-  const [profileMessage, setProfileMessage] = useState("");
-  const [passwordMessage, setPasswordMessage] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -96,10 +95,11 @@ const Profile = () => {
   const onProfileSubmit = async (values: ProfileFormValues) => {
     try {
       await updateProfile(values);
-      setProfileMessage("Profile updated successfully!");
-      setTimeout(() => setProfileMessage(""), 3000);
+      toast.success("Profile updated successfully");
     } catch (error) {
-      setProfileMessage(error instanceof Error ? error.message : "Failed to update profile.");
+      toast.error("Failed to update profile", {
+        description: error instanceof Error ? error.message : "Unable to update profile"
+      });
     }
   };
 
@@ -109,11 +109,12 @@ const Profile = () => {
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
       });
-      setPasswordMessage("Password changed successfully!");
+      toast.success("Password changed successfully");
       resetPassword();
-      setTimeout(() => setPasswordMessage(""), 3000);
     } catch (error) {
-      setPasswordMessage(error instanceof Error ? error.message : "Failed to change password.");
+      toast.error("Failed to change password", {
+        description: error instanceof Error ? error.message : "Unable to change password"
+      });
     }
   };
 
@@ -133,12 +134,6 @@ const Profile = () => {
               </TabsList>
               
               <TabsContent value="profile" className="space-y-4 mt-6">
-                {profileMessage && (
-                  <div className={`p-3 rounded-md text-sm ${profileMessage.includes("success") ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
-                    {profileMessage}
-                  </div>
-                )}
-                
                 <form onSubmit={handleSubmitProfile(onProfileSubmit)} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="grid gap-2">
@@ -202,12 +197,6 @@ const Profile = () => {
               </TabsContent>
 
               <TabsContent value="security" className="space-y-4 mt-6">
-                {passwordMessage && (
-                  <div className={`p-3 rounded-md text-sm ${passwordMessage.includes("success") ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
-                    {passwordMessage}
-                  </div>
-                )}
-                
                 <form onSubmit={handleSubmitPassword(onPasswordSubmit)} className="space-y-4">
                   <div className="grid gap-2">
                     <Label htmlFor="currentPassword">Current Password</Label>

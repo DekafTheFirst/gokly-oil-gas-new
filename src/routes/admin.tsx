@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Users, GraduationCap, BadgeCheck, ShieldCheck, Calendar, Download, MoreVertical, Cloud } from "lucide-react";
-import { PageShell } from "@/components/educert/PageShell";
 import { ACTIVITY, TRAINEES, TRENDS } from "@/lib/mock-data";
 import { createCourse } from "@/lib/courses";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";

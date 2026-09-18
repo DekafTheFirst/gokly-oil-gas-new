@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Flame, Clock, BadgeCheck, Trophy, Download, MoreVertical } from "lucide-react";
-import { PageShell } from "@/components/educert/PageShell";
 import { useAuth } from "@/context/AuthContext";
 import rigImg from "@/assets/course-rig.jpg";
 import subseaImg from "@/assets/course-subsea.jpg";

@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Bell, HelpCircle, Search } from "lucide-react";
+import { Bell, HelpCircle, Menu } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "@/context/AuthContext";
 
@@ -16,15 +16,37 @@ const TRAINER_LINKS = [
   { to: "/training/verify" as const, label: "Certifications" },
 ];
 
-export function AdminTopNav({ searchPlaceholder = "Search certificates..." }: { searchPlaceholder?: string }) {
+const TRAINEE_LINKS = [
+  { to: "/training/trainee-dashboard" as const, label: "Dashboard" },
+  { to: "/training/courses" as const, label: "My Courses" },
+  { to: "/training/verify" as const, label: "Certifications" },
+];
+
+export function AdminTopNav({
+  searchPlaceholder = "Search certificates...",
+  onMenuClick,
+}: {
+  searchPlaceholder?: string;
+  onMenuClick?: () => void;
+}) {
   const { user } = useAuth() as { user: { role?: string; first_name?: string; name?: string } | null };
   const role = (user?.role || "").toUpperCase();
-  const links = role === "ADMIN" ? ADMIN_LINKS : TRAINER_LINKS;
+  const links = role === "ADMIN" ? ADMIN_LINKS : role === "TRAINER" ? TRAINER_LINKS : TRAINEE_LINKS;
   const initials = (user?.first_name?.[0] || user?.name?.[0] || "U").toUpperCase();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-16  items-center gap-6 px-6">
+      <div className="mx-auto flex h-16 items-center gap-2 px-4 sm:gap-4 sm:px-6">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label="Open navigation menu"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-md text-foreground/70 transition hover:bg-muted hover:text-foreground lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
         <Logo />
         <nav className="hidden items-center gap-6 md:flex">
           {links.map((l) => (
@@ -42,7 +64,7 @@ export function AdminTopNav({ searchPlaceholder = "Search certificates..." }: { 
           ))}
         </nav>
       
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-1 sm:gap-3">
           {/* <div className="relative hidden lg:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -55,7 +77,7 @@ export function AdminTopNav({ searchPlaceholder = "Search certificates..." }: { 
             <Bell className="h-5 w-5" />
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-energy" />
           </button>
-          <button className="grid h-10 w-10 place-items-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Help">
+          <button className="hidden grid h-10 w-10 place-items-center rounded-full text-muted-foreground hover:bg-muted sm:grid" aria-label="Help">
             <HelpCircle className="h-5 w-5" />
           </button>
           <div className="grid h-10 w-10 place-items-center rounded-full bg-primary-deep font-display text-sm font-bold text-primary-foreground">

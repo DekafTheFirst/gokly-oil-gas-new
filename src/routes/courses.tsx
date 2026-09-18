@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Star, Plus, BarChart3, ArrowRight, BadgeCheck, AlertCircle } from "lucide-react";
-import { PageShell } from "@/components/educert/PageShell";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthToken } from "@/lib/auth";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";

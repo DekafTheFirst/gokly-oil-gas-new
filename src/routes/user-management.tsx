@@ -246,7 +246,8 @@ export default function UserManagement() {
 
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search users...">
-      <div className="admin-page-header">
+     <div className="page-padding">
+       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-title">User Management</h1>
           <p className="admin-page-subtitle">Manage admins, trainers and trainees from a single admin panel.</p>
@@ -657,6 +658,7 @@ export default function UserManagement() {
           </form>
         </DialogContent>
       </Dialog>
+     </div>
     </AdminPageShell>
   );
 }

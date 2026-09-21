@@ -269,7 +269,8 @@ export default function CertificateManagement() {
 
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search certificates...">
-      <div className="admin-page-header">
+      <div className="page-padding">
+        <div className="admin-page-header">
         <div>
           <h1 className="admin-page-title">Certificate Management</h1>
           <p className="admin-page-subtitle">Manage certificates, bulk issuance, and revocation tracking.</p>
@@ -669,6 +670,7 @@ export default function CertificateManagement() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </AdminPageShell>
   );

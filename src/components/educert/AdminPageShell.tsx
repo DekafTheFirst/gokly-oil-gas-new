@@ -38,7 +38,7 @@ export function AdminPageShell({ children, withSidebar = false, searchPlaceholde
       />
       <div className="mx-auto flex w-full min-h-0 flex-1">
         {withSidebar && <Sidebar />}
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10" style={{ height: "calc(100vh - 64px)", overflow: "auto" }}>
+        <main className="min-w-0 flex-1" style={{ height: "calc(100vh - 64px)", overflow: "auto" }}>
           {children}
         </main>
       </div>

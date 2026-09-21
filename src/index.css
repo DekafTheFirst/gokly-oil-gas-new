@@ -226,6 +226,10 @@
     box-shadow: var(--shadow-elevated);
   }
 
+  .page-padding {
+    @apply px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10;
+  }
+
   .nav-glass {
     @apply backdrop-blur-xl;
     background: hsl(0 0% 100% / 0.92);

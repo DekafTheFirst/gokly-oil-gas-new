@@ -4,12 +4,33 @@ import { getAuthToken } from "./auth";
 export interface CourseRecord {
   id: number;
   title: string;
+  code?: string;
   category: string;
   description: string;
-  tier: string;
-  hours: string;
+  short_description?: string;
+  tier?: string;
+  hours?: string;
+  duration_value?: number;
+  duration_unit?: string;
+  delivery_mode?: string;
+  status?: string;
+  individual_enrollment_enabled?: boolean;
+  certificate_enabled?: boolean;
+  thumbnail_url?: string | null;
   image?: string | null;
+  min_class_size?: number;
+  max_class_size?: number;
+  prerequisite_required?: boolean;
+  prerequisite_description?: string;
   created_at: string;
+}
+
+export interface CourseModule {
+  name: string;
+  description?: string;
+  scheduled_date?: string;
+  has_assessment?: boolean;
+  sort_order?: number;
 }
 
 export interface CoursePagination {

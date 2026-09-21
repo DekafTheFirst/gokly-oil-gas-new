@@ -36,9 +36,9 @@ export function AdminPageShell({ children, withSidebar = false, searchPlaceholde
         searchPlaceholder={searchPlaceholder}
         onMenuClick={withSidebar ? () => setMobileNavOpen(true) : undefined}
       />
-      <div className="mx-auto flex w-full min-h-0 flex-1">
+      <div className="mx-auto flex w-full flex-1">
         {withSidebar && <Sidebar />}
-        <main className="min-w-0 flex-1" style={{ height: "calc(100vh - 64px)", overflow: "auto" }}>
+        <main className="min-w-0 flex-1">
           {children}
         </main>
       </div>

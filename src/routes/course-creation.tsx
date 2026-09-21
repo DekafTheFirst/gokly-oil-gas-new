@@ -1088,7 +1088,7 @@ export default function CourseCreation() {
 
   return (
     <AdminPageShell withSidebar>
-      <div className="  bg-slate-50/80 ">
+      <div className="flex min-h-screen flex-col bg-slate-50/80 pb-[100px]">
         {/* Step rail */}
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur py-3">
           <div className="flex items-center gap-2 overflow-x-auto sm:px-6">
@@ -1128,7 +1128,7 @@ export default function CourseCreation() {
           </div>
         </div>
 
-        <div className="px-4 pb-28 pt-6 sm:px-6">
+        <div className="flex-1 px-4 pt-6 sm:px-6">
           {/* Page heading */}
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">

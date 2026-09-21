@@ -1175,7 +1175,7 @@ export default function CourseCreation() {
             <div className="min-w-0">{renderStep()}</div>
 
             {/* Right rail */}
-            <aside className="hidden space-y-4 xl:block">
+            <aside className="hidden space-y-4 xl:block sticky top-24 self-start">
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
                   <span className="inline-flex items-center gap-2 text-[11px] font-medium tracking-wide text-slate-600">

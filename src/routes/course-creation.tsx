@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card } from "@/components/ui/card";
 import {
   ArrowLeft,
   ArrowRight,
@@ -46,6 +47,8 @@ import {
   Trash,
   Save,
   Layers,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { createCourse } from "@/lib/courses";
 import type { CourseModule } from "@/lib/courses";
@@ -85,10 +88,9 @@ const DELIVERY_MODES = [
 
 const STEPS = [
   { id: 1, label: "Basic Info" },
-  { id: 2, label: "Description" },
+  { id: 2, label: "Modules" },
   { id: 3, label: "Configuration" },
-  { id: 4, label: "Modules" },
-  { id: 5, label: "Review" },
+  { id: 4, label: "Review" },
 ];
 
 type FormData = {
@@ -101,14 +103,15 @@ type FormData = {
   duration_value: number;
   duration_unit: string;
   delivery_mode: string;
+  status: string;
   min_class_size: number;
   max_class_size: number;
   prerequisite_required: boolean;
   prerequisite_description: string;
   individual_enrollment_enabled: boolean;
   certificate_enabled: boolean;
-  status: string;
   modules: CourseModule[];
+  expandedModules: number[];
 };
 
 /* ---------------------------------- bits ---------------------------------- */
@@ -233,6 +236,7 @@ export default function CourseCreation() {
     certificate_enabled: true,
     status: "DRAFT",
     modules: [],
+    expandedModules: [],
   });
 
   const updateFormData = (field: keyof FormData, value: any) => {
@@ -250,8 +254,10 @@ export default function CourseCreation() {
           scheduled_date: "",
           has_assessment: false,
           sort_order: prev.modules.length,
+          materials: [],
         },
       ],
+      expandedModules: [...prev.expandedModules, prev.modules.length],
     }));
   };
 
@@ -266,6 +272,16 @@ export default function CourseCreation() {
     setFormData((prev) => ({
       ...prev,
       modules: prev.modules.filter((_, i) => i !== index),
+      expandedModules: prev.expandedModules.filter(i => i !== index),
+    }));
+  };
+
+  const toggleModuleExpand = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      expandedModules: prev.expandedModules.includes(index)
+        ? prev.expandedModules.filter(i => i !== index)
+        : [...prev.expandedModules, index],
     }));
   };
 
@@ -306,19 +322,11 @@ export default function CourseCreation() {
           formData.short_description.trim().length > 5
         );
       case 2:
-        return formData.description.trim().length > 10;
+        return formData.modules.length > 0 && formData.modules.every(m => m.name.trim().length > 0);
       case 3:
-        return (
-          formData.duration_value > 0 &&
-          formData.min_class_size > 0 &&
-          formData.max_class_size >= formData.min_class_size &&
-          (!formData.prerequisite_required ||
-            formData.prerequisite_description.trim().length > 5)
-        );
+        return formData.tier && formData.status && formData.delivery_mode && formData.duration_value > 0;
       case 4:
-        return (
-          formData.modules.length > 0 && formData.modules.every((m) => m.name.trim().length > 0)
-        );
+        return true;
       default:
         return true;
     }
@@ -326,7 +334,7 @@ export default function CourseCreation() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, 5));
+      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
     } else {
       setError("Some required fields are still empty or invalid on this step.");
       setTimeout(() => setError(""), 3000);
@@ -376,16 +384,9 @@ export default function CourseCreation() {
   const checks = [
     { ok: /^[A-Z]{3,}-[A-Z0-9-]{3,}$/.test(formData.code), text: "Course code follows GOK standard taxonomy" },
     { ok: formData.short_description.trim().length > 5, text: "Executive summary ready for catalog listing" },
-    {
-      ok: formData.max_class_size >= formData.min_class_size && formData.min_class_size > 0,
-      text: `Class size within HSE facility capacity (${formData.min_class_size} – ${formData.max_class_size})`,
-    },
-    {
-      ok: formData.prerequisite_required
-        ? formData.prerequisite_description.trim().length > 5
-        : true,
-      text: formData.prerequisite_required ? "Prerequisite gating activated" : "No prerequisite gating required",
-    },
+    { ok: formData.modules.length > 0, text: "At least one module added" },
+    { ok: !!formData.tier, text: "Course tier set" },
+    { ok: !!formData.status, text: "Course status set" },
   ];
   const healthScore = Math.round((checks.filter((c) => c.ok).length / checks.length) * 100);
 
@@ -757,29 +758,297 @@ export default function CourseCreation() {
 
       case 2:
         return (
-          <SectionCard
-            icon={BookOpen}
-            title="Detailed Description"
-            subtitle="Expand the syllabus, learning objectives, target audience, and expected outcomes."
-          >
-            <div className="space-y-2">
-              <FieldLabel htmlFor="description_full" required>
-                Full Description
-              </FieldLabel>
-              <Textarea
-                id="description_full"
-                value={formData.description}
-                onChange={(e) => updateFormData("description", e.target.value)}
-                placeholder="Detailed description of the course content, learning objectives, target audience, and expected outcomes…"
-                rows={12}
-                className="resize-y border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white"
-                required
-              />
-              <p className="text-[11.5px] text-slate-400">
-                {formData.description.trim().length} characters written.
-              </p>
+          <div className="space-y-6">
+            {/* Quick Metrics & Action Strip */}
+            <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-6 divide-x divide-slate-200">
+                <div className="flex flex-col pr-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Modules</span>
+                  <span className="text-2xl font-bold text-slate-900">{formData.modules.length} Units</span>
+                </div>
+                <div className="flex flex-col pl-6 pr-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Duration</span>
+                  <span className="text-2xl font-bold text-slate-900">{formData.duration_value} {formData.duration_unit.toLowerCase()}</span>
+                </div>
+                <div className="flex flex-col pl-6">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Materials</span>
+                  <span className="text-2xl font-bold text-slate-900">
+                    {formData.modules.reduce((total, m) => total + (m.materials?.length || 0), 0)} Files
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1.5"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Import Template
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={addModule}
+                  className="flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add New Module
+                </Button>
+              </div>
             </div>
-          </SectionCard>
+
+            {/* Modules List */}
+            <div className="space-y-4">
+              {formData.modules.map((module, index) => {
+                const isExpanded = formData.expandedModules.includes(index);
+                return (
+                  <Card key={index} className="bg-white rounded-xl shadow-md overflow-hidden">
+                    {/* Module Header */}
+                    <div className="bg-slate-50 p-5 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center text-slate-400 hover:text-slate-600 cursor-grab p-1 rounded hover:bg-slate-100">
+                          <Layers className="h-5 w-5" />
+                        </div>
+                        <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-700 text-[12px] font-bold tracking-wide">
+                          MOD-{String(index + 1).padStart(3, '0')}
+                        </span>
+                        <div>
+                          <h2 className="text-lg font-bold text-slate-900">
+                            {module.name || `Module ${index + 1}`}
+                          </h2>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {module.has_assessment ? "With Assessment" : "No Assessment"}
+                        </span>
+                        <span className="px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1">
+                          <FileText className="h-3.5 w-3.5" />
+                          {module.materials?.length || 0} Files
+                        </span>
+                        <div className="h-5 w-px bg-slate-200 mx-1"></div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleModuleExpand(index)}
+                          className="text-slate-400 hover:text-slate-600 p-1.5"
+                        >
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeModule(index)}
+                          className="text-slate-400 hover:text-red-600 p-1.5"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Module Configuration */}
+                    {isExpanded && (
+                      <>
+                      <div className="p-6 flex flex-col gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                          {/* Module Title */}
+                          <div className="md:col-span-8 flex flex-col gap-1.5">
+                            <Label className="text-sm font-semibold text-slate-700">
+                              Module Title <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              value={module.name}
+                              onChange={(e) => updateModule(index, "name", e.target.value)}
+                              placeholder="Module title"
+                              className="h-10 text-sm"
+                              required
+                            />
+                          </div>
+
+                          {/* Module Code */}
+                          <div className="md:col-span-4 flex flex-col gap-1.5">
+                            <Label className="text-sm font-semibold text-slate-700">Module Code</Label>
+                            <Input
+                              value={`MOD-${String(index + 1).padStart(3, '0')}`}
+                              disabled
+                              className="h-10 text-sm font-mono"
+                            />
+                          </div>
+
+                          {/* Duration */}
+                          <div className="md:col-span-4 flex flex-col gap-1.5">
+                            <Label className="text-sm font-semibold text-slate-700">Duration (Hours)</Label>
+                            <Input
+                              type="number"
+                              value={module.scheduled_date ? 8 : ""}
+                              onChange={(e) => updateModule(index, "scheduled_date", e.target.value)}
+                              placeholder="Hours"
+                              className="h-10 text-sm"
+                            />
+                          </div>
+
+                          {/* Delivery Type */}
+                          <div className="md:col-span-5 flex flex-col gap-1.5">
+                            <Label className="text-sm font-semibold text-slate-700">Delivery Format</Label>
+                            <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-lg">
+                              <label className="flex items-center justify-center py-2 px-1 text-[12px] font-semibold rounded cursor-pointer text-slate-600 hover:text-slate-900">
+                                Theory
+                              </label>
+                              <label className="flex items-center justify-center py-2 px-1 text-[12px] font-semibold rounded cursor-pointer text-slate-600 hover:text-slate-900">
+                                Practical
+                              </label>
+                              <label className="flex items-center justify-center py-2 px-1 text-[12px] font-semibold rounded bg-emerald-600 text-white cursor-pointer">
+                                Both
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Required Toggle */}
+                          <div className="md:col-span-3 flex flex-col justify-end gap-1.5 pb-1">
+                            <span className="text-[12px] text-slate-500 font-semibold">Required</span>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id={`module-required-${index}`}
+                                checked={module.has_assessment}
+                                onCheckedChange={(checked) => updateModule(index, "has_assessment", checked)}
+                              />
+                              <Label htmlFor={`module-required-${index}`} className="cursor-pointer text-sm font-medium text-slate-700">
+                                Mandatory
+                              </Label>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div className="md:col-span-12 flex flex-col gap-1.5">
+                            <Label className="text-sm font-semibold text-slate-700">Module Description</Label>
+                            <Textarea
+                              value={module.description}
+                              onChange={(e) => updateModule(index, "description", e.target.value)}
+                              placeholder="Module syllabus and learning objectives..."
+                              rows={3}
+                              className="text-sm resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Training Materials Section */}
+                      <div className="bg-slate-50 rounded-xl p-5 flex flex-col gap-4 mt-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <FileText className="text-emerald-600 text-[20px]" />
+                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                              Training Materials ({module.materials?.length || 0} Attached)
+                            </h3>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 bg-white"
+                            onClick={() => document.getElementById(`file-upload-${index}`)?.click()}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Upload Material
+                          </Button>
+                          <input
+                            id={`file-upload-${index}`}
+                            type="file"
+                            multiple
+                            accept=".pdf,.pptx,.xlsx,.mp4"
+                            className="hidden"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (files.length > 0) {
+                                updateModule(index, "materials", [
+                                  ...(module.materials || []),
+                                  ...files.map(file => ({
+                                    name: file.name,
+                                    size: file.size,
+                                    type: file.type,
+                                  }))
+                                ]);
+                              }
+                              // reset so selecting the same file again still fires onChange
+                              e.target.value = "";
+                            }}
+                          />
+                        </div>
+
+                        {/* Uploaded Files List */}
+                        {module.materials && module.materials.length > 0 && (
+                          <div className="flex flex-col gap-2.5">
+                            {module.materials.map((file, fileIndex) => (
+                              <div key={fileIndex} className="bg-white p-3.5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                    <FileText className="h-5 w-5" />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-slate-900">{file.name}</span>
+                                    <div className="flex items-center gap-3 text-[12px] text-slate-500">
+                                      <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                                      <span>•</span>
+                                      <span className="text-emerald-600 font-medium">Trainee Visible</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 text-slate-400">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const newMaterials = module.materials?.filter((_, i) => i !== fileIndex) || [];
+                                      updateModule(index, "materials", newMaterials);
+                                    }}
+                                    className="p-1 hover:text-red-600"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Dropzone */}
+                        <div className="bg-white/60 rounded-lg p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white transition-colors text-center border-2 border-dashed border-slate-200">
+                          <RefreshCw className="text-emerald-600 text-[28px]" />
+                          <span className="text-sm font-semibold text-slate-900">
+                            Drop PDF, PPTX, XLSX or MP4 files to attach to this module
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            Max single file payload 250MB • Trainee or Instructor visibility can be adjusted anytime
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Done Button */}
+                      <div className="flex justify-end pt-4 border-t border-slate-200">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleModuleExpand(index)}
+                          className="flex items-center gap-1.5"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Done
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         );
 
       case 3:
@@ -807,12 +1076,23 @@ export default function CourseCreation() {
               </div>
 
               <div className="space-y-2">
-                <FieldLabel>Delivery Mode</FieldLabel>
-                <Select
-                  value={formData.delivery_mode}
-                  onValueChange={(value) => updateFormData("delivery_mode", value)}
-                >
-                  <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                <FieldLabel htmlFor="status">Course Status</FieldLabel>
+                <Select value={formData.status} onValueChange={(value) => updateFormData("status", value)}>
+                  <SelectTrigger id="status" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Draft</SelectItem>
+                    <SelectItem value="PUBLISHED">Published</SelectItem>
+                    <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <FieldLabel htmlFor="delivery_mode">Delivery Mode</FieldLabel>
+                <Select value={formData.delivery_mode} onValueChange={(value) => updateFormData("delivery_mode", value)}>
+                  <SelectTrigger id="delivery_mode" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -824,257 +1104,92 @@ export default function CourseCreation() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <FieldLabel htmlFor="duration_value_3" required>
-                  Duration
-                </FieldLabel>
-                <Input
-                  id="duration_value_3"
-                  type="number"
-                  min="1"
-                  value={formData.duration_value}
-                  onChange={(e) => updateFormData("duration_value", parseInt(e.target.value) || 0)}
-                  className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <FieldLabel htmlFor="min_class_size_3" required>
-                  Minimum Class Size
-                </FieldLabel>
-                <Input
-                  id="min_class_size_3"
-                  type="number"
-                  min="1"
-                  value={formData.min_class_size}
-                  onChange={(e) => updateFormData("min_class_size", parseInt(e.target.value) || 0)}
-                  className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <FieldLabel htmlFor="max_class_size_3" required>
-                  Maximum Class Size
-                </FieldLabel>
-                <Input
-                  id="max_class_size_3"
-                  type="number"
-                  min="1"
-                  value={formData.max_class_size}
-                  onChange={(e) => updateFormData("max_class_size", parseInt(e.target.value) || 0)}
-                  className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
-                  required
-                />
+                <FieldLabel htmlFor="duration_value">Duration</FieldLabel>
+                <div className="flex gap-2">
+                  <Input
+                    id="duration_value"
+                    type="number"
+                    value={formData.duration_value}
+                    onChange={(e) => updateFormData("duration_value", parseInt(e.target.value) || 0)}
+                    min="1"
+                    className="h-11 border-slate-200 bg-slate-50/70 text-sm"
+                  />
+                  <Select value={formData.duration_unit} onValueChange={(value) => updateFormData("duration_unit", value)}>
+                    <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DURATION_UNITS.map((unit) => (
+                        <SelectItem key={unit} value={unit}>
+                          {unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-
-            <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <div>
-                <p className="text-[13px] font-medium text-slate-800">Prerequisite gating</p>
-                <p className="mt-0.5 text-[11.5px] text-slate-500">
-                  Require prior completion of another course or qualification.
-                </p>
-              </div>
-              <Toggle
-                checked={formData.prerequisite_required}
-                onChange={(v) => updateFormData("prerequisite_required", v)}
-                label="Prerequisite gating"
-              />
-            </div>
-
-            {formData.prerequisite_required && (
-              <div className="space-y-2">
-                <FieldLabel htmlFor="prerequisite_description_3" required>
-                  Prerequisite Description
-                </FieldLabel>
-                <Textarea
-                  id="prerequisite_description_3"
-                  value={formData.prerequisite_description}
-                  onChange={(e) => updateFormData("prerequisite_description", e.target.value)}
-                  placeholder="Must have completed Basic Safety Training"
-                  rows={3}
-                  className="resize-none border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
-                  required
-                />
-              </div>
-            )}
           </SectionCard>
         );
 
       case 4:
         return (
           <SectionCard
-            icon={BookOpen}
-            title="Course Modules"
-            subtitle="Break the programme into teaching modules. At least one module is required."
-            aside={
-              <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                {formData.modules.length} added
-              </span>
-            }
-          >
-            {formData.modules.length === 0 && (
-              <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-[12.5px] text-slate-500">
-                No modules yet. Add the first teaching block to start building the curriculum.
-              </p>
-            )}
-
-            {formData.modules.map((module, index) => (
-              <div key={index} className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-800">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 text-[11px] font-semibold text-white">
-                      {index + 1}
-                    </span>
-                    Module {index + 1}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeModule(index)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11.5px] font-medium text-rose-600 hover:border-rose-200 hover:bg-rose-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Remove
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <FieldLabel htmlFor={`module-name-${index}`} required>
-                      Module Name
-                    </FieldLabel>
-                    <Input
-                      id={`module-name-${index}`}
-                      value={module.name}
-                      onChange={(e) => updateModule(index, "name", e.target.value)}
-                      placeholder="Kick Detection & Well Shut-in Procedures"
-                      className="h-10 border-slate-200 bg-white text-sm"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <FieldLabel htmlFor={`module-desc-${index}`}>Description</FieldLabel>
-                    <Textarea
-                      id={`module-desc-${index}`}
-                      value={module.description}
-                      onChange={(e) => updateModule(index, "description", e.target.value)}
-                      placeholder="Brief description of this module's content"
-                      rows={2}
-                      className="resize-none border-slate-200 bg-white text-sm"
-                    />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <FieldLabel htmlFor={`module-date-${index}`}>Scheduled Date</FieldLabel>
-                      <Input
-                        id={`module-date-${index}`}
-                        type="date"
-                        value={module.scheduled_date}
-                        onChange={(e) => updateModule(index, "scheduled_date", e.target.value)}
-                        className="h-10 border-slate-200 bg-white text-sm"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 sm:pt-7">
-                      <Checkbox
-                        id={`module-assessment-${index}`}
-                        checked={module.has_assessment}
-                        onCheckedChange={(checked) => updateModule(index, "has_assessment", checked)}
-                      />
-                      <Label
-                        htmlFor={`module-assessment-${index}`}
-                        className="cursor-pointer text-[13px] font-medium text-slate-700"
-                      >
-                        Includes an assessment
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={addModule}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white py-3 text-[13px] font-medium text-slate-600 hover:border-emerald-400 hover:text-emerald-700"
-            >
-              <Plus className="h-4 w-4" />
-              Add module
-            </button>
-          </SectionCard>
-        );
-
-      case 5:
-        return (
-          <SectionCard
             icon={CheckCircle}
             title="Review & Create"
-            subtitle="Confirm every detail before the course enters the staging catalog."
+            subtitle="Review all course information before creating the course."
           >
-            <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-              {[
-                ["Course name", formData.title || "—"],
-                ["Course code", formData.code || "—"],
-                ["Discipline", formData.category || "—"],
-                ["Tier", formData.tier || "Not set"],
-                ["Duration", `${formData.duration_value} ${formData.duration_unit}`],
-                ["Delivery mode", formData.delivery_mode],
-                ["Cohort capacity", `${formData.min_class_size} – ${formData.max_class_size}`],
-                ["Status", formData.status],
-              ].map(([label, value]) => (
-                <div key={label as string}>
-                  <dt className="text-[11.5px] font-medium text-slate-500">{label}</dt>
-                  <dd className="mt-0.5 text-[13.5px] font-semibold text-slate-900">{value}</dd>
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900">Course Information</h3>
+                <div className="grid gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Title:</span>
+                    <span className="font-medium text-slate-900">{formData.title}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Code:</span>
+                    <span className="font-medium text-slate-900">{formData.code}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Category:</span>
+                    <span className="font-medium text-slate-900">{formData.category}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Tier:</span>
+                    <span className="font-medium text-slate-900">{formData.tier}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Duration:</span>
+                    <span className="font-medium text-slate-900">{formData.duration_value} {formData.duration_unit}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Delivery Mode:</span>
+                    <span className="font-medium text-slate-900">{formData.delivery_mode}</span>
+                  </div>
                 </div>
-              ))}
-            </dl>
-
-            <div className="space-y-3 border-t border-slate-100 pt-4">
-              <div>
-                <p className="text-[11.5px] font-medium text-slate-500">Executive summary</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-slate-700">
-                  {formData.short_description || "—"}
-                </p>
               </div>
-              <div>
-                <p className="text-[11.5px] font-medium text-slate-500">Detailed syllabus</p>
-                <p className="mt-1 whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-600">
-                  {formData.description || "—"}
-                </p>
-              </div>
-              {formData.prerequisite_required && (
-                <div>
-                  <p className="text-[11.5px] font-medium text-slate-500">Entry criteria</p>
-                  <p className="mt-1 text-[13px] leading-relaxed text-slate-700">
-                    {formData.prerequisite_description}
-                  </p>
-                </div>
-              )}
-            </div>
 
-            <div className="border-t border-slate-100 pt-4">
-              <p className="text-[11.5px] font-medium text-slate-500">
-                Modules ({formData.modules.length})
-              </p>
-              <ul className="mt-2 space-y-1.5">
-                {formData.modules.map((module, index) => (
-                  <li key={index} className="flex items-center gap-2 text-[12.5px] text-slate-700">
-                    <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="font-medium">
-                      {index + 1}. {module.name}
-                    </span>
-                    {module.has_assessment && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
-                        Assessment
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900">Modules ({formData.modules.length})</h3>
+                <ul className="space-y-2">
+                  {formData.modules.map((module, index) => (
+                    <li key={index} className="flex items-center gap-2 text-sm text-slate-700">
+                      <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="font-medium">
+                        {index + 1}. {module.name}
                       </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                      {module.has_assessment && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
+                          Assessment
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </SectionCard>
         );
@@ -1099,7 +1214,7 @@ export default function CourseCreation() {
                 <div key={step.id} className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => step.id < currentStep && setCurrentStep(step.id)}
+                    onClick={() => (true || step.id < currentStep) && setCurrentStep(step.id)}
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
                       state === "current"
                         ? "bg-emerald-700 text-white"
@@ -1134,7 +1249,7 @@ export default function CourseCreation() {
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-md bg-slate-200/70 px-2.5 py-1 text-[10.5px] font-semibold tracking-wide text-slate-600">
-                  STEP {currentStep} OF {STEPS.length} • FOUNDATIONAL COURSE METADATA
+                  STEP {currentStep} OF {STEPS.length} • {currentStep === 1 ? "BASIC INFO" : currentStep === 2 ? "MODULES & UNITS" : currentStep === 3 ? "CONFIGURATION" : "REVIEW"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[11.5px] text-slate-500">
                   <Clock className="h-3.5 w-3.5" />
@@ -1142,11 +1257,16 @@ export default function CourseCreation() {
                 </span>
               </div>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
-                Course Basic Information
+                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Course Structure & Training Modules" : currentStep === 3 ? "Course Configuration" : "Review & Create Course"}
               </h1>
               <p className="mt-2 text-[13.5px] leading-relaxed text-slate-500">
-                Define the fundamental parameters, operational codes, class sizes, and prerequisite
-                credentials for this course programme. New courses initialize as Draft.
+                {currentStep === 1
+                  ? "Define the fundamental parameters, operational codes, class sizes, and prerequisite credentials for this course programme. New courses initialize as Draft."
+                  : currentStep === 2
+                  ? "Structure learning units, reorder modules, define delivery types (Theory / Practical / Both), and attach training materials with granular visibility controls."
+                  : currentStep === 3
+                  ? "Set the difficulty tier and confirm the delivery parameters captured earlier."
+                  : "Review all course information before creating the course."}
               </p>
             </div>
 
@@ -1329,7 +1449,7 @@ export default function CourseCreation() {
                   </Button>
                 )}
 
-                {currentStep < 5 ? (
+                {currentStep < 4 ? (
                   <Button
                     type="button"
                     onClick={handleNext}

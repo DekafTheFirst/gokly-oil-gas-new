@@ -31,6 +31,8 @@ export interface CourseModule {
   scheduled_date?: string;
   has_assessment?: boolean;
   sort_order?: number;
+  is_required?: boolean;
+  materials?: any[];
 }
 
 export interface CoursePagination {

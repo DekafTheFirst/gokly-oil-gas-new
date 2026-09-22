@@ -49,6 +49,7 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  Upload,
 } from "lucide-react";
 import { createCourse } from "@/lib/courses";
 import type { CourseModule } from "@/lib/courses";
@@ -648,8 +649,13 @@ export default function CourseCreation() {
                         type="number"
                         min="1"
                         value={formData.duration_value}
+                        onKeyDown={(e) => {
+                          if (["-", "e", "E", "+"].includes(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
                         onChange={(e) =>
-                          updateFormData("duration_value", parseInt(e.target.value) || 0)
+                          updateFormData("duration_value", Math.max(1, parseInt(e.target.value) || 0))
                         }
                         className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
                         required
@@ -689,8 +695,13 @@ export default function CourseCreation() {
                           type="number"
                           min="1"
                           value={formData.min_class_size}
+                          onKeyDown={(e) => {
+                            if (["-", "e", "E", "+"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
                           onChange={(e) =>
-                            updateFormData("min_class_size", parseInt(e.target.value) || 0)
+                            updateFormData("min_class_size", Math.max(1, parseInt(e.target.value) || 0))
                           }
                           className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
                           required
@@ -708,8 +719,13 @@ export default function CourseCreation() {
                           type="number"
                           min="1"
                           value={formData.max_class_size}
+                          onKeyDown={(e) => {
+                            if (["-", "e", "E", "+"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
                           onChange={(e) =>
-                            updateFormData("max_class_size", parseInt(e.target.value) || 0)
+                            updateFormData("max_class_size", Math.max(1, parseInt(e.target.value) || 0))
                           }
                           className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
                           required
@@ -906,9 +922,18 @@ export default function CourseCreation() {
                             <Input
                               type="number"
                               min={0}
+                              max={10}
                               value={module.duration || ""}
-                              onChange={(e) => updateModule(index, "duration", e.target.value)}
-                              placeholder="Hours"
+                              onKeyDown={(e) => {
+                                if (["-", "e", "E", "+"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value === "" ? 0 : Math.min(10, Math.max(0, parseFloat(e.target.value) || 0));
+                                updateModule(index, "duration", val);
+                              }}
+                              placeholder="Hours (max 10)"
                               className="h-10 text-sm"
                             />
                           </div>
@@ -1049,21 +1074,23 @@ export default function CourseCreation() {
 
                         {/* Dropzone */}
                         <div 
-                          className="bg-white/60 rounded-lg p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white transition-colors text-center border-2 border-dashed border-slate-200"
+                          className="group bg-white rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all text-center"
                           onClick={() => document.getElementById(`file-upload-${index}`)?.click()}
                         >
-                          <RefreshCw className="text-emerald-600 text-[28px]" />
-                          <span className="text-sm font-semibold text-slate-900">
+                          <div className="h-10 w-10 rounded-full bg-slate-100 group-hover:bg-emerald-100 flex items-center justify-center text-slate-500 group-hover:text-emerald-600 transition-colors">
+                            <Upload className="h-5 w-5" />
+                          </div>
+                          <span className="text-sm font-semibold text-slate-800 group-hover:text-emerald-900 transition-colors">
                             Drop PDF, PPTX, XLSX, MP4 or DOCX files to attach to this module
                           </span>
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[11.5px] text-slate-500 group-hover:text-emerald-700/80 transition-colors">
                             Max single file payload 250MB • Trainee or Instructor visibility can be adjusted anytime
                           </span>
                         </div>
                       </div>
 
                       {/* Done Button */}
-                      <div className="flex justify-end pt-4 border-t border-slate-200">
+                      <div className="flex justify-end p-4 border-t border-slate-200">
                         <Button
                           type="button"
                           variant="outline"
@@ -1145,7 +1172,12 @@ export default function CourseCreation() {
                     id="duration_value"
                     type="number"
                     value={formData.duration_value}
-                    onChange={(e) => updateFormData("duration_value", parseInt(e.target.value) || 0)}
+                    onKeyDown={(e) => {
+                      if (["-", "e", "E", "+"].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => updateFormData("duration_value", Math.max(1, parseInt(e.target.value) || 0))}
                     min="1"
                     className="h-11 border-slate-200 bg-slate-50/70 text-sm"
                   />

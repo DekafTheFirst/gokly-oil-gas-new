@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { createCourse } from "@/lib/courses";
 import type { CourseModule } from "@/lib/courses";
+import { cn } from "@/lib/utils";
 
 const COURSE_CATEGORIES = [
   "HSF & Safety",
@@ -64,6 +65,12 @@ const COURSE_CATEGORIES = [
 
 const TIERS = ["FOUNDATION", "INTERMEDIATE", "ADVANCED"];
 const DURATION_UNITS = ["HOURS", "DAYS", "WEEKS"];
+
+const DELIVERY_TYPES = [
+  { value: "theory", label: "Theory" },
+  { value: "practical", label: "Practical" },
+  { value: "both", label: "Both" },
+] as const;
 
 const DELIVERY_MODES = [
   {
@@ -898,6 +905,7 @@ export default function CourseCreation() {
                             <Label className="text-sm font-semibold text-slate-700">Duration (Hours)</Label>
                             <Input
                               type="number"
+                              min={0}
                               value={module.duration || ""}
                               onChange={(e) => updateModule(index, "duration", e.target.value)}
                               placeholder="Hours"
@@ -908,40 +916,25 @@ export default function CourseCreation() {
                           {/* Delivery Type */}
                           <div className="md:col-span-5 flex flex-col gap-1.5">
                             <Label className="text-sm font-semibold text-slate-700">Delivery Format</Label>
-                            <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-lg h-10 items-center">
-                              <button
-                                type="button"
-                                className={`h-full w-full flex items-center justify-center px-1 text-[12px] font-semibold rounded select-none transition-colors ${
-                                  module.delivery_type === "theory" 
-                                    ? "bg-emerald-600 text-white shadow-sm" 
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
-                                }`}
-                                onClick={() => updateModule(index, "delivery_type", "theory")}
-                              >
-                                Theory
-                              </button>
-                              <button
-                                type="button"
-                                className={`h-full w-full flex items-center justify-center px-1 text-[12px] font-semibold rounded select-none transition-colors ${
-                                  module.delivery_type === "practical" 
-                                    ? "bg-emerald-600 text-white shadow-sm" 
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
-                                }`}
-                                onClick={() => updateModule(index, "delivery_type", "practical")}
-                              >
-                                Practical
-                              </button>
-                              <button
-                                type="button"
-                                className={`h-full w-full flex items-center justify-center px-1 text-[12px] font-semibold rounded select-none transition-colors ${
-                                  module.delivery_type === "both" 
-                                    ? "bg-emerald-600 text-white shadow-sm" 
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
-                                }`}
-                                onClick={() => updateModule(index, "delivery_type", "both")}
-                              >
-                                Both
-                              </button>
+                            <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg h-10 items-center">
+                              {DELIVERY_TYPES.map((type) => {
+                                const isSelected = module.delivery_type === type.value;
+                                return (
+                                  <button
+                                    key={type.value}
+                                    type="button"
+                                    onClick={() => updateModule(index, "delivery_type", type.value)}
+                                    className={cn(
+                                      "h-full w-full flex items-center justify-center rounded px-1.5 text-[12px] font-semibold select-none",
+                                      isSelected
+                                        ? "bg-emerald-600 text-white shadow-sm cursor-default"
+                                        : "bg-transparent text-slate-600 hover:bg-slate-200 hover:text-slate-900 cursor-pointer"
+                                    )}
+                                  >
+                                    <span className="pointer-events-none">{type.label}</span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
 
@@ -1044,7 +1037,7 @@ export default function CourseCreation() {
                                       const newMaterials = module.materials?.filter((_, i) => i !== fileIndex) || [];
                                       updateModule(index, "materials", newMaterials);
                                     }}
-                                    className="p-1 hover:text-red-600"
+                                    className="ml-auto p-1 hover:text-red-600"
                                   >
                                     <Trash className="h-4 w-4" />
                                   </Button>

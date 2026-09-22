@@ -33,6 +33,8 @@ export interface CourseModule {
   sort_order?: number;
   is_required?: boolean;
   materials?: any[];
+  duration?: number;
+  delivery_type?: string;
 }
 
 export interface CoursePagination {

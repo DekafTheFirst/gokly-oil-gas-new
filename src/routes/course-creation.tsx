@@ -255,6 +255,8 @@ export default function CourseCreation() {
           has_assessment: false,
           sort_order: prev.modules.length,
           materials: [],
+          duration: 0,
+          delivery_type: "both",
         },
       ],
       expandedModules: [...prev.expandedModules, prev.modules.length],
@@ -283,6 +285,14 @@ export default function CourseCreation() {
         ? prev.expandedModules.filter(i => i !== index)
         : [...prev.expandedModules, index],
     }));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
   /* auto-generate a course code from the title + category */
@@ -823,11 +833,14 @@ export default function CourseCreation() {
                       <div className="flex items-center gap-2.5">
                         <span className="px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
-                          {module.has_assessment ? "With Assessment" : "No Assessment"}
+                          {module.duration ? `${module.duration} Hours` : "No Duration"}
                         </span>
                         <span className="px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1">
                           <FileText className="h-3.5 w-3.5" />
                           {module.materials?.length || 0} Files
+                        </span>
+                        <span className="px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1">
+                          {module.delivery_type === "both" ? "Theory & Practical" : module.delivery_type === "theory" ? "Theory" : module.delivery_type === "practical" ? "Practical" : "Not Set"}
                         </span>
                         <div className="h-5 w-px bg-slate-200 mx-1"></div>
                         <Button
@@ -885,8 +898,8 @@ export default function CourseCreation() {
                             <Label className="text-sm font-semibold text-slate-700">Duration (Hours)</Label>
                             <Input
                               type="number"
-                              value={module.scheduled_date ? 8 : ""}
-                              onChange={(e) => updateModule(index, "scheduled_date", e.target.value)}
+                              value={module.duration || ""}
+                              onChange={(e) => updateModule(index, "duration", e.target.value)}
                               placeholder="Hours"
                               className="h-10 text-sm"
                             />
@@ -895,29 +908,53 @@ export default function CourseCreation() {
                           {/* Delivery Type */}
                           <div className="md:col-span-5 flex flex-col gap-1.5">
                             <Label className="text-sm font-semibold text-slate-700">Delivery Format</Label>
-                            <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-lg">
-                              <label className="flex items-center justify-center py-2 px-1 text-[12px] font-semibold rounded cursor-pointer text-slate-600 hover:text-slate-900">
+                            <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-lg h-10 items-center">
+                              <button
+                                type="button"
+                                className={`h-full w-full flex items-center justify-center px-1 text-[12px] font-semibold rounded select-none transition-colors ${
+                                  module.delivery_type === "theory" 
+                                    ? "bg-emerald-600 text-white shadow-sm" 
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
+                                }`}
+                                onClick={() => updateModule(index, "delivery_type", "theory")}
+                              >
                                 Theory
-                              </label>
-                              <label className="flex items-center justify-center py-2 px-1 text-[12px] font-semibold rounded cursor-pointer text-slate-600 hover:text-slate-900">
+                              </button>
+                              <button
+                                type="button"
+                                className={`h-full w-full flex items-center justify-center px-1 text-[12px] font-semibold rounded select-none transition-colors ${
+                                  module.delivery_type === "practical" 
+                                    ? "bg-emerald-600 text-white shadow-sm" 
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
+                                }`}
+                                onClick={() => updateModule(index, "delivery_type", "practical")}
+                              >
                                 Practical
-                              </label>
-                              <label className="flex items-center justify-center py-2 px-1 text-[12px] font-semibold rounded bg-emerald-600 text-white cursor-pointer">
+                              </button>
+                              <button
+                                type="button"
+                                className={`h-full w-full flex items-center justify-center px-1 text-[12px] font-semibold rounded select-none transition-colors ${
+                                  module.delivery_type === "both" 
+                                    ? "bg-emerald-600 text-white shadow-sm" 
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
+                                }`}
+                                onClick={() => updateModule(index, "delivery_type", "both")}
+                              >
                                 Both
-                              </label>
+                              </button>
                             </div>
                           </div>
 
                           {/* Required Toggle */}
-                          <div className="md:col-span-3 flex flex-col justify-end gap-1.5 pb-1">
-                            <span className="text-[12px] text-slate-500 font-semibold">Required</span>
-                            <div className="flex items-center gap-2">
+                          <div className="md:col-span-3 flex flex-col gap-1.5">
+                            <Label className="text-sm font-semibold text-slate-700">Required</Label>
+                            <div className="flex items-center gap-2 h-10">
                               <Checkbox
                                 id={`module-required-${index}`}
-                                checked={module.has_assessment}
-                                onCheckedChange={(checked) => updateModule(index, "has_assessment", checked)}
+                                checked={module.is_required !== false}
+                                onCheckedChange={(checked) => updateModule(index, "is_required", checked)}
                               />
-                              <Label htmlFor={`module-required-${index}`} className="cursor-pointer text-sm font-medium text-slate-700">
+                              <Label htmlFor={`module-required-${index}`} className="cursor-pointer text-sm font-medium text-slate-700 select-none">
                                 Mandatory
                               </Label>
                             </div>
@@ -946,7 +983,7 @@ export default function CourseCreation() {
                               Training Materials ({module.materials?.length || 0} Attached)
                             </h3>
                           </div>
-                          <Button
+                          {/* <Button
                             type="button"
                             variant="outline"
                             size="sm"
@@ -955,12 +992,12 @@ export default function CourseCreation() {
                           >
                             <RefreshCw className="h-4 w-4" />
                             Upload Material
-                          </Button>
+                          </Button> */}
                           <input
                             id={`file-upload-${index}`}
                             type="file"
                             multiple
-                            accept=".pdf,.pptx,.xlsx,.mp4"
+                            accept=".pdf,.pptx,.xlsx,.mp4,.docx"
                             className="hidden"
                             onChange={(e) => {
                               const files = Array.from(e.target.files || []);
@@ -992,7 +1029,7 @@ export default function CourseCreation() {
                                   <div className="flex flex-col">
                                     <span className="text-sm font-bold text-slate-900">{file.name}</span>
                                     <div className="flex items-center gap-3 text-[12px] text-slate-500">
-                                      <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                                      <span>{formatFileSize(file.size)}</span>
                                       <span>•</span>
                                       <span className="text-emerald-600 font-medium">Trainee Visible</span>
                                     </div>
@@ -1018,10 +1055,13 @@ export default function CourseCreation() {
                         )}
 
                         {/* Dropzone */}
-                        <div className="bg-white/60 rounded-lg p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white transition-colors text-center border-2 border-dashed border-slate-200">
+                        <div 
+                          className="bg-white/60 rounded-lg p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white transition-colors text-center border-2 border-dashed border-slate-200"
+                          onClick={() => document.getElementById(`file-upload-${index}`)?.click()}
+                        >
                           <RefreshCw className="text-emerald-600 text-[28px]" />
                           <span className="text-sm font-semibold text-slate-900">
-                            Drop PDF, PPTX, XLSX or MP4 files to attach to this module
+                            Drop PDF, PPTX, XLSX, MP4 or DOCX files to attach to this module
                           </span>
                           <span className="text-[11px] text-slate-500">
                             Max single file payload 250MB • Trainee or Instructor visibility can be adjusted anytime

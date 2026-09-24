@@ -51,6 +51,15 @@ import {
   ChevronDown,
   ChevronUp,
   Upload,
+  PieChart,
+  Lightbulb,
+  Route,
+  Pencil,
+  ChartColumn as BarChart,
+  Flag,
+  RefreshCw as Replay,
+  X as Cancel,
+  GripVertical,
 } from "lucide-react";
 import { createCourse } from "@/lib/courses";
 import type { CourseModule } from "@/lib/courses";
@@ -98,8 +107,9 @@ const DELIVERY_MODES = [
 const STEPS = [
   { id: 1, label: "Basic Info" },
   { id: 2, label: "Modules" },
-  { id: 3, label: "Completion Rules" },
-  { id: 4, label: "Review" },
+  { id: 3, label: "Assessments" },
+  { id: 4, label: "Completion Rules" },
+  { id: 5, label: "Review" },
 ];
 
 type FormData = {
@@ -131,9 +141,219 @@ type FormData = {
   theory_passing_score: number;
   practical_required: boolean;
   sequential_progression: boolean;
+  // Assessments
+  assessments: Assessment[];
+};
+
+type Assessment = {
+  id: string;
+  name: string;
+  type: string;
+  module_association: string;
+  description: string;
+  max_score: number;
+  pass_mark: number;
+  attempts_allowed: number;
+  required: boolean;
 };
 
 /* ---------------------------------- bits ---------------------------------- */
+
+function NewAssessmentForm({ modules, onAdd }: { modules: CourseModule[], onAdd: (data: Omit<Assessment, 'id'>) => void }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    type: "mcq",
+    module_association: "whole",
+    description: "",
+    max_score: 100,
+    pass_mark: 75,
+    attempts_allowed: 3,
+    required: true,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onAdd(formData);
+    setFormData({
+      name: "",
+      type: "mcq",
+      module_association: "whole",
+      description: "",
+      max_score: 100,
+      pass_mark: 75,
+      attempts_allowed: 3,
+      required: true,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {/* Assessment Name */}
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+          <span>Assessment Name <span className="text-red-500">*</span></span>
+          <span className="text-[11px] text-slate-400">Clear descriptive evaluation title</span>
+        </Label>
+        <Input
+          placeholder="e.g. MISTDO Emergency Evacuation Protocol"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="h-11 border-slate-200 bg-slate-50/70 text-sm"
+          required
+        />
+      </div>
+
+      {/* Type and Module Association */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-sm font-medium text-slate-700">
+            Assessment Type <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            value={formData.type}
+            onValueChange={(value) => setFormData({ ...formData, type: value })}
+          >
+            <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mcq">Multiple Choice (Auto-graded)</SelectItem>
+              <SelectItem value="written">Written Examination</SelectItem>
+              <SelectItem value="practical">Practical / Rig Simulator</SelectItem>
+              <SelectItem value="oral">Oral Examination / Defense</SelectItem>
+              <SelectItem value="trainer">Trainer Field Evaluation</SelectItem>
+              <SelectItem value="other">Other Compliance Criteria</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-sm font-medium text-slate-700">Module Association</Label>
+          <Select
+            value={formData.module_association}
+            onValueChange={(value) => setFormData({ ...formData, module_association: value })}
+          >
+            <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="whole">Whole Course (Capstone / Final)</SelectItem>
+              {modules.map((module, index) => (
+                <SelectItem key={index} value={`mod-${index}`}>
+                  MOD-{String(index + 1).padStart(3, '0')}: {module.name || `Module ${index + 1}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+          <span>Description & Grading Rubric</span>
+          <span className="text-[11px] text-slate-400">Visible to assessors and candidate briefing</span>
+        </Label>
+        <Textarea
+          placeholder="Assessment guidelines, rubric, and focus areas..."
+          rows={3}
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          className="border-slate-200 bg-slate-50/70 text-sm resize-none"
+        />
+      </div>
+
+      {/* Score, Pass Mark, Attempts */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-sm font-medium text-slate-700">Maximum Score</Label>
+          <div className="relative flex items-center">
+            <Input
+              type="number"
+              value={formData.max_score}
+              onChange={(e) => setFormData({ ...formData, max_score: parseInt(e.target.value) || 100 })}
+              className="h-11 border-slate-200 bg-slate-50/70 text-sm pr-12"
+            />
+            <span className="absolute right-3 text-[12px] text-slate-400 font-bold">PTS</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-sm font-medium text-slate-700">Pass Mark / Cutoff</Label>
+          <div className="relative flex items-center">
+            <Input
+              type="number"
+              value={formData.pass_mark}
+              onChange={(e) => setFormData({ ...formData, pass_mark: parseInt(e.target.value) || 75 })}
+              className="h-11 border-slate-200 bg-slate-50/70 text-sm pr-10"
+            />
+            <span className="absolute right-3 text-[13px] text-slate-400 font-bold">%</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-sm font-medium text-slate-700">Attempts Allowed</Label>
+          <Select
+            value={formData.attempts_allowed.toString()}
+            onValueChange={(value) => setFormData({ ...formData, attempts_allowed: value === "unlimited" ? 999 : parseInt(value) })}
+          >
+            <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1 Attempt (Strict)</SelectItem>
+              <SelectItem value="2">2 Attempts</SelectItem>
+              <SelectItem value="3">3 Attempts (Standard)</SelectItem>
+              <SelectItem value="5">5 Attempts</SelectItem>
+              <SelectItem value="unlimited">Unlimited (Practice)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Required Checkbox */}
+      <div className="flex items-start gap-3 p-3.5 rounded-lg bg-slate-50">
+        <Checkbox
+          id="required-assessment"
+          checked={formData.required}
+          onCheckedChange={(checked) => setFormData({ ...formData, required: checked })}
+        />
+        <label htmlFor="required-assessment" className="flex flex-col cursor-pointer">
+          <span className="text-sm font-semibold text-slate-700">Required for Course Completion</span>
+          <span className="text-[12px] text-slate-500">Candidates cannot claim regulatory certification without achieving pass mark.</span>
+        </label>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setFormData({
+            name: "",
+            type: "mcq",
+            module_association: "whole",
+            description: "",
+            max_score: 100,
+            pass_mark: 75,
+            attempts_allowed: 3,
+            required: true,
+          })}
+          className="flex items-center gap-1.5"
+        >
+          Clear Form
+        </Button>
+        <Button
+          type="submit"
+          className="flex items-center gap-1.5"
+        >
+          <Plus className="h-4 w-4" />
+          Add Assessment to Course
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 function SectionCard({
   icon: Icon,
@@ -152,7 +372,7 @@ function SectionCard({
     <section className="rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-start gap-3 border-b border-slate-100 p-5 sm:p-6">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-          <Icon className="h-4.5 w-4.5" />
+          <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
@@ -266,6 +486,8 @@ export default function CourseCreation() {
     theory_passing_score: 75,
     practical_required: true,
     sequential_progression: true,
+    // Assessments defaults
+    assessments: [],
   });
 
   const updateFormData = (field: keyof FormData, value: any) => {
@@ -324,6 +546,42 @@ export default function CourseCreation() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const addAssessment = () => {
+    setFormData((prev) => ({
+      ...prev,
+      assessments: [
+        ...prev.assessments,
+        {
+          id: `assessment-${Date.now()}`,
+          name: "",
+          type: "mcq",
+          module_association: "whole",
+          description: "",
+          max_score: 100,
+          pass_mark: 75,
+          attempts_allowed: 3,
+          required: true,
+        },
+      ],
+    }));
+  };
+
+  const updateAssessment = (index: number, field: keyof Assessment, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      assessments: prev.assessments.map((assessment, i) =>
+        i === index ? { ...assessment, [field]: value } : assessment
+      ),
+    }));
+  };
+
+  const removeAssessment = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      assessments: prev.assessments.filter((_, i) => i !== index),
+    }));
+  };
+
   /* auto-generate a course code from the title + category */
   const generateCode = () => {
     const base =
@@ -358,19 +616,19 @@ export default function CourseCreation() {
           formData.title.trim().length > 3 &&
           formData.code.trim().length > 2 &&
           formData.category.trim().length > 2 &&
-          formData.short_description.trim().length > 5
+          formData.short_description.trim().length > 5 &&
+          formData.tier &&
+          formData.status &&
+          formData.delivery_mode &&
+          formData.duration_value > 0
         );
       case 2:
         return formData.modules.length > 0 && formData.modules.every(m => m.name.trim().length > 0);
       case 3:
-        return (
-          formData.tier &&
-          formData.status &&
-          formData.delivery_mode &&
-          formData.duration_value > 0 &&
-          formData.minimum_contact_hours > 0
-        );
+        return true; // Assessments are optional
       case 4:
+        return formData.minimum_contact_hours > 0;
+      case 5:
         return true;
       default:
         return true;
@@ -390,7 +648,7 @@ export default function CourseCreation() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep(4)) {
+    if (!validateStep(5)) {
       setError("Add at least one named module before creating the course.");
       setTimeout(() => setError(""), 3000);
       return;
@@ -434,6 +692,7 @@ export default function CourseCreation() {
     { ok: !!formData.status, text: "Course status set" },
     { ok: formData.minimum_contact_hours > 0, text: "Contact hours configured" },
     { ok: formData.attendance_percentage >= 50, text: "Attendance threshold set" },
+    { ok: formData.theory_passing_score >= 50, text: "Assessment cutoff configured" },
   ];
   const healthScore = Math.round((checks.filter((c) => c.ok).length / checks.length) * 100);
 
@@ -616,38 +875,71 @@ export default function CourseCreation() {
               title="Delivery Parameters & Cohort Capacity"
               subtitle="Define training methodology, simulator requirements, and safety-critical seating limits."
             >
-              <div className="space-y-3">
-                <FieldLabel required>Delivery Mode</FieldLabel>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {DELIVERY_MODES.map((mode) => {
-                    const active = formData.delivery_mode === mode.value;
-                    const Ico = mode.icon;
-                    return (
-                      <button
-                        key={mode.value}
-                        type="button"
-                        onClick={() => updateFormData("delivery_mode", mode.value)}
-                        aria-pressed={active}
-                        className={`relative rounded-lg border p-3.5 text-left transition-colors ${
-                          active
-                            ? "border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500"
-                            : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
-                        }`}
-                      >
-                        <span className="absolute right-3 top-3">
-                          {active ? (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                          ) : (
-                            <span className="block h-4 w-4 rounded-full border border-slate-300 bg-white" />
-                          )}
-                        </span>
-                        <Ico
-                          className={`mb-2.5 h-4.5 w-4.5 ${active ? "text-emerald-700" : "text-slate-500"}`}
-                        />
-                        <span
-                          className={`block text-[13px] font-semibold ${
-                            active ? "text-emerald-900" : "text-slate-800"
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <FieldLabel htmlFor="tier" required>Course Tier</FieldLabel>
+                    <Select value={formData.tier} onValueChange={(value) => updateFormData("tier", value)}>
+                      <SelectTrigger id="tier" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                        <SelectValue placeholder="Select difficulty level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIERS.map((tier) => (
+                          <SelectItem key={tier} value={tier}>
+                            {tier}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <FieldLabel htmlFor="status" required>Course Status</FieldLabel>
+                    <Select value={formData.status} onValueChange={(value) => updateFormData("status", value)}>
+                      <SelectTrigger id="status" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DRAFT">Draft</SelectItem>
+                        <SelectItem value="PUBLISHED">Published</SelectItem>
+                        <SelectItem value="ARCHIVED">Archived</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <FieldLabel required>Delivery Mode</FieldLabel>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {DELIVERY_MODES.map((mode) => {
+                      const active = formData.delivery_mode === mode.value;
+                      const Ico = mode.icon;
+                      return (
+                        <button
+                          key={mode.value}
+                          type="button"
+                          onClick={() => updateFormData("delivery_mode", mode.value)}
+                          aria-pressed={active}
+                          className={`relative rounded-lg border p-3.5 text-left transition-colors ${
+                            active
+                              ? "border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500"
+                              : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
                           }`}
+                        >
+                          <span className="absolute right-3 top-3">
+                            {active ? (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            ) : (
+                              <span className="block h-4 w-4 rounded-full border border-slate-300 bg-white" />
+                            )}
+                          </span>
+                          <Ico
+                            className={`mb-2.5 h-4 w-4 ${active ? "text-emerald-700" : "text-slate-500"}`}
+                          />
+                          <span
+                            className={`block text-[13px] font-semibold ${
+                              active ? "text-emerald-900" : "text-slate-800"
+                            }`}
                         >
                           {mode.label}
                         </span>
@@ -765,6 +1057,7 @@ export default function CourseCreation() {
                     </div>
                   </div>
                 </div>
+              </div>
               </div>
             </SectionCard>
 
@@ -1146,92 +1439,223 @@ export default function CourseCreation() {
       case 3:
         return (
           <div className="space-y-6">
-            {/* Course Configuration */}
-            <SectionCard
-              icon={Shield}
-              title="Course Configuration"
-              subtitle="Set the difficulty tier and confirm the delivery parameters captured earlier."
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <FieldLabel htmlFor="tier">Course Tier</FieldLabel>
-                  <Select value={formData.tier} onValueChange={(value) => updateFormData("tier", value)}>
-                    <SelectTrigger id="tier" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                      <SelectValue placeholder="Select difficulty level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIERS.map((tier) => (
-                        <SelectItem key={tier} value={tier}>
-                          {tier}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Header */}
+            <div className="flex flex-col gap-2">
+              <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[12px] font-bold tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                STEP 3 OF 5 • ASSESSMENT & EVALUATION ENGINE
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Assessments & Evaluation Scheme</h1>
+              <p className="text-[13.5px] leading-relaxed text-slate-500 max-w-2xl">
+                Attach and configure straightforward evaluations for this course. Supported types: Written, Multiple Choice, Practical, Oral, Trainer Evaluation, Other. Keep tests simple and focused.
+              </p>
+            </div>
 
-                <div className="space-y-2">
-                  <FieldLabel htmlFor="status">Course Status</FieldLabel>
-                  <Select value={formData.status} onValueChange={(value) => updateFormData("status", value)}>
-                    <SelectTrigger id="status" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DRAFT">Draft</SelectItem>
-                      <SelectItem value="PUBLISHED">Published</SelectItem>
-                      <SelectItem value="ARCHIVED">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Configured Assessments */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <FileText className="text-emerald-600 h-6 w-6" />
+                <h2 className="text-lg font-semibold text-slate-900">Configured Assessments</h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-bold">
+                  {formData.assessments.length} Configured
+                </span>
+              </div>
+              <span className="text-[12px] text-slate-500 font-medium">Drag items to adjust exam sequence</span>
+            </div>
 
-                <div className="space-y-2">
-                  <FieldLabel htmlFor="delivery_mode">Delivery Mode</FieldLabel>
-                  <Select value={formData.delivery_mode} onValueChange={(value) => updateFormData("delivery_mode", value)}>
-                    <SelectTrigger id="delivery_mode" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DELIVERY_MODES.map((mode) => (
-                        <SelectItem key={mode.value} value={mode.value}>
-                          {mode.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {/* Assessment List */}
+            {formData.assessments.map((assessment, index) => (
+              <div key={assessment.id} className="bg-white rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <button className="mt-1 cursor-grab text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors" title="Drag to reorder" type="button">
+                      <GripVertical className="h-5 w-5" />
+                    </button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${
+                          assessment.type === 'mcq' ? 'bg-emerald-100 text-emerald-700' :
+                          assessment.type === 'practical' ? 'bg-amber-100 text-amber-700' :
+                          assessment.type === 'oral' ? 'bg-slate-200 text-slate-700' :
+                          'bg-slate-100 text-slate-600'
+                        }`}>
+                          {assessment.type === 'mcq' ? 'Multiple Choice' :
+                           assessment.type === 'practical' ? 'Practical Simulator' :
+                           assessment.type === 'oral' ? 'Oral Defense' :
+                           assessment.type === 'written' ? 'Written Examination' :
+                           assessment.type === 'trainer' ? 'Trainer Evaluation' : 'Other'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[11px] font-semibold">
+                          {assessment.module_association === 'whole' ? 'Whole Course' : assessment.module_association}
+                        </span>
+                        {assessment.required && (
+                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[11px] font-bold flex items-center gap-1">
+                            <CheckCircle className="h-3.5 w-3.5" /> Required for Completion
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900">{assessment.name || 'Assessment Name'}</h3>
+                      <p className="text-sm text-slate-500 leading-relaxed">
+                        {assessment.description || 'Assessment description will appear here...'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Edit Assessment" type="button">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="Delete Assessment"
+                      type="button"
+                      onClick={() => removeAssessment(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <FieldLabel htmlFor="duration_value">Duration</FieldLabel>
-                  <div className="flex gap-2">
-                    <Input
-                      id="duration_value"
-                      type="number"
-                      value={formData.duration_value}
-                      onKeyDown={(e) => {
-                        if (["-", "e", "E", "+"].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onChange={(e) => updateFormData("duration_value", Math.max(1, parseInt(e.target.value) || 0))}
-                      min="1"
-                      className="h-11 border-slate-200 bg-slate-50/70 text-sm"
-                    />
-                    <Select value={formData.duration_unit} onValueChange={(value) => updateFormData("duration_unit", value)}>
-                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DURATION_UNITS.map((unit) => (
-                          <SelectItem key={unit} value={unit}>
-                            {unit}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                {/* Specs Row */}
+                <div className="mt-4 pt-3 bg-slate-50 rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-y-2 gap-x-6 text-[13px] font-medium text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <BarChart className="h-4 w-4 text-emerald-600" />
+                    <span>Max Score: <strong className="text-slate-900 font-semibold">{assessment.max_score} pts</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Flag className="h-4 w-4 text-emerald-600" />
+                    <span>Pass Mark: <strong className="text-slate-900 font-semibold">{assessment.pass_mark}% ({Math.round(assessment.max_score * assessment.pass_mark / 100)} pts)</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Replay className="h-4 w-4 text-emerald-600" />
+                    <span>Attempts Allowed: <strong className="text-slate-900 font-semibold">{assessment.attempts_allowed}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {assessment.required ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <span>Required: <strong className="text-emerald-700 font-bold uppercase">YES</strong></span>
+                      </>
+                    ) : (
+                      <>
+                        <Cancel className="h-4 w-4 text-slate-400" />
+                        <span>Required: <strong className="text-slate-500 font-semibold uppercase">NO</strong></span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-            </SectionCard>
+            ))}
 
+            {/* Add New Assessment Card */}
+            <div className="bg-white rounded-xl p-6 shadow-sm mt-4">
+              <div className="flex items-center justify-between pb-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <Plus className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">Add New Assessment Module</h3>
+                    <p className="text-sm text-slate-500">Create and parameterize new evaluation criteria for candidate certification</p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-bold">Standard Assessment Rubric</span>
+              </div>
+
+              <NewAssessmentForm
+                modules={formData.modules}
+                onAdd={(assessmentData) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    assessments: [
+                      ...prev.assessments,
+                      {
+                        id: `assessment-${Date.now()}`,
+                        ...assessmentData,
+                      },
+                    ],
+                  }));
+                }}
+              />
+            </div>
+
+            {/* Score Weighting Card */}
+            <div className="bg-white rounded-xl p-6 shadow-sm flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PieChart className="text-emerald-600 h-5 w-5" />
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-slate-600">Score Weighting</span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold">
+                  {formData.assessments.length > 0 ? '100% Allocated' : '0% Allocated'}
+                </span>
+              </div>
+
+              {formData.assessments.length > 0 ? (
+                <>
+                  {/* Total Points Display */}
+                  <div className="flex flex-col items-center justify-center pt-2">
+                    <div className="relative w-44 h-44 flex items-center justify-center">
+                      <div className="text-center">
+                        <span className="text-3xl font-bold text-slate-900 leading-none">
+                          {formData.assessments.reduce((total, assessment) => total + assessment.max_score, 0)}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1 block">Total Points</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Breakdown Legend */}
+                  <div className="flex flex-col gap-2.5 pt-2">
+                    {formData.assessments.map((assessment, index) => {
+                      const totalScore = formData.assessments.reduce((total, a) => total + a.max_score, 0);
+                      const percentage = totalScore > 0 ? Math.round((assessment.max_score / totalScore) * 100) : 0;
+                      const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-blue-500', 'bg-purple-500', 'bg-pink-500'];
+                      const color = colors[index % colors.length];
+
+                      return (
+                        <div key={assessment.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
+                          <div className="flex items-center gap-2.5">
+                            <span className={`w-3 h-3 rounded-full ${color}`}></span>
+                            <span className="text-sm text-slate-700">{assessment.name || `Assessment ${index + 1}`}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12px] font-semibold text-slate-500">{percentage}%</span>
+                            <span className="text-sm font-bold text-slate-900">{assessment.max_score} pts</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <Lightbulb className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                  <p className="text-sm">Add assessments to see score weighting breakdown</p>
+                </div>
+              )}
+            </div>
+
+            {/* Assessment Design Guidelines */}
+            <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold">
+                <Lightbulb className="h-5 w-5" />
+                <span>Assessment Design Guidelines</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 text-sm text-slate-500 leading-relaxed flex flex-col gap-2">
+                <p>
+                  Keep evaluations straightforward. Multi-choice grading is auto-evaluated by the portal, while Practical and Oral rubrics prompt assigned examiners at the <strong>Port Harcourt training rig</strong>.
+                </p>
+                <div className="flex items-center gap-1.5 text-emerald-600 text-[12px] font-semibold pt-1">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Complies with Nigerian Upstream Petroleum Regulatory Commission (NUPRC) guidelines.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
             {/* Attendance Requirements */}
             <SectionCard
               icon={Clock}
@@ -1493,7 +1917,7 @@ export default function CourseCreation() {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <SectionCard
             icon={CheckCircle}
@@ -1543,6 +1967,25 @@ export default function CourseCreation() {
                       {module.is_required !== false && (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
                           Mandatory
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900">Assessments ({formData.assessments.length})</h3>
+                <ul className="space-y-2">
+                  {formData.assessments.map((assessment, index) => (
+                    <li key={assessment.id} className="flex items-center gap-2 text-sm text-slate-700">
+                      <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="font-medium">
+                        {index + 1}. {assessment.name || 'Assessment'}
+                      </span>
+                      {assessment.required && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
+                          Required
                         </span>
                       )}
                     </li>
@@ -1650,7 +2093,7 @@ export default function CourseCreation() {
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-md bg-slate-200/70 px-2.5 py-1 text-[10.5px] font-semibold tracking-wide text-slate-600">
-                  STEP {currentStep} OF {STEPS.length} • {currentStep === 1 ? "BASIC INFO" : currentStep === 2 ? "MODULES & UNITS" : currentStep === 3 ? "COMPLETION RULES" : "REVIEW"}
+                  STEP {currentStep} OF {STEPS.length} • {currentStep === 1 ? "BASIC INFO" : currentStep === 2 ? "MODULES & UNITS" : currentStep === 3 ? "ASSESSMENTS" : currentStep === 4 ? "COMPLETION RULES" : "REVIEW"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[11.5px] text-slate-500">
                   <Clock className="h-3.5 w-3.5" />
@@ -1658,7 +2101,7 @@ export default function CourseCreation() {
                 </span>
               </div>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
-                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Course Structure & Training Modules" : currentStep === 3 ? "Completion Requirements & Eligibility Protocols" : "Review & Create Course"}
+                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Course Structure & Training Modules" : currentStep === 3 ? "Assessments & Evaluation Scheme" : currentStep === 4 ? "Completion Requirements & Eligibility Protocols" : "Review & Create Course"}
               </h1>
               <p className="mt-2 text-[13.5px] leading-relaxed text-slate-500">
                 {currentStep === 1
@@ -1666,6 +2109,8 @@ export default function CourseCreation() {
                   : currentStep === 2
                   ? "Structure learning units, reorder modules, define delivery types (Theory / Practical / Both), and attach training materials with granular visibility controls."
                   : currentStep === 3
+                  ? "Attach and configure straightforward evaluations for this course. Supported types: Written, Multiple Choice, Practical, Oral, Trainer Evaluation, Other. Keep tests simple and focused."
+                  : currentStep === 4
                   ? "Configure mandatory attendance thresholds, session attendance rules, required module clearance, and minimum assessment passing cutoffs."
                   : "Review all course information before creating the course."}
               </p>

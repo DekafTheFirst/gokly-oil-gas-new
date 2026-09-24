@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
 import {
   ArrowLeft,
   ArrowRight,
@@ -97,7 +98,7 @@ const DELIVERY_MODES = [
 const STEPS = [
   { id: 1, label: "Basic Info" },
   { id: 2, label: "Modules" },
-  { id: 3, label: "Configuration" },
+  { id: 3, label: "Completion Rules" },
   { id: 4, label: "Review" },
 ];
 
@@ -120,6 +121,16 @@ type FormData = {
   certificate_enabled: boolean;
   modules: CourseModule[];
   expandedModules: number[];
+  // Completion requirements
+  attendance_required: boolean;
+  attendance_percentage: number;
+  strict_attendance: boolean;
+  minimum_contact_hours: number;
+  module_completion_mode: string;
+  assessment_required: boolean;
+  theory_passing_score: number;
+  practical_required: boolean;
+  sequential_progression: boolean;
 };
 
 /* ---------------------------------- bits ---------------------------------- */
@@ -245,6 +256,16 @@ export default function CourseCreation() {
     status: "DRAFT",
     modules: [],
     expandedModules: [],
+    // Completion requirements defaults
+    attendance_required: true,
+    attendance_percentage: 80,
+    strict_attendance: false,
+    minimum_contact_hours: 36,
+    module_completion_mode: "strict",
+    assessment_required: true,
+    theory_passing_score: 75,
+    practical_required: true,
+    sequential_progression: true,
   });
 
   const updateFormData = (field: keyof FormData, value: any) => {
@@ -342,7 +363,13 @@ export default function CourseCreation() {
       case 2:
         return formData.modules.length > 0 && formData.modules.every(m => m.name.trim().length > 0);
       case 3:
-        return formData.tier && formData.status && formData.delivery_mode && formData.duration_value > 0;
+        return (
+          formData.tier &&
+          formData.status &&
+          formData.delivery_mode &&
+          formData.duration_value > 0 &&
+          formData.minimum_contact_hours > 0
+        );
       case 4:
         return true;
       default:
@@ -405,6 +432,8 @@ export default function CourseCreation() {
     { ok: formData.modules.length > 0, text: "At least one module added" },
     { ok: !!formData.tier, text: "Course tier set" },
     { ok: !!formData.status, text: "Course status set" },
+    { ok: formData.minimum_contact_hours > 0, text: "Contact hours configured" },
+    { ok: formData.attendance_percentage >= 50, text: "Attendance threshold set" },
   ];
   const healthScore = Math.round((checks.filter((c) => c.ok).length / checks.length) * 100);
 
@@ -449,7 +478,7 @@ export default function CourseCreation() {
                   id="title"
                   value={formData.title}
                   onChange={(e) => updateFormData("title", e.target.value)}
-                  placeholder="Advanced Offshore Well Control & Blowout Prevention (IWCF Level 4)"
+                  placeholder="Enter course name"
                   className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
                   required
                 />
@@ -517,7 +546,7 @@ export default function CourseCreation() {
                   id="short_description"
                   value={formData.short_description}
                   onChange={(e) => updateFormData("short_description", e.target.value)}
-                  placeholder="Comprehensive simulation-intensive well control qualification covering high-pressure wellbore dynamics, subsea BOP multiplexing, and Driller's Method under severe influx conditions."
+                  placeholder="Enter short description"
                   rows={3}
                   maxLength={250}
                   className="resize-none border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white"
@@ -574,9 +603,7 @@ export default function CourseCreation() {
                     ref={syllabusRef}
                     value={formData.description}
                     onChange={(e) => updateFormData("description", e.target.value)}
-                    placeholder={
-                      "IWCF Level 4 Well Control Accreditation Standard\n\nThis programme covers kick detection, Driller's Method and Wait & Weight, volumetric stripping, and choke manifold pressure adjustments across simulated subsea blowout scenarios."
-                    }
+                    placeholder="Enter detailed course description"
                     rows={8}
                     className="resize-y rounded-none border-0 text-sm leading-relaxed focus-visible:ring-0"
                   />
@@ -769,7 +796,7 @@ export default function CourseCreation() {
                     id="prerequisite_description"
                     value={formData.prerequisite_description}
                     onChange={(e) => updateFormData("prerequisite_description", e.target.value)}
-                    placeholder="Requires valid IWCF Level 3 certification or minimum 2 years verified offshore drilling watch-keeping experience endorsed by an HSE supervisor."
+                    placeholder="Enter prerequisite requirements"
                     rows={3}
                     className="resize-none border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white"
                     required
@@ -797,7 +824,7 @@ export default function CourseCreation() {
               <div className="flex flex-wrap items-center gap-6 divide-x divide-slate-200">
                 <div className="flex flex-col pr-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Modules</span>
-                  <span className="text-2xl font-bold text-slate-900">{formData.modules.length} Units</span>
+                  <span className="text-2xl font-bold text-slate-900">{formData.modules.length} </span>
                 </div>
                 <div className="flex flex-col pl-6 pr-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Duration</span>
@@ -1036,10 +1063,28 @@ export default function CourseCreation() {
                         </div>
 
                         {/* Uploaded Files List */}
+                        {/* Dropzone */}
+                        <div 
+                          className="group bg-white rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all text-center"
+                          onClick={() => document.getElementById(`file-upload-${index}`)?.click()}
+                        >
+                          <div className="h-10 w-10 rounded-full bg-slate-100 group-hover:bg-emerald-100 flex items-center justify-center text-slate-500 group-hover:text-emerald-600 transition-colors">
+                            <Upload className="h-5 w-5" />
+                          </div>
+                          <span className="text-sm font-semibold text-slate-800 group-hover:text-emerald-900 transition-colors">
+                            Drop PDF, PPTX, XLSX, MP4 or DOCX files to attach to this module
+                          </span>
+                          <span className="text-[11.5px] text-slate-500 group-hover:text-emerald-700/80 transition-colors">
+                            Max single file payload 250MB • Trainee or Instructor visibility can be adjusted anytime
+                          </span>
+                        </div>
+
                         {module.materials && module.materials.length > 0 && (
                           <div className="flex flex-col gap-2.5">
-                            {module.materials.map((file, fileIndex) => (
-                              <div key={fileIndex} className="bg-white p-3.5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                            {[...module.materials].reverse().map((file, fileIndex) => {
+                              const originalIndex = module.materials.length - 1 - fileIndex;
+                              return (
+                              <div key={originalIndex} className="bg-white p-3.5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
                                 <div className="flex items-center gap-3">
                                   <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                                     <FileText className="h-5 w-5" />
@@ -1059,7 +1104,7 @@ export default function CourseCreation() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      const newMaterials = module.materials?.filter((_, i) => i !== fileIndex) || [];
+                                      const newMaterials = module.materials?.filter((_, i) => i !== originalIndex) || [];
                                       updateModule(index, "materials", newMaterials);
                                     }}
                                     className="ml-auto p-1 hover:text-red-600"
@@ -1068,25 +1113,12 @@ export default function CourseCreation() {
                                   </Button>
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
 
-                        {/* Dropzone */}
-                        <div 
-                          className="group bg-white rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all text-center"
-                          onClick={() => document.getElementById(`file-upload-${index}`)?.click()}
-                        >
-                          <div className="h-10 w-10 rounded-full bg-slate-100 group-hover:bg-emerald-100 flex items-center justify-center text-slate-500 group-hover:text-emerald-600 transition-colors">
-                            <Upload className="h-5 w-5" />
-                          </div>
-                          <span className="text-sm font-semibold text-slate-800 group-hover:text-emerald-900 transition-colors">
-                            Drop PDF, PPTX, XLSX, MP4 or DOCX files to attach to this module
-                          </span>
-                          <span className="text-[11.5px] text-slate-500 group-hover:text-emerald-700/80 transition-colors">
-                            Max single file payload 250MB • Trainee or Instructor visibility can be adjusted anytime
-                          </span>
-                        </div>
+                        
                       </div>
 
                       {/* Done Button */}
@@ -1113,90 +1145,352 @@ export default function CourseCreation() {
 
       case 3:
         return (
-          <SectionCard
-            icon={Shield}
-            title="Course Configuration"
-            subtitle="Set the difficulty tier and confirm the delivery parameters captured earlier."
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <FieldLabel htmlFor="tier">Course Tier</FieldLabel>
-                <Select value={formData.tier} onValueChange={(value) => updateFormData("tier", value)}>
-                  <SelectTrigger id="tier" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                    <SelectValue placeholder="Select difficulty level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIERS.map((tier) => (
-                      <SelectItem key={tier} value={tier}>
-                        {tier}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <FieldLabel htmlFor="status">Course Status</FieldLabel>
-                <Select value={formData.status} onValueChange={(value) => updateFormData("status", value)}>
-                  <SelectTrigger id="status" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DRAFT">Draft</SelectItem>
-                    <SelectItem value="PUBLISHED">Published</SelectItem>
-                    <SelectItem value="ARCHIVED">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <FieldLabel htmlFor="delivery_mode">Delivery Mode</FieldLabel>
-                <Select value={formData.delivery_mode} onValueChange={(value) => updateFormData("delivery_mode", value)}>
-                  <SelectTrigger id="delivery_mode" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DELIVERY_MODES.map((mode) => (
-                      <SelectItem key={mode.value} value={mode.value}>
-                        {mode.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <FieldLabel htmlFor="duration_value">Duration</FieldLabel>
-                <div className="flex gap-2">
-                  <Input
-                    id="duration_value"
-                    type="number"
-                    value={formData.duration_value}
-                    onKeyDown={(e) => {
-                      if (["-", "e", "E", "+"].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onChange={(e) => updateFormData("duration_value", Math.max(1, parseInt(e.target.value) || 0))}
-                    min="1"
-                    className="h-11 border-slate-200 bg-slate-50/70 text-sm"
-                  />
-                  <Select value={formData.duration_unit} onValueChange={(value) => updateFormData("duration_unit", value)}>
-                    <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm w-32">
-                      <SelectValue />
+          <div className="space-y-6">
+            {/* Course Configuration */}
+            <SectionCard
+              icon={Shield}
+              title="Course Configuration"
+              subtitle="Set the difficulty tier and confirm the delivery parameters captured earlier."
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <FieldLabel htmlFor="tier">Course Tier</FieldLabel>
+                  <Select value={formData.tier} onValueChange={(value) => updateFormData("tier", value)}>
+                    <SelectTrigger id="tier" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                      <SelectValue placeholder="Select difficulty level" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DURATION_UNITS.map((unit) => (
-                        <SelectItem key={unit} value={unit}>
-                          {unit}
+                      {TIERS.map((tier) => (
+                        <SelectItem key={tier} value={tier}>
+                          {tier}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <FieldLabel htmlFor="status">Course Status</FieldLabel>
+                  <Select value={formData.status} onValueChange={(value) => updateFormData("status", value)}>
+                    <SelectTrigger id="status" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
+                      <SelectItem value="ARCHIVED">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <FieldLabel htmlFor="delivery_mode">Delivery Mode</FieldLabel>
+                  <Select value={formData.delivery_mode} onValueChange={(value) => updateFormData("delivery_mode", value)}>
+                    <SelectTrigger id="delivery_mode" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DELIVERY_MODES.map((mode) => (
+                        <SelectItem key={mode.value} value={mode.value}>
+                          {mode.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <FieldLabel htmlFor="duration_value">Duration</FieldLabel>
+                  <div className="flex gap-2">
+                    <Input
+                      id="duration_value"
+                      type="number"
+                      value={formData.duration_value}
+                      onKeyDown={(e) => {
+                        if (["-", "e", "E", "+"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => updateFormData("duration_value", Math.max(1, parseInt(e.target.value) || 0))}
+                      min="1"
+                      className="h-11 border-slate-200 bg-slate-50/70 text-sm"
+                    />
+                    <Select value={formData.duration_unit} onValueChange={(value) => updateFormData("duration_unit", value)}>
+                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURATION_UNITS.map((unit) => (
+                          <SelectItem key={unit} value={unit}>
+                            {unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
+
+            {/* Attendance Requirements */}
+            <SectionCard
+              icon={Clock}
+              title="Attendance Requirements"
+              subtitle="Biometric clocking and physical contact verification"
+              aside={
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[11.5px] font-medium leading-tight text-slate-600">
+                    {formData.attendance_required ? "Enforced" : "Disabled"}
+                  </span>
+                  <Toggle
+                    checked={formData.attendance_required}
+                    onChange={(v) => updateFormData("attendance_required", v)}
+                    label="Attendance enforcement"
+                  />
+                </div>
+              }
+            >
+              {formData.attendance_required && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <FieldLabel htmlFor="attendance_percentage">
+                        Minimum Attendance Percentage
+                      </FieldLabel>
+                      <div className="flex items-baseline gap-1 bg-slate-50 px-3 py-1 rounded-lg">
+                        <span className="text-lg font-bold text-emerald-700">
+                          {formData.strict_attendance ? 100 : formData.attendance_percentage}
+                        </span>
+                        <span className="text-sm font-bold text-emerald-700">%</span>
+                      </div>
+                    </div>
+                    <Slider
+                      id="attendance_percentage"
+                      value={[formData.attendance_percentage]}
+                      onValueChange={(value) => updateFormData("attendance_percentage", value[0])}
+                      min={50}
+                      max={100}
+                      step={5}
+                      disabled={formData.strict_attendance}
+                      className="w-full"
+                    />
+                    <div className="grid grid-cols-4 pt-1 text-[11px] font-medium text-slate-500">
+                      <div className="text-left flex flex-col">
+                        <span className="font-semibold text-slate-700">50%</span>
+                        <span className="text-[10px]">Lenient</span>
+                      </div>
+                      <div className="text-center flex flex-col">
+                        <span className="font-semibold text-slate-700">75%</span>
+                        <span className="text-[10px]">Baseline</span>
+                      </div>
+                      <div className="text-center flex flex-col">
+                        <span className="font-semibold text-emerald-700 font-bold">80%</span>
+                        <span className="text-[10px] text-emerald-700">Standard</span>
+                      </div>
+                      <div className="text-right flex flex-col">
+                        <span className="font-semibold text-slate-700">100%</span>
+                        <span className="text-[10px]">Zero-Absence</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2">
+                    <div className="md:col-span-7 flex items-start gap-3 bg-slate-50 p-4 rounded-xl">
+                      <Checkbox
+                        id="strict_attendance"
+                        checked={formData.strict_attendance}
+                        onCheckedChange={(checked) => updateFormData("strict_attendance", checked)}
+                      />
+                      <label htmlFor="strict_attendance" className="flex flex-col cursor-pointer">
+                        <span className="text-sm font-semibold text-slate-700">Must Attend All Sessions (100%)</span>
+                        <span className="text-[12px] text-slate-500 leading-relaxed mt-0.5">
+                          Overrides percentage slider to enforce zero-absence regime for high-risk operations.
+                        </span>
+                      </label>
+                    </div>
+                    <div className="md:col-span-5 flex flex-col justify-between bg-slate-50 p-4 rounded-xl">
+                      <Label className="text-[12px] text-slate-500 font-medium">Minimum Contact Hours</Label>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="relative flex-1">
+                          <Input
+                            type="number"
+                            value={formData.minimum_contact_hours}
+                            onChange={(e) => updateFormData("minimum_contact_hours", Math.max(1, parseInt(e.target.value) || 0))}
+                            className="text-lg font-bold px-3 py-1.5 rounded-lg"
+                          />
+                          <span className="absolute right-3 top-2.5 text-[12px] font-semibold text-slate-400">HRS</span>
+                        </div>
+                        <Clock className="h-6 w-6 text-emerald-600" />
+                      </div>
+                      <span className="text-[11px] text-slate-500 mt-1.5">Classroom + Rig Simulator</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Module Completion Gating */}
+            <SectionCard
+              icon={Layers}
+              title="Module Completion Gating"
+              subtitle="Select prerequisite modules that trainees must clear before certification."
+              aside={
+                <span className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                  {formData.modules.length} Modules Configured
+                </span>
+              }
+            >
+              <div className="flex flex-col gap-3">
+                {formData.modules.map((module, index) => (
+                  <label
+                    key={index}
+                    className="flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Checkbox
+                        checked={module.is_required !== false}
+                        onCheckedChange={(checked) => updateModule(index, "is_required", checked)}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[12px] font-bold text-slate-500">MOD-{String(index + 1).padStart(3, '0')}</span>
+                          <span className="text-sm font-semibold text-slate-700 truncate">{module.name || `Module ${index + 1}`}</span>
+                        </div>
+                        <span className="text-[12px] text-slate-500">{module.duration || 0} Credit Hrs • {module.delivery_type === "both" ? "Theory & Practical" : module.delivery_type}</span>
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold shrink-0 ${
+                      module.is_required !== false
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-200 text-slate-600"
+                    }`}>
+                      {module.is_required !== false ? "MANDATORY" : "ELECTIVE"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl flex flex-col gap-3 mt-4">
+                <span className="text-[13px] font-semibold text-slate-700">Completion Enforcement Mode</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="flex items-start gap-3 p-3 bg-white rounded-lg cursor-pointer shadow-sm">
+                    <input
+                      type="radio"
+                      name="enforcement_mode"
+                      checked={formData.module_completion_mode === "strict"}
+                      onChange={() => updateFormData("module_completion_mode", "strict")}
+                      className="mt-0.5 accent-emerald-600"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-700">Strict Clearance</span>
+                      <span className="text-[12px] text-slate-500">All checked mandatory modules must attain 100% individual sign-off.</span>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-3 bg-white rounded-lg cursor-pointer shadow-sm">
+                    <input
+                      type="radio"
+                      name="enforcement_mode"
+                      checked={formData.module_completion_mode === "weighted"}
+                      onChange={() => updateFormData("module_completion_mode", "weighted")}
+                      className="mt-0.5 accent-emerald-600"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-700">Weighted Average</span>
+                      <span className="text-[12px] text-slate-500">Aggregate curriculum progress must be ≥ 85% with elective flexibility.</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Assessment & Practical Gating */}
+            <SectionCard
+              icon={Award}
+              title="Assessment & Practical Gating"
+              subtitle="Exam scoring thresholds and field competence evaluation"
+              aside={
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[11.5px] font-medium leading-tight text-slate-600">
+                    {formData.assessment_required ? "Active" : "Disabled"}
+                  </span>
+                  <Toggle
+                    checked={formData.assessment_required}
+                    onChange={(v) => updateFormData("assessment_required", v)}
+                    label="Assessment enforcement"
+                  />
+                </div>
+              }
+            >
+              {formData.assessment_required && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div className="md:col-span-6 flex flex-col gap-2">
+                      <FieldLabel htmlFor="theory_passing_score">
+                        Theory Minimum Passing Score
+                      </FieldLabel>
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex-1">
+                          <Input
+                            id="theory_passing_score"
+                            type="number"
+                            value={formData.theory_passing_score}
+                            onChange={(e) => updateFormData("theory_passing_score", Math.max(50, Math.min(100, parseInt(e.target.value) || 75)))}
+                            min={50}
+                            max={100}
+                            className="text-lg font-bold px-4 py-2.5 rounded-lg"
+                          />
+                          <span className="absolute right-3.5 top-2.5 font-bold text-slate-600">%</span>
+                        </div>
+                        <div className="px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-[12px] font-bold">
+                          IWCF Compliant
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-slate-500">Mandated by Nigerian Upstream Petroleum Regulatory Commission.</span>
+                    </div>
+                    <div className="md:col-span-6 flex flex-col justify-between p-4 rounded-xl bg-slate-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-slate-700">Practical Rig Yard Sign-off</span>
+                          <span className="text-[11px] text-slate-500">Simulator BOP emergency shut-in drills</span>
+                        </div>
+                        <Toggle
+                          checked={formData.practical_required}
+                          onChange={(v) => updateFormData("practical_required", v)}
+                          label="Practical requirement"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] text-emerald-700 font-semibold mt-2">
+                        <Award className="h-4 w-4" />
+                        <span>Requires Level 4 Assessor Credentials</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 text-slate-700">
+                    <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="flex flex-col text-[13px] leading-relaxed">
+                      <span className="font-bold text-amber-700">Facility Prerequisite Warning</span>
+                      <span>Requires certified on-site instructor physical sign-off at <strong>Port Harcourt Training Yard BOP Skid</strong> prior to digital credential cryptographic release.</span>
+                    </div>
+                  </div>
+
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 cursor-pointer">
+                    <Checkbox
+                      id="sequential_progression"
+                      checked={formData.sequential_progression}
+                      onCheckedChange={(checked) => updateFormData("sequential_progression", checked)}
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-700">Enforce Sequential Progression Gating</span>
+                      <span className="text-[12px] text-slate-500 mt-0.5">
+                        Trainee must pass Theory Assessment with ≥ {formData.theory_passing_score}% score before the system unlocks scheduling for the Practical Rig Session.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              )}
+            </SectionCard>
+          </div>
         );
 
       case 4:
@@ -1246,14 +1540,56 @@ export default function CourseCreation() {
                       <span className="font-medium">
                         {index + 1}. {module.name}
                       </span>
-                      {module.has_assessment && (
+                      {module.is_required !== false && (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
-                          Assessment
+                          Mandatory
                         </span>
                       )}
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900">Completion Requirements</h3>
+                <div className="grid gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Attendance Required:</span>
+                    <span className="font-medium text-slate-900">{formData.attendance_required ? "Yes" : "No"}</span>
+                  </div>
+                  {formData.attendance_required && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Minimum Attendance:</span>
+                        <span className="font-medium text-slate-900">{formData.strict_attendance ? "100%" : `${formData.attendance_percentage}%`}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Minimum Contact Hours:</span>
+                        <span className="font-medium text-slate-900">{formData.minimum_contact_hours} hours</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Assessment Required:</span>
+                    <span className="font-medium text-slate-900">{formData.assessment_required ? "Yes" : "No"}</span>
+                  </div>
+                  {formData.assessment_required && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Theory Passing Score:</span>
+                        <span className="font-medium text-slate-900">{formData.theory_passing_score}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Practical Required:</span>
+                        <span className="font-medium text-slate-900">{formData.practical_required ? "Yes" : "No"}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Module Completion Mode:</span>
+                    <span className="font-medium text-slate-900 capitalize">{formData.module_completion_mode}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </SectionCard>
@@ -1314,7 +1650,7 @@ export default function CourseCreation() {
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-md bg-slate-200/70 px-2.5 py-1 text-[10.5px] font-semibold tracking-wide text-slate-600">
-                  STEP {currentStep} OF {STEPS.length} • {currentStep === 1 ? "BASIC INFO" : currentStep === 2 ? "MODULES & UNITS" : currentStep === 3 ? "CONFIGURATION" : "REVIEW"}
+                  STEP {currentStep} OF {STEPS.length} • {currentStep === 1 ? "BASIC INFO" : currentStep === 2 ? "MODULES & UNITS" : currentStep === 3 ? "COMPLETION RULES" : "REVIEW"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[11.5px] text-slate-500">
                   <Clock className="h-3.5 w-3.5" />
@@ -1322,7 +1658,7 @@ export default function CourseCreation() {
                 </span>
               </div>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
-                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Course Structure & Training Modules" : currentStep === 3 ? "Course Configuration" : "Review & Create Course"}
+                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Course Structure & Training Modules" : currentStep === 3 ? "Completion Requirements & Eligibility Protocols" : "Review & Create Course"}
               </h1>
               <p className="mt-2 text-[13.5px] leading-relaxed text-slate-500">
                 {currentStep === 1
@@ -1330,7 +1666,7 @@ export default function CourseCreation() {
                   : currentStep === 2
                   ? "Structure learning units, reorder modules, define delivery types (Theory / Practical / Both), and attach training materials with granular visibility controls."
                   : currentStep === 3
-                  ? "Set the difficulty tier and confirm the delivery parameters captured earlier."
+                  ? "Configure mandatory attendance thresholds, session attendance rules, required module clearance, and minimum assessment passing cutoffs."
                   : "Review all course information before creating the course."}
               </p>
             </div>

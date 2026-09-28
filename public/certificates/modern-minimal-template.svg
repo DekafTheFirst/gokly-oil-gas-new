@@ -1,0 +1,11 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#FFFFFF"/>
+  <line x1="20" y1="50" x2="380" y2="50" stroke="#E5E7EB" stroke-width="2"/>
+  <text x="200" y="35" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#111827">MODERN MINIMAL</text>
+  <circle cx="200" cy="100" r="30" fill="#F3F4F6"/>
+  <text x="200" y="105" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#6B7280">✓</text>
+  <text x="200" y="160" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#374151">Certificate</text>
+  <text x="200" y="190" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#6B7280">Presented to</text>
+  <text x="200" y="220" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#111827">[Student Name]</text>
+  <text x="200" y="250" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#6B7280">For completion of [Course Name]</text>
+</svg>

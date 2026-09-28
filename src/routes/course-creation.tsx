@@ -16,6 +16,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   ArrowRight,
   CheckCircle,
@@ -76,6 +84,44 @@ const COURSE_CATEGORIES = [
 
 const TIERS = ["FOUNDATION", "INTERMEDIATE", "ADVANCED"];
 const DURATION_UNITS = ["HOURS", "DAYS", "WEEKS"];
+
+const CERTIFICATE_TEMPLATES = [
+  {
+    id: "gold-foil",
+    name: "Gokly Industrial Gold Foil & Guilloche Standard",
+    description: "Premium gold foil design with guilloche patterns",
+    image: "/certificates/gold-foil-template.svg",
+    preview: "Certificate with gold foil border and guilloche security patterns"
+  },
+  {
+    id: "classic-blue",
+    name: "Classic Blue Professional",
+    description: "Traditional blue border with professional layout",
+    image: "/certificates/classic-blue-template.svg",
+    preview: "Classic blue certificate with professional styling"
+  },
+  {
+    id: "modern-minimal",
+    name: "Modern Minimal",
+    description: "Clean, minimalist design for contemporary courses",
+    image: "/certificates/modern-minimal-template.svg",
+    preview: "Modern minimalist certificate design"
+  },
+  {
+    id: "corporate-elegant",
+    name: "Corporate Elegant",
+    description: "Sophisticated design for corporate training programs",
+    image: "/certificates/corporate-elegant-template.svg",
+    preview: "Elegant corporate certificate design"
+  },
+  {
+    id: "technical-precision",
+    name: "Technical Precision",
+    description: "Grid-based design for technical certifications",
+    image: "/certificates/technical-precision-template.svg",
+    preview: "Technical certificate with precision grid layout"
+  },
+] as const;
 
 const EXTERNAL_CERT_AUTHORITIES = [
   {
@@ -175,7 +221,7 @@ type FormData = {
   certificate_id_separator: string;
   certificate_id_year_schema: string;
   certificate_id_sequence_type: string;
-  // External certificate generation/validation (e.g. MISTDO → NMDPRA).
+  // External certificate generation/validation (e.g. MISTDO, NMDPRA).
   certificate_external: boolean;
   certificate_authority: string;
   certificate_license_id: string;
@@ -472,97 +518,135 @@ function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleE
     <SectionCard
       icon={Award}
       title="Certificate Generation & Validation"
-      subtitle="Where is the certificate generated — internally by Gokly, or by an external authority (e.g. MISTDO → NMDPRA)?"
-      aside={
-        <div className="flex items-center gap-2.5">
-          <span className="text-[11.5px] font-medium leading-tight text-slate-600">
-            {external ? (
-              <>
-                External
-                <br />
-                Authority
-              </>
-            ) : (
-              <>
-                Internal
-                <br />
-                Generation
-              </>
-            )}
-          </span>
-          <Toggle checked={external} onChange={onToggleExternal} label="External certificate authority" />
-        </div>
-      }
+      subtitle="Choose how certificates are generated and validated for this course"
     >
-      {!external ? (
-        <div className="flex items-start gap-3 rounded-lg bg-emerald-50/70 p-4">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-          <p className="text-[13px] leading-relaxed text-slate-600">
-            <strong className="font-semibold text-slate-900">Internal generation.</strong>{" "}
-            Certificates are generated and validated by this system.
-            Turn on <strong>External</strong> if generation and official validation are
-            controlled by an external authority instead.
-          </p>
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Internal Option */}
+          <button
+            type="button"
+            onClick={() => onToggleExternal(false)}
+            className={`relative p-5 rounded-xl border transition-all text-left group ${
+              !external
+                ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm"
+                : "border-slate-200 bg-white hover:border-emerald-200 hover:shadow-sm"
+            }`}
+          >
+            {!external && (
+              <div className="absolute -top-2 -right-2">
+                <div className="bg-emerald-500 text-white rounded-full p-1 shadow-md">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              </div>
+            )}
+            <div className="flex items-start gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                !external ? "bg-emerald-100" : "bg-slate-100 group-hover:bg-emerald-50"
+              }`}>
+                <ShieldCheck className={`h-5 w-5 transition-colors ${!external ? "text-emerald-600" : "text-slate-400 group-hover:text-emerald-500"}`} />
+              </div>
+              <div className="flex-1">
+                <h4 className={`font-semibold transition-colors ${!external ? "text-emerald-900" : "text-slate-900 group-hover:text-emerald-800"}`}>Internal Generation</h4>
+                <p className="text-sm text-slate-600 mt-1">
+                  Certificates are generated and validated by this system
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* External Option */}
+          <button
+            type="button"
+            onClick={() => onToggleExternal(true)}
+            className={`relative p-5 rounded-xl border transition-all text-left group ${
+              external
+                ? "border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm"
+                : "border-slate-200 bg-white hover:border-amber-200 hover:shadow-sm"
+            }`}
+          >
+            {external && (
+              <div className="absolute -top-2 -right-2">
+                <div className="bg-amber-500 text-white rounded-full p-1 shadow-md">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              </div>
+            )}
+            <div className="flex items-start gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                external ? "bg-amber-100" : "bg-slate-100 group-hover:bg-amber-50"
+              }`}>
+                <Building2 className={`h-5 w-5 transition-colors ${external ? "text-amber-600" : "text-slate-400 group-hover:text-amber-500"}`} />
+              </div>
+              <div className="flex-1">
+                <h4 className={`font-semibold transition-colors ${external ? "text-amber-900" : "text-slate-900 group-hover:text-amber-800"}`}>External Authority</h4>
+                <p className="text-sm text-slate-600 mt-1">
+                  Generated by external authority (e.g., NMDPRA)
+                </p>
+              </div>
+            </div>
+          </button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <p className="text-[13px] leading-relaxed text-slate-600">
-              <strong className="font-semibold text-slate-900">External generation.</strong>{" "}
-              Generation and official validation are strictly controlled by the selected
-              authority. Records can still be verified centrally via the license ID + portal.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <FieldLabel htmlFor="certificate_authority" required>External Authority</FieldLabel>
-              <Select value={authority || "NMDPRA"} onValueChange={onAuthority}>
-                <SelectTrigger id="certificate_authority" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                  <SelectValue placeholder="Select authority" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXTERNAL_CERT_AUTHORITIES.map((a) => (
-                    <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11.5px] text-slate-400">{known?.hint}</p>
+
+        {external && (
+          <div className="space-y-4 pt-4 border-t border-slate-200">
+            <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p className="text-[13px] leading-relaxed text-slate-600">
+                <strong className="font-semibold text-slate-900">External generation.</strong>{" "}
+                Generation and official validation are strictly controlled by the selected
+                authority. Records can still be verified centrally via the license ID + portal.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <FieldLabel htmlFor="certificate_authority" required>External Authority</FieldLabel>
+                <Select value={authority || "NMDPRA"} onValueChange={onAuthority}>
+                  <SelectTrigger id="certificate_authority" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                    <SelectValue placeholder="Select authority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXTERNAL_CERT_AUTHORITIES.map((a) => (
+                      <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11.5px] text-slate-400">{known?.hint}</p>
+              </div>
+              <div className="space-y-2">
+                <FieldLabel htmlFor="certificate_license_id" required hint="Official accreditation ID">
+                  Authority License ID
+                </FieldLabel>
+                <Input
+                  id="certificate_license_id"
+                  value={licenseId}
+                  onChange={(e) => onLicense(e.target.value)}
+                  placeholder="e.g. NMDPRA/MISTDO/2024/001"
+                  className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm focus-visible:bg-white"
+                  required
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <FieldLabel htmlFor="certificate_license_id" required hint="Official accreditation ID">
-                Authority License ID
+              <FieldLabel htmlFor="certificate_portal_url" hint="Central verification link">
+                Official Verification Portal
               </FieldLabel>
               <Input
-                id="certificate_license_id"
-                value={licenseId}
-                onChange={(e) => onLicense(e.target.value)}
-                placeholder="e.g. NMDPRA/MISTDO/2024/001"
-                className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm focus-visible:bg-white"
-                required
+                id="certificate_portal_url"
+                value={portalUrl}
+                onChange={(e) => onPortal(e.target.value)}
+                placeholder="https://www.nmdpra.gov.ng"
+                inputMode="url"
+                className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
               />
+              {portalUrl?.trim() && (
+                <a href={portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700 hover:underline">
+                  Open portal <Link2 className="h-3 w-3" />
+                </a>
+              )}
             </div>
           </div>
-          <div className="space-y-2">
-            <FieldLabel htmlFor="certificate_portal_url" hint="Central verification link">
-              Official Verification Portal
-            </FieldLabel>
-            <Input
-              id="certificate_portal_url"
-              value={portalUrl}
-              onChange={(e) => onPortal(e.target.value)}
-              placeholder="https://www.nmdpra.gov.ng"
-              inputMode="url"
-              className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
-            />
-            {portalUrl?.trim() && (
-              <a href={portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700 hover:underline">
-                Open portal <Link2 className="h-3 w-3" />
-              </a>
-            )}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </SectionCard>
   );
 }
@@ -670,6 +754,7 @@ export default function CourseCreation() {
   const syllabusRef = useRef<HTMLTextAreaElement | null>(null);
   const [availableCourses, setAvailableCourses] = useState<CourseRecord[]>([]);
   const [previousAttendancePercentage, setPreviousAttendancePercentage] = useState(80);
+  const [certificateModalOpen, setCertificateModalOpen] = useState(false);
 
   // Fetch available courses for prerequisite selection
   useEffect(() => {
@@ -976,6 +1061,19 @@ export default function CourseCreation() {
       el.focus();
       el.setSelectionRange(s + before.length, e + before.length);
     });
+  };
+
+  /* snap to important attendance percentages */
+  const snapToImportantPercentage = (value: number): number => {
+    const importantPercentages = [50, 60, 70, 75, 80, 85, 90, 95, 100];
+    const snapThreshold = 2; // Snap if within 2% of an important value
+
+    for (const important of importantPercentages) {
+      if (Math.abs(value - important) <= snapThreshold) {
+        return important;
+      }
+    }
+    return value;
   };
 
   const validateStep = (step: number): boolean => {
@@ -2211,27 +2309,31 @@ export default function CourseCreation() {
                     <Slider
                       id="attendance_percentage"
                       value={[formData.attendance_percentage]}
-                      onValueChange={(value) => updateFormData("attendance_percentage", value[0])}
+                      onValueChange={(value) => {
+                        const snapValue = snapToImportantPercentage(value[0]);
+                        updateFormData("attendance_percentage", snapValue);
+                      }}
                       min={50}
                       max={100}
                       step={1}
                       disabled={formData.strict_attendance}
+                      markpoints={[50, 75, 80, 100]}
                       className="w-full"
                     />
-                    <div className="grid grid-cols-4 pt-1 text-[11px] font-medium text-slate-500">
-                      <div className="text-left flex flex-col">
+                    <div className="relative pt-1 text-[11px] font-medium text-slate-500 h-8">
+                      <div className="absolute left-0 flex flex-col items-start" style={{ left: '0%' }}>
                         <span className="font-semibold text-slate-700">50%</span>
                         <span className="text-[10px]">Lenient</span>
                       </div>
-                      <div className="text-center flex flex-col">
+                      <div className="absolute flex flex-col items-center" style={{ left: '50%', transform: 'translateX(-50%)' }}>
                         <span className="font-semibold text-slate-700">75%</span>
                         <span className="text-[10px]">Baseline</span>
                       </div>
-                      <div className="text-center flex flex-col">
+                      <div className="absolute flex flex-col items-center" style={{ left: '60%', transform: 'translateX(-50%)' }}>
                         <span className="font-semibold text-emerald-700 font-bold">80%</span>
                         <span className="text-[10px] text-emerald-700">Standard</span>
                       </div>
-                      <div className="text-right flex flex-col">
+                      <div className="absolute flex flex-col items-end" style={{ right: '0%' }}>
                         <span className="font-semibold text-slate-700">100%</span>
                         <span className="text-[10px]">Zero-Absence</span>
                       </div>
@@ -2387,10 +2489,28 @@ export default function CourseCreation() {
                             id="theory_passing_score"
                             type="number"
                             value={formData.theory_passing_score}
-                            onChange={(e) => updateFormData("theory_passing_score", Math.max(50, Math.min(100, parseInt(e.target.value) || 75)))}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "") {
+                                updateFormData("theory_passing_score", 75);
+                              } else {
+                                const numValue = parseInt(value);
+                                if (!isNaN(numValue)) {
+                                  updateFormData("theory_passing_score", numValue);
+                                }
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const value = parseInt(e.target.value);
+                              if (isNaN(value)) {
+                                updateFormData("theory_passing_score", 75);
+                              } else {
+                                updateFormData("theory_passing_score", Math.max(50, Math.min(100, value)));
+                              }
+                            }}
                             min={50}
                             max={100}
-                            className="text-lg font-bold px-4 py-2.5 rounded-lg"
+                            className="text-lg font-bold px-4 pr-10 py-2.5 rounded-lg"
                           />
                           <span className="absolute right-3.5 top-2.5 font-bold text-slate-600">%</span>
                         </div>
@@ -2423,7 +2543,7 @@ export default function CourseCreation() {
                     <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
                     <div className="flex flex-col text-[13px] leading-relaxed">
                       <span className="font-bold text-amber-700">Facility Prerequisite Warning</span>
-                      <span>Requires certified on-site instructor physical sign-off at <strong>Training Yard BOP Skid</strong> prior to digital credential cryptographic release.</span>
+                      <span>Requires certified on-site instructor physical sign-off at <strong>Training Yard BOP Skid</strong> prior to digital certificate release.</span>
                     </div>
                   </div>
 
@@ -2545,26 +2665,91 @@ export default function CourseCreation() {
                       >
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-3">
-                              <FieldLabel>Official Certificate Template</FieldLabel>
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                                <Star className="h-3 w-3" />
-                                Default Bound
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                              <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded border border-emerald-700/30 bg-gradient-to-tr from-emerald-700/20 to-amber-400/40">
-                                <Award className="h-5 w-5 text-emerald-700" />
-                              </span>
-                              <div className="min-w-0">
-                                <p className="truncate text-[14px] font-bold text-slate-900">
-                                  {formData.certificate_template}
-                                </p>
-                                <p className="text-[12px] text-slate-500">
-                                  v3.2 • Landscape A4 • Cryptographic Dynamic QR • Dual Signatures
-                                </p>
-                              </div>
-                            </div>
+                            <FieldLabel>Official Certificate Template</FieldLabel>
+                            <Dialog open={certificateModalOpen} onOpenChange={setCertificateModalOpen}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="w-full justify-start h-auto p-4 border-slate-200 bg-slate-50 hover:bg-slate-100"
+                                >
+                                  <div className="flex items-center gap-3 w-full">
+                                    <div className="h-10 w-14 shrink-0 rounded overflow-hidden border border-slate-200">
+                                      <img
+                                        src={CERTIFICATE_TEMPLATES.find(t => t.name === formData.certificate_template)?.image || "/certificates/gold-foil-template.svg"}
+                                        alt="Selected template"
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[14px] font-bold text-slate-900">
+                                        {formData.certificate_template}
+                                      </p>
+                                      <p className="text-[12px] text-slate-500">
+                                        Click to change template
+                                      </p>
+                                    </div>
+                                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                                  </div>
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                                <DialogHeader>
+                                  <DialogTitle>Select Certificate Template</DialogTitle>
+                                  <DialogDescription>
+                                    Choose a certificate template design for this course. Templates define the visual style and layout of issued certificates.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                                  {CERTIFICATE_TEMPLATES.map((template) => (
+                                    <button
+                                      key={template.id}
+                                      type="button"
+                                      onClick={() => {
+                                        updateFormData("certificate_template", template.name);
+                                        setCertificateModalOpen(false);
+                                      }}
+                                      className={`relative group rounded-xl border-2 transition-all ${
+                                        formData.certificate_template === template.name
+                                          ? "border-emerald-500 bg-emerald-50"
+                                          : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <div className="aspect-[4/3] bg-white rounded-lg overflow-hidden relative">
+                                        <img
+                                          src={template.image}
+                                          alt={template.name}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            // Fallback to placeholder if image fails to load
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.parentElement!.innerHTML = `
+                                              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+                                                <div class="text-center p-4">
+                                                  <svg class="h-12 w-12 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                  </svg>
+                                                  <p class="text-xs font-medium text-slate-600">${template.name}</p>
+                                                </div>
+                                              </div>
+                                            `;
+                                          }}
+                                        />
+                                        {formData.certificate_template === template.name && (
+                                          <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1 shadow-md">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="p-3">
+                                        <h4 className="font-semibold text-sm text-slate-900">{template.name}</h4>
+                                        <p className="text-xs text-slate-500 mt-1">{template.description}</p>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           </div>
 
                           <div className="space-y-2">
@@ -2702,8 +2887,8 @@ export default function CourseCreation() {
 
               <SectionCard
                 icon={QrCode}
-                title="Dynamic Identifier Syntax Builder"
-                subtitle="Combined with the dynamic QR and scannable Gokly hash, this ID is detected in real time by the central registry. IDs are auto-generated sequentially at issuance — never entered during setup."
+                title="Certificate ID Format"
+                subtitle="Configure how certificate IDs are formatted and generated. IDs are automatically created when certificates are issued."
               >
                 <div className="flex flex-col items-start gap-3 rounded-xl bg-slate-900 p-5 text-white sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
@@ -2787,15 +2972,11 @@ export default function CourseCreation() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 rounded-xl bg-amber-50 p-4">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-4">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                   <p className="text-[13px] leading-relaxed text-slate-600">
-                    Example of real-world generation:{" "}
-                    <strong className="font-semibold text-slate-900">{sampleId}</strong> — the{" "}
-                    <Smartphone className="inline h-3.5 w-3.5" /> portability-focused digital
-                    wallet pass and{" "}
-                    <Fingerprint className="inline h-3.5 w-3.5" /> scannable Gokly hash embed
-                    this exact identifier.
+                    Example certificate ID:{" "}
+                    <strong className="font-semibold text-slate-900">{sampleId}</strong> — this format will be used for all certificates issued for this course.
                   </p>
                 </div>
               </SectionCard>
@@ -2826,63 +3007,23 @@ export default function CourseCreation() {
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 {!formData.certificate_external ? (
                   <>
-                <div className="relative aspect-[4/3] bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 p-5">
-                  <div className="absolute inset-3 rounded-lg border-2 border-emerald-700/30" />
-                  <div className="absolute inset-4 rounded-md border border-amber-400/50" />
-
-                  <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
-                    <Award className="h-6 w-6 text-emerald-700" />
-                    <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-emerald-700">
-                      Gokly Industrial Training Registry
-                    </p>
-                    <p className="mt-3 text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500">
-                      This is to certify that
-                    </p>
-                    <p className="mt-1 text-[13px] font-bold italic text-slate-800">
-                      Chinedu Okafor, BSc
-                    </p>
-                    <p className="mt-2 max-w-[85%] text-[9.5px] leading-snug text-slate-500">
-                      has successfully completed all prescribed competency modules and final
-                      assessments for
-                    </p>
-                    <p className="mt-1 max-w-[90%] text-[11px] font-bold leading-tight text-slate-900">
-                      {(formData.certificate_title || formData.title || "Untitled Credential").slice(
-                        0,
-                        90,
-                      )}
-                    </p>
-                    <div className="mt-3 flex w-full items-end justify-between gap-2 px-2">
-                      <div className="min-w-0 text-left">
-                        <p className="truncate text-[7.5px] font-semibold text-slate-600">
-                          Mojisola Adeyemi
-                        </p>
-                        <div className="mt-0.5 w-16 border-t border-slate-300" />
-                        <p className="text-[7px] uppercase tracking-wide text-slate-400">
-                          Director of Training
-                        </p>
-                      </div>
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-900">
-                        <QrCode className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="min-w-0 text-right">
-                        <p className="text-[7.5px] font-semibold text-slate-600">
-                          {new Date().toLocaleDateString("en-GB", {
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
-                        <div className="ml-auto mt-0.5 w-16 border-t border-slate-300" />
-                        <p className="text-[7px] uppercase tracking-wide text-slate-400">Issued</p>
-                      </div>
-                    </div>
-                  </div>
-
+                <div className="relative aspect-[4/3]">
+                  <img
+                    src={CERTIFICATE_TEMPLATES.find(t => t.name === formData.certificate_template)?.image || "/certificates/gold-foil-template.svg"}
+                    alt="Certificate preview"
+                    className="w-full h-full object-cover"
+                  />
                   {formData.certificate_enabled &&
                     formData.certificate_issuance_mode === "automatic" && (
-                      <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white">
+                      <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white shadow-md">
                         Auto-Issued
                       </span>
                     )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                    <p className="text-white text-[10px] font-medium truncate">
+                      {formData.certificate_title || formData.title}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-2 border-t border-slate-100 p-4">
@@ -3013,170 +3154,427 @@ export default function CourseCreation() {
 
       case 6:
         return (
-          <SectionCard
-            icon={CheckCircle}
-            title="Review & Create"
-            subtitle="Review all course information before creating the course."
-          >
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900">Course Information</h3>
-                <div className="grid gap-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Title:</span>
-                    <span className="font-medium text-slate-900">{formData.title}</span>
+          <div className="space-y-6">
+            <SectionCard
+              icon={CheckCircle}
+              title="Review & Create Course"
+              subtitle="Review all course information before creating the course."
+            >
+              <div className="space-y-10">
+                {/* Step 1: Basic Information */}
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm font-bold">1</div>
+                      <h3 className="text-lg font-semibold text-slate-900">Basic Information</h3>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setCurrentStep(1)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Code:</span>
-                    <span className="font-medium text-slate-900">{formData.code}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Category:</span>
-                    <span className="font-medium text-slate-900">{formData.category}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Tier:</span>
-                    <span className="font-medium text-slate-900">{formData.tier}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Duration:</span>
-                    <span className="font-medium text-slate-900">{formData.duration_value} {formData.duration_unit}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Delivery Mode:</span>
-                    <span className="font-medium text-slate-900">{formData.delivery_mode}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Certificates:</span>
-                    <span className="font-medium text-slate-900">
-                      {!formData.certificate_enabled
-                        ? "Disabled"
-                        : formData.certificate_external
-                          ? `External — ${formData.certificate_authority || "Authority"}`
-                          : "Internal generation"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900">Modules ({formData.modules.length})</h3>
-                <ul className="space-y-2">
-                  {formData.modules.map((module, index) => (
-                    <li key={index} className="flex items-center gap-2 text-sm text-slate-700">
-                      <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
-                      <span className="font-medium">
-                        {index + 1}. {module.name}
-                      </span>
-                      {module.is_required !== false && (
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
-                          Mandatory
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  Assessments ({formData.modules.filter((m) => m.has_assessment).length} module
-                  {formData.has_final_assessment && formData.final_assessment ? " + final" : ""})
-                </h3>
-                <ul className="space-y-2">
-                  {formData.modules.filter((m) => m.has_assessment).map((m, index) => (
-                    <li key={index} className="flex items-center gap-2 text-sm text-slate-700">
-                      <FileText className="h-3.5 w-3.5 text-emerald-600" />
-                      <span className="font-medium">
-                        {index + 1}. {m.name?.trim() ? `${m.name.trim()} — Assessment` : "Module Assessment"}
-                        {" "}({moduleAssessmentLabel(m.assessment_type)}, {m.assessment_max_score} pts)
-                      </span>
-                    </li>
-                  ))}
-                  {formData.has_final_assessment && formData.final_assessment && (
-                    <li className="flex items-center gap-2 text-sm text-slate-700">
-                      <Award className="h-3.5 w-3.5 text-amber-600" />
-                      <span className="font-medium">
-                        Final: {formData.final_assessment.name || "Final Assessment"}
-                        {" "}({formData.final_assessment.max_score} pts)
-                      </span>
-                      {formData.final_assessment.required && (
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
-                          Required
-                        </span>
-                      )}
-                    </li>
-                  )}
-                </ul>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900">Completion Requirements</h3>
-                <div className="grid gap-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Attendance Required:</span>
-                    <span className="font-medium text-slate-900">{formData.attendance_required ? "Yes" : "No"}</span>
-                  </div>
-                  {formData.attendance_required && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Minimum Attendance:</span>
-                        <span className="font-medium text-slate-900">{formData.strict_attendance ? "100%" : `${formData.attendance_percentage}%`}</span>
+                  <div className="grid gap-4 text-sm pl-11">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Title</span>
+                        <span className="font-medium text-slate-900">{formData.title}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Minimum Contact Hours:</span>
-                        <span className="font-medium text-slate-900">{formData.minimum_contact_hours} hours</span>
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Code</span>
+                        <span className="font-mono font-medium text-slate-900">{formData.code}</span>
                       </div>
-                    </>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Assessment Required:</span>
-                    <span className="font-medium text-slate-900">{formData.assessment_required ? "Yes" : "No"}</span>
-                  </div>
-                  {formData.assessment_required && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Theory Passing Score:</span>
-                        <span className="font-medium text-slate-900">{formData.theory_passing_score}%</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Category</span>
+                        <span className="font-medium text-slate-900">{formData.category}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Practical Required:</span>
-                        <span className="font-medium text-slate-900">{formData.practical_required ? "Yes" : "No"}</span>
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Tier</span>
+                        <span className="font-medium text-slate-900">{formData.tier}</span>
                       </div>
-                    </>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Module Completion Mode:</span>
-                    <span className="font-medium text-slate-900 capitalize">{formData.module_completion_mode}</span>
-                  </div>
-                  {formData.certificate_external && (
-                    <>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-slate-500">External Authority:</span>
-                        <span className="font-medium text-slate-900">{formData.certificate_authority || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Short Description</span>
+                      <p className="font-medium text-slate-900">{formData.short_description}</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Duration</span>
+                        <span className="font-medium text-slate-900">{formData.duration_value} {formData.duration_unit}</span>
                       </div>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-slate-500">Authority License ID:</span>
-                        <span className="font-mono font-medium text-slate-900">{formData.certificate_license_id || "—"}</span>
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Delivery Mode</span>
+                        <span className="font-medium text-slate-900">{formData.delivery_mode}</span>
                       </div>
-                      {formData.certificate_portal_url?.trim() && (
-                        <div className="flex justify-between gap-4">
-                          <span className="text-slate-500">Verification Portal:</span>
-                          <a href={formData.certificate_portal_url} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 hover:underline">
-                            {formData.certificate_portal_url}
-                          </a>
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Status</span>
+                        <span className="font-medium text-slate-900">{formData.status}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Min Class Size</span>
+                        <span className="font-medium text-slate-900">{formData.min_class_size}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Max Class Size</span>
+                        <span className="font-medium text-slate-900">{formData.max_class_size}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Prerequisites</span>
+                      {formData.prerequisite_required ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs font-medium uppercase">
+                              {formData.prerequisite_type}
+                            </span>
+                          </div>
+                          {formData.prerequisite_type === "internal" && formData.prerequisite_course_id ? (
+                            <span className="font-medium text-slate-900">
+                              Required Course: {availableCourses.find(c => c.id === formData.prerequisite_course_id)?.title || `ID: ${formData.prerequisite_course_id}`}
+                            </span>
+                          ) : formData.prerequisite_type === "external" ? (
+                            <p className="font-medium text-slate-900">{formData.prerequisite_description}</p>
+                          ) : null}
                         </div>
+                      ) : (
+                        <span className="text-slate-400 italic">No prerequisites required</span>
                       )}
-                      <p className="rounded-lg bg-amber-50 p-3 text-[12px] leading-relaxed text-slate-600">
-                        Generation & official validation are controlled by {formData.certificate_authority || "the external authority"}.
-                        Records remain verifiable centrally via the license ID + portal above.
-                      </p>
-                    </>
-                  )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Individual Enrollment</span>
+                        <span className={`font-medium ${formData.individual_enrollment_enabled ? "text-emerald-600" : "text-slate-400"}`}>
+                          {formData.individual_enrollment_enabled ? "Enabled" : "Disabled"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Status</span>
+                        <span className={`font-medium ${formData.status === "PUBLISHED" ? "text-emerald-600" : formData.status === "DRAFT" ? "text-amber-600" : "text-slate-600"}`}>
+                          {formData.status}
+                        </span>
+                      </div>
+                    </div>
+                    {formData.description && (
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Detailed Description</span>
+                        <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700 max-h-32 overflow-y-auto">
+                          {formData.description}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step 2: Modules & Assessments */}
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm font-bold">2</div>
+                      <h3 className="text-lg font-semibold text-slate-900">Modules & Assessments ({formData.modules.length})</h3>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setCurrentStep(2)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+                  </div>
+                  <div className="space-y-3 pl-11">
+                    {formData.modules.map((module, index) => (
+                      <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-bold text-slate-500">MOD-{String(index + 1).padStart(3, "0")}</span>
+                              <h4 className="font-semibold text-slate-900">{module.name}</h4>
+                              {module.is_required !== false && (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10.5px] font-medium">
+                                  Required
+                                </span>
+                              )}
+                              {module.materials && module.materials.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10.5px] font-medium">
+                                  {module.materials.length} {module.materials.length === 1 ? 'Material' : 'Materials'}
+                                </span>
+                              )}
+                            </div>
+                            {module.description && (
+                              <p className="text-sm text-slate-600 mb-2">{module.description}</p>
+                            )}
+                            {module.duration && (
+                              <div className="text-xs text-slate-500 mb-2">
+                                Duration: {module.duration} {module.delivery_type || "hours"}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {module.has_assessment && (
+                          <div className="mt-3 pt-3 border-t border-slate-200">
+                            <div className="flex items-center gap-2 text-xs">
+                              <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                              <span className="font-medium text-slate-700">
+                                {moduleAssessmentLabel(module.assessment_type)}
+                              </span>
+                              <span className="text-slate-400">•</span>
+                              <span className="text-slate-600">Max: {module.assessment_max_score} pts</span>
+                              <span className="text-slate-400">•</span>
+                              <span className="text-slate-600">Pass: {module.assessment_pass_mark}%</span>
+                              <span className="text-slate-400">•</span>
+                              <span className="text-slate-600">Attempts: {module.assessment_attempts_allowed}</span>
+                              {module.assessment_required !== false && (
+                                <>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="text-emerald-600 font-medium">Required</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Step 3: Final Assessment */}
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm font-bold">3</div>
+                      <h3 className="text-lg font-semibold text-slate-900">Final Assessment</h3>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setCurrentStep(3)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+                  </div>
+                  <div className="pl-11">
+                    {formData.has_final_assessment && formData.final_assessment ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        <div className="flex items-start gap-3">
+                          <Award className="h-5 w-5 text-amber-600 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 mb-2">
+                              {formData.final_assessment.name || "Final Assessment"}
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Type</span>
+                                <span className="font-medium text-slate-900">{moduleAssessmentLabel(formData.final_assessment.type)}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Max Score</span>
+                                <span className="font-medium text-slate-900">{formData.final_assessment.max_score} pts</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Pass Mark</span>
+                                <span className="font-medium text-slate-900">{formData.final_assessment.pass_mark}%</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Attempts</span>
+                                <span className="font-medium text-slate-900">{formData.final_assessment.attempts_allowed}</span>
+                              </div>
+                            </div>
+                            {formData.final_assessment.description && (
+                              <div className="mt-3">
+                                <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Description</span>
+                                <p className="text-sm text-slate-700">{formData.final_assessment.description}</p>
+                              </div>
+                            )}
+                            {formData.final_assessment.required && (
+                              <div className="mt-3">
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                                  Required for completion
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center">
+                        <p className="text-sm text-slate-500">No final assessment configured</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step 4: Completion Rules */}
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm font-bold">4</div>
+                      <h3 className="text-lg font-semibold text-slate-900">Completion Rules</h3>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setCurrentStep(4)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+                  </div>
+                  <div className="grid gap-4 text-sm pl-11">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Attendance Required</span>
+                        <span className={`font-medium ${formData.attendance_required ? "text-emerald-600" : "text-slate-400"}`}>
+                          {formData.attendance_required ? "Yes" : "No"}
+                        </span>
+                      </div>
+                      {formData.attendance_required && (
+                        <>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Minimum Attendance</span>
+                            <span className="font-medium text-slate-900">
+                              {formData.strict_attendance ? "100% (Strict)" : `${formData.attendance_percentage}%`}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Minimum Contact Hours</span>
+                            <span className="font-medium text-slate-900">{formData.minimum_contact_hours} hours</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Assessment Required</span>
+                        <span className={`font-medium ${formData.assessment_required ? "text-emerald-600" : "text-slate-400"}`}>
+                          {formData.assessment_required ? "Yes" : "No"}
+                        </span>
+                      </div>
+                      {formData.assessment_required && (
+                        <>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Theory Passing Score</span>
+                            <span className="font-medium text-slate-900">{formData.theory_passing_score}%</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Practical Required</span>
+                            <span className={`font-medium ${formData.practical_required ? "text-emerald-600" : "text-slate-400"}`}>
+                              {formData.practical_required ? "Yes" : "No"}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Module Completion Mode</span>
+                      <span className="font-medium text-slate-900 capitalize">{formData.module_completion_mode}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Sequential Progression</span>
+                      <span className={`font-medium ${formData.sequential_progression ? "text-emerald-600" : "text-slate-400"}`}>
+                        {formData.sequential_progression ? "Yes" : "No"}
+                      </span>
+                    </div>
+                    {formData.individual_enrollment_enabled && (
+                      <div className="rounded-lg bg-emerald-50 p-3">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-emerald-600" />
+                          <span className="text-sm font-medium text-emerald-800">
+                            Individual enrollment is enabled for this course
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step 5: Certificate Configuration */}
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm font-bold">5</div>
+                      <h3 className="text-lg font-semibold text-slate-900">Certificate Configuration</h3>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setCurrentStep(5)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+                  </div>
+                  <div className="grid gap-4 text-sm pl-11">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Certificate Enabled</span>
+                        <span className={`font-medium ${formData.certificate_enabled ? "text-emerald-600" : "text-slate-400"}`}>
+                          {formData.certificate_enabled ? "Yes" : "No"}
+                        </span>
+                      </div>
+                      {formData.certificate_enabled && (
+                        <>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Generation Mode</span>
+                            <span className="font-medium text-slate-900">
+                              {formData.certificate_external ? "External Authority" : "Internal Generation"}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {formData.certificate_enabled && formData.certificate_external && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">External Authority</span>
+                            <span className="font-medium text-slate-900">{formData.certificate_authority || "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">License ID</span>
+                            <span className="font-mono font-medium text-slate-900">{formData.certificate_license_id || "—"}</span>
+                          </div>
+                        </div>
+                        {formData.certificate_portal_url?.trim() && (
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Verification Portal</span>
+                            <a href={formData.certificate_portal_url} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 hover:underline">
+                              {formData.certificate_portal_url}
+                            </a>
+                          </div>
+                        )}
+                        <p className="text-xs text-slate-600">
+                          Generation & official validation are controlled by {formData.certificate_authority || "the external authority"}.
+                          Records remain verifiable centrally via the license ID + portal.
+                        </p>
+                      </div>
+                    )}
+                    {formData.certificate_enabled && !formData.certificate_external && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+                        <div>
+                          <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Certificate Title</span>
+                          <span className="font-medium text-slate-900">{formData.certificate_title || formData.title}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Issuance Mode</span>
+                            <span className="font-medium text-slate-900 capitalize">{formData.certificate_issuance_mode}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Template</span>
+                            <span className="font-medium text-slate-900">{formData.certificate_template}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Validity Duration</span>
+                            <span className="font-medium text-slate-900">{formData.certificate_validity_duration} {formData.certificate_validity_unit}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">ID Prefix</span>
+                            <span className="font-mono font-medium text-slate-900">{formData.certificate_id_prefix}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">ID Format</span>
+                            <span className="font-mono font-medium text-slate-900 text-xs">
+                              {formData.certificate_id_prefix}{formData.certificate_id_separator}{formData.certificate_id_year_schema}{formData.certificate_id_separator}{formData.certificate_id_sequence_type.replace(/\(.*\)/, '').toLowerCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          </div>
         );
 
       default:

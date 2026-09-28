@@ -45,67 +45,64 @@ export default function Admin() {
 
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search audit logs...">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">Administrative Overview</h1>
-          <p className="mt-2 text-muted-foreground">Real-time platform performance and compliance tracking.</p>
+      <div className="page-padding">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">Administrative Overview</h1>
+            <p className="mt-2 text-muted-foreground">Real-time platform performance and compliance tracking.</p>
+          </div>
+          <div className="flex gap-3">
+            <button className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-muted">
+              <Calendar className="h-4 w-4" /> Last 30 Days
+            </button>
+            <button className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-deep">
+              <Download className="h-4 w-4" /> Export Report
+            </button>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <button className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-muted">
-            <Calendar className="h-4 w-4" /> Last 30 Days
-          </button>
-          <button className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-deep">
-            <Download className="h-4 w-4" /> Export Report
-          </button>
-        </div>
-      </div>
-
-      <section className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((m) => (
-          <div key={m.label} className={`rounded-xl border-l-4 bg-card p-5 shadow-[var(--shadow-card)] ${m.accent}`}>
+        <section className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {metrics.map((m) => (
+            <div key={m.label} className={`rounded-xl border-l-4 bg-card p-5 shadow-[var(--shadow-card)] ${m.accent}`}>
+              <div className="flex items-start justify-between">
+                <div className="grid h-10 w-10 place-items-center rounded-md bg-muted"><m.icon className="h-5 w-5 text-primary" /></div>
+                <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">{m.chip}</span>
+              </div>
+              <p className="label-eyebrow mt-5">{m.label}</p>
+              <p className="mt-2 font-display text-3xl font-extrabold">{m.value}</p>
+              <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full w-2/3 rounded-full bg-primary" />
+              </div>
+            </div>
+          ))}
+        </section>
+        <section className="mt-8 grid gap-6">
+          <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
             <div className="flex items-start justify-between">
-              <div className="grid h-10 w-10 place-items-center rounded-md bg-muted"><m.icon className="h-5 w-5 text-primary" /></div>
-              <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">{m.chip}</span>
+              <div>
+                <h2 className="text-xl font-bold">Certification Trends</h2>
+                <p className="text-sm text-muted-foreground">Monthly distribution of technical certifications</p>
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-primary" /> Offshore</span>
+                <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-energy" /> HSE Safety</span>
+              </div>
             </div>
-            <p className="label-eyebrow mt-5">{m.label}</p>
-            <p className="mt-2 font-display text-3xl font-extrabold">{m.value}</p>
-            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted">
-              <div className="h-full w-2/3 rounded-full bg-primary" />
-            </div>
-          </div>
-        ))}
-      </section>
-
-     
-
-      <section className="mt-8 grid gap-6">
-        <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-bold">Certification Trends</h2>
-              <p className="text-sm text-muted-foreground">Monthly distribution of technical certifications</p>
-            </div>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-primary" /> Offshore</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-energy" /> HSE Safety</span>
+            <div className="mt-8 flex h-56 items-end gap-3">
+              {TRENDS.map((t) => {
+                const h = Math.max(15, t.v);
+                const isPeak = t.v === Math.max(...TRENDS.map((x) => x.v));
+                return (
+                  <div key={t.m} className="flex flex-1 flex-col items-center gap-2">
+                    <div className={`w-full rounded-t-md transition ${isPeak ? "bg-primary" : "bg-primary/25"}`} style={{ height: `${h}%` }} />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t.m}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div className="mt-8 flex h-56 items-end gap-3">
-            {TRENDS.map((t) => {
-              const h = Math.max(15, t.v);
-              const isPeak = t.v === Math.max(...TRENDS.map((x) => x.v));
-              return (
-                <div key={t.m} className="flex flex-1 flex-col items-center gap-2">
-                  <div className={`w-full rounded-t-md transition ${isPeak ? "bg-primary" : "bg-primary/25"}`} style={{ height: `${h}%` }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t.m}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         
-      </section>
+        </section>
+      </div>
 
       {/* Certificate Mgmt preview */}
       {/* <section className="mt-8 rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">

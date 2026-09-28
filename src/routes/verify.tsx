@@ -15,7 +15,7 @@ export default function Verify() {
   const [certificateData, setCertificateData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [verificationStatus, setVerificationStatus] = useState<"valid" | "revoked" | "not_found" | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<"valid" | "revoked" | "external" | "not_found" | null>(null);
   const user = useAuth().user;
 
   // Load certificate on component mount or when cert param changes
@@ -46,6 +46,9 @@ export default function Verify() {
         setError("Certificate not found in our system");
       } else if (response.status === "revoked") {
         setVerificationStatus("revoked");
+        setCertificateData(response.certificate);
+      } else if (response.status === "external") {
+        setVerificationStatus("external");
         setCertificateData(response.certificate);
       } else if (response.status === "valid") {
         setVerificationStatus("valid");
@@ -145,6 +148,49 @@ export default function Verify() {
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground font-semibold">Certificate not found in our system</p>
                 <p className="text-sm text-muted-foreground mt-2">Please check the certificate number and try again</p>
+              </div>
+            )}
+
+            {verificationStatus === "external" && certificateData && !loading && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 shadow-[var(--shadow-card)]">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-bold text-amber-900">
+                      Externally validated — {certificateData.certificate_authority || "NMDPRA"}
+                    </h3>
+                    <p className="text-sm text-amber-900/80 mt-1">
+                      Generation and official validation for this course are controlled by{" "}
+                      {certificateData.certificate_authority || "the external authority"} rather than
+                      this system. Verify centrally with the official license record below.
+                    </p>
+                    <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-amber-900/60">License ID</p>
+                        <p className="mt-1 font-mono font-semibold text-amber-950">
+                          {certificateData.certificate_license_id || certificateData.certificate_number}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-amber-900/60">Course</p>
+                        <p className="mt-1 font-semibold text-amber-950">
+                          {certificateData.course_title}
+                          {certificateData.course_code ? ` (${certificateData.course_code})` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    {certificateData.certificate_portal_url && (
+                      <a
+                        href={certificateData.certificate_portal_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-amber-700"
+                      >
+                        <ShieldCheck className="h-4 w-4" /> Verify on {certificateData.certificate_authority || "authority"} portal
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

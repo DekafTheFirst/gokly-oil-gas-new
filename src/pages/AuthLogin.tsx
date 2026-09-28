@@ -145,7 +145,7 @@ const AuthLogin = () => {
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col gap-4 pt-4">
+          {/* <CardFooter className="flex flex-col gap-4 pt-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-gray-200" />
@@ -179,7 +179,7 @@ const AuthLogin = () => {
                 Sign up for free
               </Link>
             </p>
-          </CardFooter>
+          </CardFooter> */}
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">

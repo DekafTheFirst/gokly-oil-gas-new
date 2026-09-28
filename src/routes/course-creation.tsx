@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
@@ -55,14 +55,14 @@ import {
   Lightbulb,
   Route,
   Pencil,
-  ChartColumn as BarChart,
-  Flag,
-  RefreshCw as Replay,
-  X as Cancel,
   GripVertical,
+  QrCode,
+  Lock,
+  Fingerprint,
+  Smartphone,
 } from "lucide-react";
-import { createCourse } from "@/lib/courses";
-import type { CourseModule } from "@/lib/courses";
+import { createCourse, fetchCourses } from "@/lib/courses";
+import type { CourseModule, CourseRecord } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 
 const COURSE_CATEGORIES = [
@@ -76,6 +76,18 @@ const COURSE_CATEGORIES = [
 
 const TIERS = ["FOUNDATION", "INTERMEDIATE", "ADVANCED"];
 const DURATION_UNITS = ["HOURS", "DAYS", "WEEKS"];
+
+const EXTERNAL_CERT_AUTHORITIES = [
+  {
+    value: "NMDPRA",
+    label: "NMDPRA — Nigerian Midstream and Downstream Petroleum Regulatory Authority",
+    portal: "https://www.nmdpra.gov.ng",
+    hint: "MISTDO courses: generation & official validation are strictly controlled by NMDPRA.",
+  },
+] as const;
+
+const isMistdoCourse = (title: string, code: string) =>
+  /mistdo/i.test(`${title || ""} ${code || ""}`);
 
 const DELIVERY_TYPES = [
   { value: "theory", label: "Theory" },
@@ -106,11 +118,30 @@ const DELIVERY_MODES = [
 
 const STEPS = [
   { id: 1, label: "Basic Info" },
-  { id: 2, label: "Modules" },
-  { id: 3, label: "Assessments" },
+  { id: 2, label: "Modules & Assessments" },
+  { id: 3, label: "Final Assessment" },
   { id: 4, label: "Completion Rules" },
-  { id: 5, label: "Review" },
+  { id: 5, label: "Certificate" },
+  { id: 6, label: "Review" },
 ];
+
+const MODULE_ASSESSMENT_TYPES = [
+  { value: "written", label: "Written Examination" },
+  { value: "mcq", label: "Multiple Choice (Auto-graded)" },
+  { value: "practical", label: "Practical / Rig Simulator" },
+  { value: "oral", label: "Oral Examination / Defense" },
+  { value: "trainer", label: "Trainer Field Evaluation" },
+  { value: "other", label: "Other Compliance Criteria" },
+] as const;
+
+const DEFAULT_MODULE_ASSESSMENT = {
+  assessment_type: "mcq",
+  assessment_max_score: 100,
+  assessment_pass_mark: 75,
+  assessment_attempts_allowed: 3,
+  assessment_required: true,
+  assessment_description: "",
+};
 
 type FormData = {
   title: string;
@@ -126,9 +157,29 @@ type FormData = {
   min_class_size: number;
   max_class_size: number;
   prerequisite_required: boolean;
+  prerequisite_type: "internal" | "external";
+  prerequisite_course_id: number | null;
   prerequisite_description: string;
   individual_enrollment_enabled: boolean;
   certificate_enabled: boolean;
+  // Certificate step (Step 5) — credential automation + template binding.
+  // `certificate_enabled` gates issuance; the design fields below drive the
+  // live preview + ID syntax builder (frontend-only until backend columns land).
+  certificate_title: string;
+  certificate_template: string;
+  certificate_issuance_mode: "automatic" | "manual";
+  certificate_validity_framework: string;
+  certificate_validity_duration: number;
+  certificate_validity_unit: string;
+  certificate_id_prefix: string;
+  certificate_id_separator: string;
+  certificate_id_year_schema: string;
+  certificate_id_sequence_type: string;
+  // External certificate generation/validation (e.g. MISTDO → NMDPRA).
+  certificate_external: boolean;
+  certificate_authority: string;
+  certificate_license_id: string;
+  certificate_portal_url: string;
   modules: CourseModule[];
   expandedModules: number[];
   // Completion requirements
@@ -141,7 +192,13 @@ type FormData = {
   theory_passing_score: number;
   practical_required: boolean;
   sequential_progression: boolean;
-  // Assessments
+  // Final overall assessment (Step 3): only asked about once all module-level
+  // assessments are done. `has_final_assessment` is the yes/no gate; when true
+  // the single capstone assessment is configured via the existing Assessment shape.
+  has_final_assessment: boolean;
+  final_assessment: Assessment | null;
+  // Assessments (module-level ones are edited inline in Step 2 via the module
+  // payload; this array holds the sync'd module assessments + the final one)
   assessments: Assessment[];
 };
 
@@ -159,93 +216,75 @@ type Assessment = {
 
 /* ---------------------------------- bits ---------------------------------- */
 
-function NewAssessmentForm({ modules, onAdd }: { modules: CourseModule[], onAdd: (data: Omit<Assessment, 'id'>) => void }) {
+function FinalAssessmentForm({ value, onChange, courseTitle }: {
+  value: Assessment;
+  onChange: (field: keyof Assessment, v: any) => void;
+  courseTitle: string;
+}) {
   const [formData, setFormData] = useState({
-    name: "",
-    type: "mcq",
-    module_association: "whole",
-    description: "",
-    max_score: 100,
-    pass_mark: 75,
-    attempts_allowed: 3,
-    required: true,
+    name: value.name,
+    type: value.type,
+    description: value.description,
+    max_score: value.max_score,
+    pass_mark: value.pass_mark,
+    attempts_allowed: value.attempts_allowed,
+    required: value.required,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onAdd(formData);
+  // Keep the local editor in sync when the gate re-creates the final object.
+  useEffect(() => {
     setFormData({
-      name: "",
-      type: "mcq",
-      module_association: "whole",
-      description: "",
-      max_score: 100,
-      pass_mark: 75,
-      attempts_allowed: 3,
-      required: true,
+      name: value.name,
+      type: value.type,
+      description: value.description,
+      max_score: value.max_score,
+      pass_mark: value.pass_mark,
+      attempts_allowed: value.attempts_allowed,
+      required: value.required,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.id]);
+
+  const set = (field: keyof typeof formData, v: any) => {
+    setFormData((prev) => ({ ...prev, [field]: v }));
+    onChange(field as keyof Assessment, v);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       {/* Assessment Name */}
       <div className="flex flex-col gap-1.5">
         <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
-          <span>Assessment Name <span className="text-red-500">*</span></span>
-          <span className="text-[11px] text-slate-400">Clear descriptive evaluation title</span>
+          <span>Final Assessment Name <span className="text-red-500">*</span></span>
+          <span className="text-[11px] text-slate-400">Capstone / whole-course evaluation</span>
         </Label>
         <Input
-          placeholder="e.g. MISTDO Emergency Evacuation Protocol"
+          placeholder={courseTitle?.trim() ? `${courseTitle.trim()} — Final Assessment` : "e.g. Final Capstone Examination"}
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => set("name", e.target.value)}
           className="h-11 border-slate-200 bg-slate-50/70 text-sm"
           required
         />
       </div>
 
-      {/* Type and Module Association */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-sm font-medium text-slate-700">
-            Assessment Type <span className="text-red-500">*</span>
-          </Label>
-          <Select
-            value={formData.type}
-            onValueChange={(value) => setFormData({ ...formData, type: value })}
-          >
-            <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mcq">Multiple Choice (Auto-graded)</SelectItem>
-              <SelectItem value="written">Written Examination</SelectItem>
-              <SelectItem value="practical">Practical / Rig Simulator</SelectItem>
-              <SelectItem value="oral">Oral Examination / Defense</SelectItem>
-              <SelectItem value="trainer">Trainer Field Evaluation</SelectItem>
-              <SelectItem value="other">Other Compliance Criteria</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-sm font-medium text-slate-700">Module Association</Label>
-          <Select
-            value={formData.module_association}
-            onValueChange={(value) => setFormData({ ...formData, module_association: value })}
-          >
-            <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="whole">Whole Course (Capstone / Final)</SelectItem>
-              {modules.map((module, index) => (
-                <SelectItem key={index} value={`mod-${index}`}>
-                  MOD-{String(index + 1).padStart(3, '0')}: {module.name || `Module ${index + 1}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Type */}
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-sm font-medium text-slate-700">
+          Assessment Type <span className="text-red-500">*</span>
+        </Label>
+        <Select
+          value={formData.type}
+          onValueChange={(v) => set("type", v)}
+        >
+          <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MODULE_ASSESSMENT_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Description */}
@@ -258,7 +297,7 @@ function NewAssessmentForm({ modules, onAdd }: { modules: CourseModule[], onAdd:
           placeholder="Assessment guidelines, rubric, and focus areas..."
           rows={3}
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => set("description", e.target.value)}
           className="border-slate-200 bg-slate-50/70 text-sm resize-none"
         />
       </div>
@@ -271,7 +310,7 @@ function NewAssessmentForm({ modules, onAdd }: { modules: CourseModule[], onAdd:
             <Input
               type="number"
               value={formData.max_score}
-              onChange={(e) => setFormData({ ...formData, max_score: parseInt(e.target.value) || 100 })}
+              onChange={(e) => set("max_score", parseInt(e.target.value) || 100)}
               className="h-11 border-slate-200 bg-slate-50/70 text-sm pr-12"
             />
             <span className="absolute right-3 text-[12px] text-slate-400 font-bold">PTS</span>
@@ -284,7 +323,7 @@ function NewAssessmentForm({ modules, onAdd }: { modules: CourseModule[], onAdd:
             <Input
               type="number"
               value={formData.pass_mark}
-              onChange={(e) => setFormData({ ...formData, pass_mark: parseInt(e.target.value) || 75 })}
+              onChange={(e) => set("pass_mark", parseInt(e.target.value) || 75)}
               className="h-11 border-slate-200 bg-slate-50/70 text-sm pr-10"
             />
             <span className="absolute right-3 text-[13px] text-slate-400 font-bold">%</span>
@@ -295,7 +334,7 @@ function NewAssessmentForm({ modules, onAdd }: { modules: CourseModule[], onAdd:
           <Label className="text-sm font-medium text-slate-700">Attempts Allowed</Label>
           <Select
             value={formData.attempts_allowed.toString()}
-            onValueChange={(value) => setFormData({ ...formData, attempts_allowed: value === "unlimited" ? 999 : parseInt(value) })}
+            onValueChange={(value) => set("attempts_allowed", value === "unlimited" ? 999 : parseInt(value))}
           >
             <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
               <SelectValue />
@@ -316,42 +355,215 @@ function NewAssessmentForm({ modules, onAdd }: { modules: CourseModule[], onAdd:
         <Checkbox
           id="required-assessment"
           checked={formData.required}
-          onCheckedChange={(checked) => setFormData({ ...formData, required: checked })}
+          onCheckedChange={(checked) => set("required", checked)}
         />
         <label htmlFor="required-assessment" className="flex flex-col cursor-pointer">
           <span className="text-sm font-semibold text-slate-700">Required for Course Completion</span>
           <span className="text-[12px] text-slate-500">Candidates cannot claim regulatory certification without achieving pass mark.</span>
         </label>
       </div>
+    </div>
+  );
+}
 
-      {/* Buttons */}
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setFormData({
-            name: "",
-            type: "mcq",
-            module_association: "whole",
-            description: "",
-            max_score: 100,
-            pass_mark: 75,
-            attempts_allowed: 3,
-            required: true,
-          })}
-          className="flex items-center gap-1.5"
+function ModAssessmentFields({ index, module, updateModule }: {
+  index: number;
+  module: CourseModule;
+  updateModule: (index: number, field: keyof CourseModule, value: any) => void;
+}) {
+  return (
+    <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-12">
+      <div className="flex flex-col gap-1.5 md:col-span-6">
+        <Label className="text-sm font-semibold text-slate-700">Assessment Type</Label>
+        <Select
+          value={module.assessment_type || "mcq"}
+          onValueChange={(v) => updateModule(index, "assessment_type", v)}
         >
-          Clear Form
-        </Button>
-        <Button
-          type="submit"
-          className="flex items-center gap-1.5"
-        >
-          <Plus className="h-4 w-4" />
-          Add Assessment to Course
-        </Button>
+          <SelectTrigger className="h-10 bg-white text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MODULE_ASSESSMENT_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-    </form>
+      <div className="flex flex-col gap-1.5 md:col-span-2">
+        <Label className="text-sm font-semibold text-slate-700">Max Score</Label>
+        <div className="relative">
+          <Input
+            type="number"
+            min={1}
+            value={module.assessment_max_score ?? 100}
+            onChange={(e) => updateModule(index, "assessment_max_score", Math.max(1, parseInt(e.target.value) || 0))}
+            className="h-10 bg-white pr-10 text-sm"
+          />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">PTS</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5 md:col-span-2">
+        <Label className="text-sm font-semibold text-slate-700">Pass Mark</Label>
+        <div className="relative">
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            value={module.assessment_pass_mark ?? 75}
+            onChange={(e) => updateModule(index, "assessment_pass_mark", Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+            className="h-10 bg-white pr-8 text-sm"
+          />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">%</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5 md:col-span-2">
+        <Label className="text-sm font-semibold text-slate-700">Attempts</Label>
+        <Select
+          value={String(module.assessment_attempts_allowed ?? 3)}
+          onValueChange={(v) => updateModule(index, "assessment_attempts_allowed", parseInt(v))}
+        >
+          <SelectTrigger className="h-10 bg-white text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1">1</SelectItem>
+            <SelectItem value="2">2</SelectItem>
+            <SelectItem value="3">3</SelectItem>
+            <SelectItem value="5">5</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1.5 md:col-span-12">
+        <Label className="text-sm font-semibold text-slate-700">Rubric / Instructions</Label>
+        <Textarea
+          value={module.assessment_description || ""}
+          onChange={(e) => updateModule(index, "assessment_description", e.target.value)}
+          placeholder="e.g. Verify wellhead isolation valve gauges within 90 seconds…"
+          rows={2}
+          className="resize-none bg-white text-sm"
+        />
+      </div>
+      <div className="flex items-center gap-2 md:col-span-12">
+        <Checkbox
+          id={`module-assessment-required-${index}`}
+          checked={module.assessment_required !== false}
+          onCheckedChange={(checked) => updateModule(index, "assessment_required", checked)}
+        />
+        <Label htmlFor={`module-assessment-required-${index}`} className="cursor-pointer select-none text-sm font-medium text-slate-700">
+          Required for course completion
+        </Label>
+      </div>
+    </div>
+  );
+}
+
+function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleExternal, onAuthority, onLicense, onPortal }: {
+  external: boolean;
+  authority: string;
+  licenseId: string;
+  portalUrl: string;
+  onToggleExternal: (v: boolean) => void;
+  onAuthority: (v: string) => void;
+  onLicense: (v: string) => void;
+  onPortal: (v: string) => void;
+}) {
+  const known = EXTERNAL_CERT_AUTHORITIES.find((a) => a.value === (authority || "NMDPRA"));
+  return (
+    <SectionCard
+      icon={Award}
+      title="Certificate Generation & Validation"
+      subtitle="Where is the certificate generated — internally by Gokly, or by an external authority (e.g. MISTDO → NMDPRA)?"
+      aside={
+        <div className="flex items-center gap-2.5">
+          <span className="text-[11.5px] font-medium leading-tight text-slate-600">
+            {external ? (
+              <>
+                External
+                <br />
+                Authority
+              </>
+            ) : (
+              <>
+                Internal
+                <br />
+                Generation
+              </>
+            )}
+          </span>
+          <Toggle checked={external} onChange={onToggleExternal} label="External certificate authority" />
+        </div>
+      }
+    >
+      {!external ? (
+        <div className="flex items-start gap-3 rounded-lg bg-emerald-50/70 p-4">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          <p className="text-[13px] leading-relaxed text-slate-600">
+            <strong className="font-semibold text-slate-900">Internal generation.</strong>{" "}
+            Certificates are generated and validated by this system.
+            Turn on <strong>External</strong> if generation and official validation are
+            controlled by an external authority instead.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-[13px] leading-relaxed text-slate-600">
+              <strong className="font-semibold text-slate-900">External generation.</strong>{" "}
+              Generation and official validation are strictly controlled by the selected
+              authority. Records can still be verified centrally via the license ID + portal.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <FieldLabel htmlFor="certificate_authority" required>External Authority</FieldLabel>
+              <Select value={authority || "NMDPRA"} onValueChange={onAuthority}>
+                <SelectTrigger id="certificate_authority" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                  <SelectValue placeholder="Select authority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXTERNAL_CERT_AUTHORITIES.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11.5px] text-slate-400">{known?.hint}</p>
+            </div>
+            <div className="space-y-2">
+              <FieldLabel htmlFor="certificate_license_id" required hint="Official accreditation ID">
+                Authority License ID
+              </FieldLabel>
+              <Input
+                id="certificate_license_id"
+                value={licenseId}
+                onChange={(e) => onLicense(e.target.value)}
+                placeholder="e.g. NMDPRA/MISTDO/2024/001"
+                className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm focus-visible:bg-white"
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <FieldLabel htmlFor="certificate_portal_url" hint="Central verification link">
+              Official Verification Portal
+            </FieldLabel>
+            <Input
+              id="certificate_portal_url"
+              value={portalUrl}
+              onChange={(e) => onPortal(e.target.value)}
+              placeholder="https://www.nmdpra.gov.ng"
+              inputMode="url"
+              className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
+            />
+            {portalUrl?.trim() && (
+              <a href={portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700 hover:underline">
+                Open portal <Link2 className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
@@ -456,6 +668,21 @@ export default function CourseCreation() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const syllabusRef = useRef<HTMLTextAreaElement | null>(null);
+  const [availableCourses, setAvailableCourses] = useState<CourseRecord[]>([]);
+  const [previousAttendancePercentage, setPreviousAttendancePercentage] = useState(80);
+
+  // Fetch available courses for prerequisite selection
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const courses = await fetchCourses();
+        setAvailableCourses(courses);
+      } catch (err) {
+        console.error("Failed to fetch courses:", err);
+      }
+    };
+    loadCourses();
+  }, []);
 
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -470,9 +697,30 @@ export default function CourseCreation() {
     min_class_size: 5,
     max_class_size: 30,
     prerequisite_required: false,
+    prerequisite_type: "internal",
+    prerequisite_course_id: null,
     prerequisite_description: "",
     individual_enrollment_enabled: true,
     certificate_enabled: true,
+    // Certificate step (Step 5) design defaults — mirrors the reference
+    // certificate canvas (title, Gold Foil template, auto issuance, 24-month
+    // validity, NCDMB-GOG / hyphen / YY / 3-digit ID syntax).
+    certificate_title: "Advanced Offshore Well Control & Blowout Prevention Qualification",
+    certificate_template: "Gokly Industrial Gold Foil & Guilloche Standard",
+    certificate_issuance_mode: "automatic",
+    certificate_validity_framework: "Fixed Term Validity",
+    certificate_validity_duration: 24,
+    certificate_validity_unit: "Months (2 Years)",
+    certificate_id_prefix: "NCDMB-GOG",
+    certificate_id_separator: "-",
+    certificate_id_year_schema: "YY",
+    certificate_id_sequence_type: "3-Digit (001...)",
+    // External certificate generation/validation (Step 5). Defaults to internal;
+    // MISTDO detection flips this to NMDPRA automatically (see below).
+    certificate_external: false,
+    certificate_authority: "",
+    certificate_license_id: "",
+    certificate_portal_url: "",
     status: "DRAFT",
     modules: [],
     expandedModules: [],
@@ -486,12 +734,53 @@ export default function CourseCreation() {
     theory_passing_score: 75,
     practical_required: true,
     sequential_progression: true,
-    // Assessments defaults
+    // Final overall assessment defaults (Step 3 gate)
+    has_final_assessment: false,
+    final_assessment: null,
+    // Assessments defaults (sync'd from module-level setup + final)
     assessments: [],
   });
 
   const updateFormData = (field: keyof FormData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      // Keep the certificate preview title in sync with the course title until
+      // the user customizes it on the Certificate step.
+      if (field === "title" && typeof value === "string") {
+        const defaultCertTitle =
+          "Advanced Offshore Well Control & Blowout Prevention Qualification";
+        // Follow the course title while the certificate title hasn't been customized.
+        if (
+          !prev.certificate_title ||
+          prev.certificate_title === defaultCertTitle ||
+          prev.certificate_title === prev.title
+        ) {
+          next.certificate_title = value.trim() || value;
+        }
+      }
+      // Auto-suggest external NMDPRA certification when title/code looks like MISTDO.
+      if ((field === "title" || field === "code") && !prev.certificate_external) {
+        const title = field === "title" ? String(value) : prev.title;
+        const code = field === "code" ? String(value) : prev.code;
+        if (isMistdoCourse(title, code)) {
+          next.certificate_external = true;
+          next.certificate_authority = "NMDPRA";
+          next.certificate_portal_url =
+            prev.certificate_portal_url ||
+            EXTERNAL_CERT_AUTHORITIES[0].portal;
+        }
+      }
+      return next;
+    });
+  };
+
+  const setExternalAuthority = (authority: string) => {
+    const known = EXTERNAL_CERT_AUTHORITIES.find((a) => a.value === authority);
+    setFormData((prev) => ({
+      ...prev,
+      certificate_authority: authority,
+      certificate_portal_url: prev.certificate_portal_url || known?.portal || "",
+    }));
   };
 
   const addModule = () => {
@@ -508,25 +797,95 @@ export default function CourseCreation() {
           materials: [],
           duration: 0,
           delivery_type: "both",
+          ...DEFAULT_MODULE_ASSESSMENT,
         },
       ],
       expandedModules: [...prev.expandedModules, prev.modules.length],
     }));
   };
 
-  const updateModule = (index: number, field: keyof CourseModule, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      modules: prev.modules.map((mod, i) => (i === index ? { ...mod, [field]: value } : mod)),
-    }));
-  };
+  const moduleAssessmentLabel = (type?: string) =>
+    MODULE_ASSESSMENT_TYPES.find((t) => t.value === type)?.label || "Multiple Choice (Auto-graded)";
 
   const removeModule = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      modules: prev.modules.filter((_, i) => i !== index),
-      expandedModules: prev.expandedModules.filter(i => i !== index),
-    }));
+    setFormData((prev) => {
+      const modules = prev.modules.filter((_, i) => i !== index);
+      // Rebuild module assessments for the surviving (re-indexed) modules.
+      const moduleAssessments: Assessment[] = modules
+        .map((mod, idx) => ({ mod, idx }))
+        .filter(({ mod }) => mod.has_assessment)
+        .map(({ mod, idx }) => {
+          const survivingOriginal = prev.modules.findIndex(
+            (m, oi) => oi !== index && m.name === mod.name && m.description === mod.description,
+          );
+          const existing = prev.assessments.find(
+            (a) => a.module_association === `mod-${survivingOriginal === -1 ? idx : survivingOriginal}`,
+          );
+          return {
+            id: existing?.id || `module-${idx}-${Date.now()}`,
+            name: mod.name?.trim() ? `${mod.name.trim()} — Assessment` : `Module ${idx + 1} Assessment`,
+            type: mod.assessment_type || "mcq",
+            module_association: `mod-${idx}`,
+            description: mod.assessment_description || "",
+            max_score: mod.assessment_max_score ?? 100,
+            pass_mark: mod.assessment_pass_mark ?? 75,
+            attempts_allowed: mod.assessment_attempts_allowed ?? 3,
+            required: mod.assessment_required ?? true,
+          } as Assessment;
+        });
+      const finalList = prev.has_final_assessment && prev.final_assessment
+        ? [{ ...prev.final_assessment, module_association: "whole" }]
+        : [];
+      return {
+        ...prev,
+        modules,
+        assessments: [...moduleAssessments, ...finalList],
+        expandedModules: prev.expandedModules.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i)),
+      };
+    });
+  };
+
+  const updateModule = (index: number, field: keyof CourseModule, value: any) => {
+    setFormData((prev) => {
+      const modules = prev.modules.map((mod, i) => {
+        if (i !== index) return mod;
+        const next = { ...mod, [field]: value };
+        if (field === "has_assessment" && value === false) {
+          Object.assign(next, { ...DEFAULT_MODULE_ASSESSMENT, has_assessment: false });
+        }
+        if (field === "has_assessment" && value === true) {
+          next.assessment_type = next.assessment_type || DEFAULT_MODULE_ASSESSMENT.assessment_type;
+          next.assessment_max_score = next.assessment_max_score ?? DEFAULT_MODULE_ASSESSMENT.assessment_max_score;
+          next.assessment_pass_mark = next.assessment_pass_mark ?? DEFAULT_MODULE_ASSESSMENT.assessment_pass_mark;
+          next.assessment_attempts_allowed = next.assessment_attempts_allowed ?? DEFAULT_MODULE_ASSESSMENT.assessment_attempts_allowed;
+          next.assessment_required = next.assessment_required ?? DEFAULT_MODULE_ASSESSMENT.assessment_required;
+          next.assessment_description = next.assessment_description ?? "";
+        }
+        return next;
+      });
+      const moduleAssessments: Assessment[] = modules
+        .map((mod, idx) => ({ mod, idx }))
+        .filter(({ mod }) => mod.has_assessment)
+        .map(({ mod, idx }) => {
+          const modCode = `mod-${idx}`;
+          const existing = prev.assessments.find((a) => a.module_association === modCode);
+          return {
+            id: existing?.id || `module-${idx}-${Date.now()}`,
+            name: mod.name?.trim() ? `${mod.name.trim()} — Assessment` : `Module ${idx + 1} Assessment`,
+            type: mod.assessment_type || "mcq",
+            module_association: modCode,
+            description: mod.assessment_description || "",
+            max_score: mod.assessment_max_score ?? 100,
+            pass_mark: mod.assessment_pass_mark ?? 75,
+            attempts_allowed: mod.assessment_attempts_allowed ?? 3,
+            required: mod.assessment_required ?? true,
+          } as Assessment;
+        });
+      const finalList = prev.has_final_assessment && prev.final_assessment
+        ? [{ ...prev.final_assessment, module_association: "whole" }]
+        : [];
+      return { ...prev, modules, assessments: [...moduleAssessments, ...finalList] };
+    });
   };
 
   const toggleModuleExpand = (index: number) => {
@@ -546,41 +905,51 @@ export default function CourseCreation() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const addAssessment = () => {
-    setFormData((prev) => ({
-      ...prev,
-      assessments: [
-        ...prev.assessments,
-        {
-          id: `assessment-${Date.now()}`,
-          name: "",
-          type: "mcq",
-          module_association: "whole",
-          description: "",
-          max_score: 100,
-          pass_mark: 75,
-          attempts_allowed: 3,
-          required: true,
-        },
-      ],
-    }));
+  const toggleFinalAssessment = (on: boolean) => {
+    setFormData((prev) => {
+      if (!on) {
+        return {
+          ...prev,
+          has_final_assessment: false,
+          final_assessment: null,
+          assessments: prev.assessments.filter((a) => a.module_association !== "whole"),
+        };
+      }
+      const final: Assessment = prev.final_assessment
+        ? { ...prev.final_assessment, module_association: "whole" }
+        : {
+            id: `final-${Date.now()}`,
+            name: prev.title?.trim() ? `${prev.title.trim()} — Final Assessment` : "Final Course Assessment",
+            type: "written",
+            module_association: "whole",
+            description: "",
+            max_score: 100,
+            pass_mark: 75,
+            attempts_allowed: 1,
+            required: true,
+          };
+      return {
+        ...prev,
+        has_final_assessment: true,
+        final_assessment: final,
+        assessments: [...prev.assessments.filter((a) => a.module_association !== "whole"), final],
+      };
+    });
   };
 
-  const updateAssessment = (index: number, field: keyof Assessment, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      assessments: prev.assessments.map((assessment, i) =>
-        i === index ? { ...assessment, [field]: value } : assessment
-      ),
-    }));
+  const updateFinalAssessment = (field: keyof Assessment, value: any) => {
+    setFormData((prev) => {
+      if (!prev.final_assessment) return prev;
+      const final = { ...prev.final_assessment, [field]: value, module_association: "whole" };
+      return {
+        ...prev,
+        final_assessment: final,
+        assessments: [...prev.assessments.filter((a) => a.module_association !== "whole"), final],
+      };
+    });
   };
 
-  const removeAssessment = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      assessments: prev.assessments.filter((_, i) => i !== index),
-    }));
-  };
+  const removeFinalAssessment = () => toggleFinalAssessment(false);
 
   /* auto-generate a course code from the title + category */
   const generateCode = () => {
@@ -612,6 +981,11 @@ export default function CourseCreation() {
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
+        const prerequisiteValid = !formData.prerequisite_required || (
+          formData.prerequisite_type === "internal"
+            ? formData.prerequisite_course_id !== null
+            : formData.prerequisite_description.trim().length > 0
+        );
         return (
           formData.title.trim().length > 3 &&
           formData.code.trim().length > 2 &&
@@ -620,15 +994,35 @@ export default function CourseCreation() {
           formData.tier &&
           formData.status &&
           formData.delivery_mode &&
-          formData.duration_value > 0
+          formData.duration_value > 0 &&
+          prerequisiteValid
         );
       case 2:
-        return formData.modules.length > 0 && formData.modules.every(m => m.name.trim().length > 0);
+        return formData.modules.length > 0
+          && formData.modules.every((m) => m.name.trim().length > 0)
+          && formData.modules
+            .filter((m) => m.has_assessment)
+            .every((m) => (m.assessment_max_score ?? 0) > 0 && (m.assessment_pass_mark ?? 0) >= 0);
       case 3:
-        return true; // Assessments are optional
+        // Final assessment is gated: no final = valid; final on = must be named + scored.
+        if (!formData.has_final_assessment) return true;
+        return !!(
+          formData.final_assessment
+          && formData.final_assessment.name.trim().length > 0
+          && formData.final_assessment.max_score > 0
+        );
       case 4:
         return formData.minimum_contact_hours > 0;
       case 5:
+        // Certificate step: issuance off = valid; issuance on + external mode
+        // must name the authority + license ID for central verification.
+        if (!formData.certificate_enabled) return true;
+        if (!formData.certificate_external) return true;
+        return (
+          formData.certificate_authority.trim().length > 0 &&
+          formData.certificate_license_id.trim().length > 0
+        );
+      case 6:
         return true;
       default:
         return true;
@@ -648,7 +1042,7 @@ export default function CourseCreation() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep(5)) {
+    if (!validateStep(6)) {
       setError("Add at least one named module before creating the course.");
       setTimeout(() => setError(""), 3000);
       return;
@@ -656,7 +1050,53 @@ export default function CourseCreation() {
 
     try {
       setLoading(true);
-      const course = await createCourse(formData);
+      // Certificate-related payload (Step 5): only the backend-supported
+      // external generation flag + authority linkage (NMDPRA for MISTDO) is
+      // sent. The richer design fields (title, template, validity, ID syntax)
+      // stay frontend-only until backend columns land — strip them here so
+      // unknown keys never reach the API.
+      const {
+        certificate_title: _certTitle,
+        certificate_template: _certTemplate,
+        certificate_issuance_mode: _certMode,
+        certificate_validity_framework: _certFramework,
+        certificate_validity_duration: _certDuration,
+        certificate_validity_unit: _certUnit,
+        certificate_id_prefix: _certPrefix,
+        certificate_id_separator: _certSep,
+        certificate_id_year_schema: _certYear,
+        certificate_id_sequence_type: _certSeq,
+        modules: _modules,
+        expandedModules: _expandedModules,
+        attendance_required: _attendanceRequired,
+        attendance_percentage: _attendancePercentage,
+        strict_attendance: _strictAttendance,
+        minimum_contact_hours: _minimumContactHours,
+        module_completion_mode: _moduleCompletionMode,
+        assessment_required: _assessmentRequired,
+        theory_passing_score: _theoryPassingScore,
+        practical_required: _practicalRequired,
+        sequential_progression: _sequentialProgression,
+        has_final_assessment: _hasFinalAssessment,
+        final_assessment: _finalAssessment,
+        assessments: _assessments,
+        ...restForm
+      } = formData;
+      // External linkage only ships when issuance is ON and external mode is
+      // active — otherwise the backend's "authority + license ID" guard would
+      // reject a course with issuance disabled (e.g. MISTDO auto-detect while
+      // the certificate toggle is off).
+      const externalOn = formData.certificate_enabled && formData.certificate_external;
+      const coursePayload: Record<string, any> = {
+        ...restForm,
+        certificate_external: externalOn,
+        certificate_authority: externalOn ? formData.certificate_authority : null,
+        certificate_license_id: externalOn ? formData.certificate_license_id : null,
+        certificate_portal_url: externalOn ? formData.certificate_portal_url || null : null,
+        prerequisite_type: formData.prerequisite_required ? formData.prerequisite_type : null,
+        prerequisite_course_id: formData.prerequisite_required && formData.prerequisite_type === "internal" ? formData.prerequisite_course_id : null,
+      };
+      const course = await createCourse(coursePayload);
 
       if (course.id && formData.modules.length > 0) {
         const token = localStorage.getItem("token");
@@ -671,6 +1111,40 @@ export default function CourseCreation() {
             body: JSON.stringify({ modules: formData.modules }),
           },
         );
+      }
+
+      // Persist the final overall assessment (if the gate is ON) to the
+      // training-management `assessments` table. Module-level assessments ride
+      // on the module payload above; failures here must not fail course creation.
+      if (course.id && formData.has_final_assessment && formData.final_assessment) {
+        try {
+          const token = localStorage.getItem("token");
+          const f = formData.final_assessment;
+          const typeMap: Record<string, string> = {
+            written: "THEORY", mcq: "THEORY", practical: "PRACTICAL",
+            oral: "OTHER", trainer: "OTHER", other: "OTHER", final: "FINAL",
+          };
+          await fetch(
+            `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/courses/${course.id}/assessments`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                title: f.name,
+                description: f.description || "",
+                type: typeMap[f.type] || "FINAL",
+                max_score: f.max_score,
+                pass_mark: (f.max_score * f.pass_mark) / 100,
+                is_required: f.required,
+              }),
+            },
+          );
+        } catch {
+          // Non-blocking: course + modules already saved.
+        }
       }
 
       setSuccess(true);
@@ -1081,23 +1555,82 @@ export default function CourseCreation() {
               }
             >
               {formData.prerequisite_required ? (
-                <div className="space-y-2">
-                  <FieldLabel htmlFor="prerequisite_description" required>
-                    Enforcement Protocol & Entry Criteria
-                  </FieldLabel>
-                  <Textarea
-                    id="prerequisite_description"
-                    value={formData.prerequisite_description}
-                    onChange={(e) => updateFormData("prerequisite_description", e.target.value)}
-                    placeholder="Enter prerequisite requirements"
-                    rows={3}
-                    className="resize-none border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white"
-                    required
-                  />
-                  <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Auto-verifies against Nigeria NOGICD / IWCF Central Database records upon enrollment.
-                  </p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <FieldLabel htmlFor="prerequisite_type" required>
+                      Prerequisite Type
+                    </FieldLabel>
+                    <Select
+                      value={formData.prerequisite_type}
+                      onValueChange={(value: "internal" | "external") => updateFormData("prerequisite_type", value)}
+                    >
+                      <SelectTrigger
+                        id="prerequisite_type"
+                        className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
+                      >
+                        <SelectValue placeholder="Select prerequisite type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="internal">Internal Course</SelectItem>
+                        <SelectItem value="external">External Certification</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.prerequisite_type === "internal" ? (
+                    <div className="space-y-2">
+                      <FieldLabel htmlFor="prerequisite_course_id" required>
+                        Select Prerequisite Course
+                      </FieldLabel>
+                      <Select
+                        value={formData.prerequisite_course_id?.toString() || ""}
+                        onValueChange={(value) => updateFormData("prerequisite_course_id", value ? parseInt(value) : null)}
+                      >
+                        <SelectTrigger
+                          id="prerequisite_course_id"
+                          className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
+                        >
+                          <SelectValue placeholder="Select a course" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableCourses.length > 0 ? (
+                            availableCourses.map((course) => (
+                              <SelectItem key={course.id} value={course.id.toString()}>
+                                {course.code ? `${course.code} - ` : ""}{course.title}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              No courses available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Learners must complete the selected course before enrolling.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <FieldLabel htmlFor="prerequisite_description" required>
+                        External Certification Requirements
+                      </FieldLabel>
+                      <Textarea
+                        id="prerequisite_description"
+                        value={formData.prerequisite_description}
+                        onChange={(e) => updateFormData("prerequisite_description", e.target.value)}
+                        placeholder="e.g. Valid IWCF Level 4 certification or equivalent offshore experience"
+                        rows={3}
+                        className="resize-none border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white"
+                        required
+                      />
+                      <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Auto-verifies against Nigeria NOGICD / IWCF Central Database records upon enrollment.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-center text-[12.5px] text-slate-500">
@@ -1309,6 +1842,35 @@ export default function CourseCreation() {
                               className="text-sm resize-none"
                             />
                           </div>
+
+                          {/* Per-module assessment setup — done with module creation */}
+                          <div className="md:col-span-12 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-emerald-600" />
+                                <span className="text-[13px] font-bold uppercase tracking-wider text-slate-900">
+                                  Module Assessment
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[12px] font-medium text-slate-500">
+                                  {module.has_assessment ? "Enabled" : "No assessment"}
+                                </span>
+                                <Toggle
+                                  checked={!!module.has_assessment}
+                                  onChange={(v) => updateModule(index, "has_assessment", v)}
+                                  label={`Module ${index + 1} assessment toggle`}
+                                />
+                              </div>
+                            </div>
+                            {module.has_assessment ? (
+                              <ModAssessmentFields index={index} module={module} updateModule={updateModule} />
+                            ) : (
+                              <p className="mt-2 text-[12.5px] text-slate-500">
+                                Turn on to configure this module's assessment now (type, score, pass mark, attempts).
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -1440,142 +2002,99 @@ export default function CourseCreation() {
         return (
           <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col gap-2">
-              <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[12px] font-bold tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                STEP 3 OF 5 • ASSESSMENT & EVALUATION ENGINE
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Assessments & Evaluation Scheme</h1>
-              <p className="text-[13.5px] leading-relaxed text-slate-500 max-w-2xl">
-                Attach and configure straightforward evaluations for this course. Supported types: Written, Multiple Choice, Practical, Oral, Trainer Evaluation, Other. Keep tests simple and focused.
-              </p>
-            </div>
-
-            {/* Configured Assessments */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <FileText className="text-emerald-600 h-6 w-6" />
-                <h2 className="text-lg font-semibold text-slate-900">Configured Assessments</h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-bold">
-                  {formData.assessments.length} Configured
-                </span>
-              </div>
-              <span className="text-[12px] text-slate-500 font-medium">Drag items to adjust exam sequence</span>
-            </div>
-
-            {/* Assessment List */}
-            {formData.assessments.map((assessment, index) => (
-              <div key={assessment.id} className="bg-white rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <button className="mt-1 cursor-grab text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors" title="Drag to reorder" type="button">
-                      <GripVertical className="h-5 w-5" />
-                    </button>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${
-                          assessment.type === 'mcq' ? 'bg-emerald-100 text-emerald-700' :
-                          assessment.type === 'practical' ? 'bg-amber-100 text-amber-700' :
-                          assessment.type === 'oral' ? 'bg-slate-200 text-slate-700' :
-                          'bg-slate-100 text-slate-600'
-                        }`}>
-                          {assessment.type === 'mcq' ? 'Multiple Choice' :
-                           assessment.type === 'practical' ? 'Practical Simulator' :
-                           assessment.type === 'oral' ? 'Oral Defense' :
-                           assessment.type === 'written' ? 'Written Examination' :
-                           assessment.type === 'trainer' ? 'Trainer Evaluation' : 'Other'}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[11px] font-semibold">
-                          {assessment.module_association === 'whole' ? 'Whole Course' : assessment.module_association}
-                        </span>
-                        {assessment.required && (
-                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[11px] font-bold flex items-center gap-1">
-                            <CheckCircle className="h-3.5 w-3.5" /> Required for Completion
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-lg font-semibold text-slate-900">{assessment.name || 'Assessment Name'}</h3>
-                      <p className="text-sm text-slate-500 leading-relaxed">
-                        {assessment.description || 'Assessment description will appear here...'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Edit Assessment" type="button">
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                      title="Delete Assessment"
-                      type="button"
-                      onClick={() => removeAssessment(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                {/* Specs Row */}
-                <div className="mt-4 pt-3 bg-slate-50 rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-y-2 gap-x-6 text-[13px] font-medium text-slate-500">
-                  <div className="flex items-center gap-1.5">
-                    <BarChart className="h-4 w-4 text-emerald-600" />
-                    <span>Max Score: <strong className="text-slate-900 font-semibold">{assessment.max_score} pts</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Flag className="h-4 w-4 text-emerald-600" />
-                    <span>Pass Mark: <strong className="text-slate-900 font-semibold">{assessment.pass_mark}% ({Math.round(assessment.max_score * assessment.pass_mark / 100)} pts)</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Replay className="h-4 w-4 text-emerald-600" />
-                    <span>Attempts Allowed: <strong className="text-slate-900 font-semibold">{assessment.attempts_allowed}</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {assessment.required ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        <span>Required: <strong className="text-emerald-700 font-bold uppercase">YES</strong></span>
-                      </>
-                    ) : (
-                      <>
-                        <Cancel className="h-4 w-4 text-slate-400" />
-                        <span>Required: <strong className="text-slate-500 font-semibold uppercase">NO</strong></span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Add New Assessment Card */}
-            <div className="bg-white rounded-xl p-6 shadow-sm mt-4">
-              <div className="flex items-center justify-between pb-4 mb-6">
+            
+{/* The gate */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                    <Plus className="h-5 w-5" />
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <Award className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Add New Assessment Module</h3>
-                    <p className="text-sm text-slate-500">Create and parameterize new evaluation criteria for candidate certification</p>
+                    <h3 className="text-lg font-semibold text-slate-900">Is there a final assessment?</h3>
+                    <p className="text-sm text-slate-500">One capstone for the whole course. If not, move to next step.</p>
                   </div>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-bold">Standard Assessment Rubric</span>
+                <div className="flex rounded-lg border border-slate-200 p-1 text-sm font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => toggleFinalAssessment(false)}
+                    className={cn(
+                      "rounded-md px-4 py-2 transition-colors",
+                      !formData.has_final_assessment ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900",
+                    )}
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleFinalAssessment(true)}
+                    className={cn(
+                      "rounded-md px-4 py-2 transition-colors",
+                      formData.has_final_assessment ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-900",
+                    )}
+                  >
+                    Yes
+                  </button>
+                </div>
               </div>
-
-              <NewAssessmentForm
-                modules={formData.modules}
-                onAdd={(assessmentData) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    assessments: [
-                      ...prev.assessments,
-                      {
-                        id: `assessment-${Date.now()}`,
-                        ...assessmentData,
-                      },
-                    ],
-                  }));
-                }}
-              />
+              {!formData.has_final_assessment || !formData.final_assessment ? (
+                <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
+                  No final assessment — Next moves straight to Completion Rules.
+                </div>
+              ) : (
+                <div className="mt-6 border-t border-slate-100 pt-6">
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="rounded-md bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                      Final • Whole Course
+                    </span>
+                    <Button type="button" variant="ghost" size="sm" onClick={removeFinalAssessment} className="text-slate-400 hover:text-red-600">
+                      <Trash className="h-4 w-4" /> Remove final
+                    </Button>
+                  </div>
+                  <FinalAssessmentForm
+                    value={formData.final_assessment}
+                    courseTitle={formData.title}
+                    onChange={updateFinalAssessment}
+                  />
+                </div>
+              )}
             </div>
+
+            {/* Module assessment recap */}
+            <div className="bg-white rounded-xl p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <FileText className="text-emerald-600 h-5 w-5" />
+                  <h2 className="text-lg font-semibold text-slate-900">Module Assessments</h2>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-bold">
+                    {formData.modules.filter((m) => m.has_assessment).length} of {formData.modules.length}
+                  </span>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => setCurrentStep(2)}>
+                  Edit in Step 2
+                </Button>
+              </div>
+              <ul className="mt-3 space-y-2">
+                {formData.modules.map((m, i) => (
+                  <li key={i} className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                    <span className="font-semibold text-slate-900">MOD-{String(i + 1).padStart(3, "0")}:</span>
+                    <span className="truncate">{m.name || `Module ${i + 1}`}</span>
+                    {m.has_assessment ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                        {moduleAssessmentLabel(m.assessment_type)} • {m.assessment_max_score} pts
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                        No assessment
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            
 
             {/* Score Weighting Card */}
             <div className="bg-white rounded-xl p-6 shadow-sm flex flex-col gap-5">
@@ -1629,7 +2148,7 @@ export default function CourseCreation() {
               ) : (
                 <div className="text-center py-8 text-slate-500">
                   <Lightbulb className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                  <p className="text-sm">Add assessments to see score weighting breakdown</p>
+                  <p className="text-sm">Enable module assessments in Step 2 or add a final assessment above</p>
                 </div>
               )}
             </div>
@@ -1638,11 +2157,12 @@ export default function CourseCreation() {
             <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-3">
               <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold">
                 <Lightbulb className="h-5 w-5" />
-                <span>Assessment Design Guidelines</span>
+                <span>Final Assessment Guideline</span>
               </div>
               <div className="p-3.5 rounded-xl bg-slate-50 text-sm text-slate-500 leading-relaxed flex flex-col gap-2">
                 <p>
-                  Keep evaluations straightforward. Multi-choice grading is auto-evaluated by the portal, while Practical and Oral rubrics prompt assigned examiners at the <strong>Port Harcourt training rig</strong>.
+                  Only add a final if the course needs a capstone check after all modules.
+                  Otherwise leave it off — module assessments already cover completion.
                 </p>
                 <div className="flex items-center gap-1.5 text-emerald-600 text-[12px] font-semibold pt-1">
                   <CheckCircle className="h-4 w-4" />
@@ -1694,7 +2214,7 @@ export default function CourseCreation() {
                       onValueChange={(value) => updateFormData("attendance_percentage", value[0])}
                       min={50}
                       max={100}
-                      step={5}
+                      step={1}
                       disabled={formData.strict_attendance}
                       className="w-full"
                     />
@@ -1723,7 +2243,16 @@ export default function CourseCreation() {
                       <Checkbox
                         id="strict_attendance"
                         checked={formData.strict_attendance}
-                        onCheckedChange={(checked) => updateFormData("strict_attendance", checked)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setPreviousAttendancePercentage(formData.attendance_percentage);
+                            updateFormData("strict_attendance", true);
+                            updateFormData("attendance_percentage", 100);
+                          } else {
+                            updateFormData("strict_attendance", false);
+                            updateFormData("attendance_percentage", previousAttendancePercentage);
+                          }
+                        }}
                       />
                       <label htmlFor="strict_attendance" className="flex flex-col cursor-pointer">
                         <span className="text-sm font-semibold text-slate-700">Must Attend All Sessions (100%)</span>
@@ -1894,7 +2423,7 @@ export default function CourseCreation() {
                     <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
                     <div className="flex flex-col text-[13px] leading-relaxed">
                       <span className="font-bold text-amber-700">Facility Prerequisite Warning</span>
-                      <span>Requires certified on-site instructor physical sign-off at <strong>Port Harcourt Training Yard BOP Skid</strong> prior to digital credential cryptographic release.</span>
+                      <span>Requires certified on-site instructor physical sign-off at <strong>Training Yard BOP Skid</strong> prior to digital credential cryptographic release.</span>
                     </div>
                   </div>
 
@@ -1917,7 +2446,572 @@ export default function CourseCreation() {
           </div>
         );
 
-      case 5:
+      case 5: {
+        const sepChar =
+          formData.certificate_id_separator === "slash"
+            ? "/"
+            : formData.certificate_id_separator === "dot"
+              ? "."
+              : "-";
+        const yearPart =
+          formData.certificate_id_year_schema === "YYYY"
+            ? String(new Date().getFullYear())
+            : formData.certificate_id_year_schema === "NONE"
+              ? ""
+              : String(new Date().getFullYear()).slice(-2);
+        const seqSample = formData.certificate_id_sequence_type.startsWith("4-Digit")
+          ? "0349"
+          : formData.certificate_id_sequence_type.startsWith("UUID")
+            ? "A3F9C2"
+            : "349";
+        const sampleId = [
+          (formData.certificate_id_prefix || "").trim().toUpperCase(),
+          yearPart,
+          seqSample,
+        ]
+          .filter(Boolean)
+          .join(sepChar);
+        return (
+          <div className={`grid gap-6 ${formData.certificate_enabled ? "lg:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
+            <div className="space-y-5">
+              <SectionCard
+                icon={Award}
+                title="Credential Automation"
+                subtitle="Issue certificate upon successful course completion"
+                aside={
+                  <Toggle
+                    checked={formData.certificate_enabled}
+                    onChange={(v) => updateFormData("certificate_enabled", v)}
+                    label="Issue certificate on completion"
+                  />
+                }
+              >
+                {!formData.certificate_enabled ? (
+                  <p className="rounded-xl bg-slate-50 p-4 text-[13px] leading-relaxed text-slate-500">
+                    Certificate issuance is{" "}
+                    <strong className="font-semibold text-slate-700">off</strong> — trainees
+                    can complete this course but no credential is generated. Turn issuance on
+                    to answer whether generation stays internal or is handled by an external
+                    authority, then configure the design, validity and ID syntax below.
+                  </p>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-4">
+                      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+                      <p className="text-[13px] leading-relaxed text-slate-600">
+                        Trainees achieving ≥ {formData.theory_passing_score}% on assessments,{" "}
+                        {formData.strict_attendance
+                          ? "100%"
+                          : `${formData.attendance_percentage}%`}{" "}
+                        attendance and {formData.minimum_contact_hours} contact hours
+                        {formData.practical_required ? " with practical sign-off" : ""}{" "}
+                        automatically qualify for this credential.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </SectionCard>
+
+              {formData.certificate_enabled && (
+                <>
+                  <ExternalCertCard
+                    external={formData.certificate_external}
+                    authority={formData.certificate_authority}
+                    licenseId={formData.certificate_license_id}
+                    portalUrl={formData.certificate_portal_url}
+                    onToggleExternal={(v) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        certificate_external: v,
+                        certificate_authority: v
+                          ? prev.certificate_authority || "NMDPRA"
+                          : prev.certificate_authority,
+                        certificate_portal_url: v
+                          ? prev.certificate_portal_url || EXTERNAL_CERT_AUTHORITIES[0].portal
+                          : prev.certificate_portal_url,
+                      }))
+                    }
+                    onAuthority={setExternalAuthority}
+                    onLicense={(v) => updateFormData("certificate_license_id", v)}
+                    onPortal={(v) => updateFormData("certificate_portal_url", v)}
+                  />
+
+                  {!formData.certificate_external && (
+                    <>
+                      <SectionCard
+                        icon={Award}
+                        title="Credential Design"
+                        subtitle="Bound template and official credential nomenclature for internally generated certificates"
+                      >
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <FieldLabel>Official Certificate Template</FieldLabel>
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                <Star className="h-3 w-3" />
+                                Default Bound
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                              <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded border border-emerald-700/30 bg-gradient-to-tr from-emerald-700/20 to-amber-400/40">
+                                <Award className="h-5 w-5 text-emerald-700" />
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate text-[14px] font-bold text-slate-900">
+                                  {formData.certificate_template}
+                                </p>
+                                <p className="text-[12px] text-slate-500">
+                                  v3.2 • Landscape A4 • Cryptographic Dynamic QR • Dual Signatures
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <FieldLabel htmlFor="certificate_title" hint="Printed across the certificate banner">
+                              Official Credential Nomenclature
+                            </FieldLabel>
+                            <div className="relative">
+                              <Input
+                                id="certificate_title"
+                                value={formData.certificate_title}
+                                onChange={(e) => updateFormData("certificate_title", e.target.value)}
+                                className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
+                              />
+                              <Pencil className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                            </div>
+                            <p className="text-[11.5px] text-slate-400">
+                              Displayed prominently across the core banner of the issued physical and
+                              digital certificate.
+                            </p>
+                          </div>
+                        </div>
+                      </SectionCard>
+
+              <SectionCard
+                icon={ShieldCheck}
+                title="Verification & Validity Protocols"
+                subtitle="Determine sign-off rules and legal duration under industry oversight"
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label
+                    className={`flex cursor-pointer flex-col gap-1 rounded-xl p-4 transition-all ${
+                      formData.certificate_issuance_mode === "automatic"
+                        ? "bg-emerald-50 ring-1 ring-emerald-600"
+                        : "bg-slate-50 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-slate-900">Automatic Issuance</span>
+                      <input
+                        type="radio"
+                        name="cert_issuance_mode"
+                        checked={formData.certificate_issuance_mode === "automatic"}
+                        onChange={() => updateFormData("certificate_issuance_mode", "automatic")}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                    </div>
+                    <span className="text-[12px] leading-snug text-slate-500">
+                      System auto-triggers issuance the moment rules in Step 4 are met.
+                    </span>
+                  </label>
+                  <label
+                    className={`flex cursor-pointer flex-col gap-1 rounded-xl p-4 transition-all ${
+                      formData.certificate_issuance_mode === "manual"
+                        ? "bg-emerald-50 ring-1 ring-emerald-600"
+                        : "bg-slate-50 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-slate-900">Manual Sign-off</span>
+                      <input
+                        type="radio"
+                        name="cert_issuance_mode"
+                        checked={formData.certificate_issuance_mode === "manual"}
+                        onChange={() => updateFormData("certificate_issuance_mode", "manual")}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                    </div>
+                    <span className="text-[12px] leading-snug text-slate-500">
+                      Instructor or admin manually verifies and triggers certificate release.{" "}
+                      <RefreshCw className="inline h-3 w-3" />
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-12">
+                  <div className="space-y-2 sm:col-span-5">
+                    <FieldLabel>Validity Framework</FieldLabel>
+                    <Select
+                      value={formData.certificate_validity_framework}
+                      onValueChange={(v) => updateFormData("certificate_validity_framework", v)}
+                    >
+                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Fixed Term Validity">Fixed Term Validity</SelectItem>
+                        <SelectItem value="Perpetual / Lifetime">Perpetual / Lifetime</SelectItem>
+                        <SelectItem value="Renewable (CPD Cycle)">Renewable (CPD Cycle)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-3">
+                    <FieldLabel>Duration</FieldLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={formData.certificate_validity_duration}
+                      onChange={(e) =>
+                        updateFormData(
+                          "certificate_validity_duration",
+                          Math.max(1, parseInt(e.target.value) || 1),
+                        )
+                      }
+                      disabled={formData.certificate_validity_framework === "Perpetual / Lifetime"}
+                      className="h-11 border-slate-200 bg-slate-50/70 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-4">
+                    <FieldLabel>Unit</FieldLabel>
+                    <Select
+                      value={formData.certificate_validity_unit}
+                      onValueChange={(v) => updateFormData("certificate_validity_unit", v)}
+                    >
+                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Days">Days</SelectItem>
+                        <SelectItem value="Months">Months</SelectItem>
+                        <SelectItem value="Months (2 Years)">Months (2 Years)</SelectItem>
+                        <SelectItem value="Years">Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-4">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <p className="text-[13px] leading-relaxed text-slate-500">
+                    Fixed term validity auto-revokes verification status in public registry
+                    upon lapse.
+                  </p>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                icon={QrCode}
+                title="Dynamic Identifier Syntax Builder"
+                subtitle="Combined with the dynamic QR and scannable Gokly hash, this ID is detected in real time by the central registry. IDs are auto-generated sequentially at issuance — never entered during setup."
+              >
+                <div className="flex flex-col items-start gap-3 rounded-xl bg-slate-900 p-5 text-white sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+                      Live Syntax Preview
+                    </p>
+                    <p className="mt-1 truncate font-mono text-xl font-bold tracking-wide text-emerald-400">
+                      {sampleId}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <span className="rounded-md bg-white/10 px-2 py-1 text-[10.5px] font-medium text-slate-300">
+                      {formData.certificate_id_sequence_type.startsWith("UUID")
+                        ? "UUID"
+                        : "Sequential"}{" "}
+                      (Auto-assigned)
+                    </span>
+                    <span className="rounded-md bg-white/10 px-2 py-1 text-[10.5px] font-medium text-slate-300">
+                      Cryptographic Dynamic QR
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <FieldLabel>Prefix</FieldLabel>
+                    <Input
+                      value={formData.certificate_id_prefix}
+                      onChange={(e) => updateFormData("certificate_id_prefix", e.target.value)}
+                      placeholder="e.g., NCDMB-GOG"
+                      className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm uppercase focus-visible:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <FieldLabel>Separator</FieldLabel>
+                    <Select
+                      value={formData.certificate_id_separator}
+                      onValueChange={(v) => updateFormData("certificate_id_separator", v)}
+                    >
+                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="-">Hyphen (-)</SelectItem>
+                        <SelectItem value="slash">Slash (/)</SelectItem>
+                        <SelectItem value="dot">Dot (.)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <FieldLabel>Year Schema</FieldLabel>
+                    <Select
+                      value={formData.certificate_id_year_schema}
+                      onValueChange={(v) => updateFormData("certificate_id_year_schema", v)}
+                    >
+                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="YY">YY (2025 → 25)</SelectItem>
+                        <SelectItem value="YYYY">YYYY (2025)</SelectItem>
+                        <SelectItem value="NONE">No Year Segment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <FieldLabel>Sequence Type</FieldLabel>
+                    <Select
+                      value={formData.certificate_id_sequence_type}
+                      onValueChange={(v) => updateFormData("certificate_id_sequence_type", v)}
+                    >
+                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3-Digit (001...)">3-Digit (001...)</SelectItem>
+                        <SelectItem value="4-Digit (0001...)">4-Digit (0001...)</SelectItem>
+                        <SelectItem value="UUID (Alphanumeric)">UUID (Alphanumeric)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-xl bg-amber-50 p-4">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <p className="text-[13px] leading-relaxed text-slate-600">
+                    Example of real-world generation:{" "}
+                    <strong className="font-semibold text-slate-900">{sampleId}</strong> — the{" "}
+                    <Smartphone className="inline h-3.5 w-3.5" /> portability-focused digital
+                    wallet pass and{" "}
+                    <Fingerprint className="inline h-3.5 w-3.5" /> scannable Gokly hash embed
+                    this exact identifier.
+                  </p>
+                </div>
+              </SectionCard>
+                    </>
+                  )}
+                </>
+              )}
+
+            </div>
+
+            {/* Right rail — live credential preview */}
+            {formData.certificate_enabled && (
+            <div className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                  Live Preview
+                </p>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                  <ShieldCheck className="h-3 w-3" />
+                  {formData.certificate_external
+                    ? "EXTERNAL AUTHORITY"
+                    : formData.certificate_issuance_mode === "automatic"
+                      ? "AUTOMATIC"
+                      : "MANUAL SIGN-OFF"}
+                </span>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                {!formData.certificate_external ? (
+                  <>
+                <div className="relative aspect-[4/3] bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 p-5">
+                  <div className="absolute inset-3 rounded-lg border-2 border-emerald-700/30" />
+                  <div className="absolute inset-4 rounded-md border border-amber-400/50" />
+
+                  <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
+                    <Award className="h-6 w-6 text-emerald-700" />
+                    <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-emerald-700">
+                      Gokly Industrial Training Registry
+                    </p>
+                    <p className="mt-3 text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500">
+                      This is to certify that
+                    </p>
+                    <p className="mt-1 text-[13px] font-bold italic text-slate-800">
+                      Chinedu Okafor, BSc
+                    </p>
+                    <p className="mt-2 max-w-[85%] text-[9.5px] leading-snug text-slate-500">
+                      has successfully completed all prescribed competency modules and final
+                      assessments for
+                    </p>
+                    <p className="mt-1 max-w-[90%] text-[11px] font-bold leading-tight text-slate-900">
+                      {(formData.certificate_title || formData.title || "Untitled Credential").slice(
+                        0,
+                        90,
+                      )}
+                    </p>
+                    <div className="mt-3 flex w-full items-end justify-between gap-2 px-2">
+                      <div className="min-w-0 text-left">
+                        <p className="truncate text-[7.5px] font-semibold text-slate-600">
+                          Mojisola Adeyemi
+                        </p>
+                        <div className="mt-0.5 w-16 border-t border-slate-300" />
+                        <p className="text-[7px] uppercase tracking-wide text-slate-400">
+                          Director of Training
+                        </p>
+                      </div>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-900">
+                        <QrCode className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="min-w-0 text-right">
+                        <p className="text-[7.5px] font-semibold text-slate-600">
+                          {new Date().toLocaleDateString("en-GB", {
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+                        <div className="ml-auto mt-0.5 w-16 border-t border-slate-300" />
+                        <p className="text-[7px] uppercase tracking-wide text-slate-400">Issued</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {formData.certificate_enabled &&
+                    formData.certificate_issuance_mode === "automatic" && (
+                      <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white">
+                        Auto-Issued
+                      </span>
+                    )}
+                </div>
+
+                <div className="space-y-2 border-t border-slate-100 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11.5px] text-slate-500">Certificate ID</span>
+                    <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11.5px] font-semibold text-slate-800">
+                      {sampleId}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="shrink-0 text-[11.5px] text-slate-500">Template</span>
+                    <span className="truncate text-[11.5px] font-medium text-slate-800">
+                      {formData.certificate_template}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="shrink-0 text-[11.5px] text-slate-500">Validity</span>
+                    <span className="text-right text-[11.5px] font-medium text-slate-800">
+                      {formData.certificate_validity_framework === "Perpetual / Lifetime"
+                        ? "No expiration"
+                        : `${formData.certificate_validity_duration} ${formData.certificate_validity_unit.split(" ")[0].toLowerCase()}${formData.certificate_validity_duration === 1 ? "" : "s"} from issue`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="shrink-0 text-[11.5px] text-slate-500">External authority</span>
+                    <span className="truncate text-[11.5px] font-medium text-slate-800">
+                      {!formData.certificate_external
+                        ? "Internal (Gokly Registry)"
+                        : EXTERNAL_CERT_AUTHORITIES.find(
+                              (a) => a.value === formData.certificate_authority,
+                            )?.label ||
+                          formData.certificate_authority ||
+                          "Custom authority"}
+                    </span>
+                  </div>
+                </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 p-6 text-center">
+                    <ShieldCheck className="h-8 w-8 text-emerald-600" />
+                    <p className="text-[13px] font-bold text-slate-800">
+                      {EXTERNAL_CERT_AUTHORITIES.find((a) => a.value === formData.certificate_authority)
+                        ?.label ||
+                        formData.certificate_authority ||
+                        "Custom authority"}
+                    </p>
+                    <p className="max-w-[88%] text-[12px] leading-relaxed text-slate-500">
+                      Generation and validation are controlled by this regulator — Gokly only
+                      stores the license ID used for central registry verification.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] font-semibold text-slate-700">
+                        {formData.certificate_license_id || "LICENSE-ID"}
+                      </span>
+                      {formData.certificate_portal_url && (
+                        <a
+                          href={formData.certificate_portal_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100"
+                        >
+                          <Link2 className="h-3 w-3" />
+                          Verify on portal
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <details className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold text-slate-800">
+                  <span className="inline-flex items-center gap-2">
+                    <Lock className="h-3.5 w-3.5 text-emerald-700" />
+                    Security &amp; Render Specifications
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                </summary>
+                <ul className="mt-3 space-y-2.5">
+                  {!formData.certificate_external && (
+                    <CheckRow ok>
+                      Cryptographic Dynamic QR rotating every 24 hours — resolves to the live
+                      registry record
+                    </CheckRow>
+                  )}
+                  <CheckRow ok>
+                    Issuance authority:{" "}
+                    {formData.certificate_external
+                      ? "External (validated via license ID + portal)"
+                      : "Internal — Gokly Industrial Training Registry"}
+                  </CheckRow>
+                  {!formData.certificate_external && (
+                    <>
+                      <CheckRow ok>
+                        Dual wet-ink facsimile signatures (Director of Training &amp; Assessor)
+                      </CheckRow>
+                      <CheckRow ok={formData.certificate_issuance_mode === "manual"}>
+                        Manual instructor/admin sign-off before release
+                      </CheckRow>
+                      <CheckRow ok>
+                        Guilloche background pattern + microtext border security print
+                      </CheckRow>
+                      <CheckRow ok>
+                        Digital twin (PDF) + physical print master (300 DPI CMYK)
+                      </CheckRow>
+                    </>
+                  )}
+                </ul>
+                {!formData.certificate_external ? (
+                  <p className="mt-3 flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-[12px] leading-relaxed text-slate-500">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    Template, validity framework and ID syntax are snapshotted at the moment of
+                    issuance, so already-issued credentials never change retroactively.
+                  </p>
+                ) : (
+                  <p className="mt-3 flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-[12px] leading-relaxed text-slate-500">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    Validity, numbering and issuance rules follow the selected authority's own
+                    framework — Gokly mirrors them for verification only.
+                  </p>
+                )}
+              </details>
+            </div>
+            )}
+          </div>
+        );
+      }
+
+      case 6:
         return (
           <SectionCard
             icon={CheckCircle}
@@ -1952,6 +3046,16 @@ export default function CourseCreation() {
                     <span className="text-slate-500">Delivery Mode:</span>
                     <span className="font-medium text-slate-900">{formData.delivery_mode}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Certificates:</span>
+                    <span className="font-medium text-slate-900">
+                      {!formData.certificate_enabled
+                        ? "Disabled"
+                        : formData.certificate_external
+                          ? `External — ${formData.certificate_authority || "Authority"}`
+                          : "Internal generation"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1975,21 +3079,34 @@ export default function CourseCreation() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900">Assessments ({formData.assessments.length})</h3>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Assessments ({formData.modules.filter((m) => m.has_assessment).length} module
+                  {formData.has_final_assessment && formData.final_assessment ? " + final" : ""})
+                </h3>
                 <ul className="space-y-2">
-                  {formData.assessments.map((assessment, index) => (
-                    <li key={assessment.id} className="flex items-center gap-2 text-sm text-slate-700">
+                  {formData.modules.filter((m) => m.has_assessment).map((m, index) => (
+                    <li key={index} className="flex items-center gap-2 text-sm text-slate-700">
                       <FileText className="h-3.5 w-3.5 text-emerald-600" />
                       <span className="font-medium">
-                        {index + 1}. {assessment.name || 'Assessment'}
+                        {index + 1}. {m.name?.trim() ? `${m.name.trim()} — Assessment` : "Module Assessment"}
+                        {" "}({moduleAssessmentLabel(m.assessment_type)}, {m.assessment_max_score} pts)
                       </span>
-                      {assessment.required && (
+                    </li>
+                  ))}
+                  {formData.has_final_assessment && formData.final_assessment && (
+                    <li className="flex items-center gap-2 text-sm text-slate-700">
+                      <Award className="h-3.5 w-3.5 text-amber-600" />
+                      <span className="font-medium">
+                        Final: {formData.final_assessment.name || "Final Assessment"}
+                        {" "}({formData.final_assessment.max_score} pts)
+                      </span>
+                      {formData.final_assessment.required && (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
                           Required
                         </span>
                       )}
                     </li>
-                  ))}
+                  )}
                 </ul>
               </div>
 
@@ -2032,6 +3149,30 @@ export default function CourseCreation() {
                     <span className="text-slate-500">Module Completion Mode:</span>
                     <span className="font-medium text-slate-900 capitalize">{formData.module_completion_mode}</span>
                   </div>
+                  {formData.certificate_external && (
+                    <>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-slate-500">External Authority:</span>
+                        <span className="font-medium text-slate-900">{formData.certificate_authority || "—"}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-slate-500">Authority License ID:</span>
+                        <span className="font-mono font-medium text-slate-900">{formData.certificate_license_id || "—"}</span>
+                      </div>
+                      {formData.certificate_portal_url?.trim() && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">Verification Portal:</span>
+                          <a href={formData.certificate_portal_url} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 hover:underline">
+                            {formData.certificate_portal_url}
+                          </a>
+                        </div>
+                      )}
+                      <p className="rounded-lg bg-amber-50 p-3 text-[12px] leading-relaxed text-slate-600">
+                        Generation & official validation are controlled by {formData.certificate_authority || "the external authority"}.
+                        Records remain verifiable centrally via the license ID + portal above.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -2093,7 +3234,7 @@ export default function CourseCreation() {
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-md bg-slate-200/70 px-2.5 py-1 text-[10.5px] font-semibold tracking-wide text-slate-600">
-                  STEP {currentStep} OF {STEPS.length} • {currentStep === 1 ? "BASIC INFO" : currentStep === 2 ? "MODULES & UNITS" : currentStep === 3 ? "ASSESSMENTS" : currentStep === 4 ? "COMPLETION RULES" : "REVIEW"}
+                  STEP {currentStep} OF {STEPS.length} • {currentStep === 1 ? "BASIC INFO" : currentStep === 2 ? "MODULES & ASSESSMENTS" : currentStep === 3 ? "FINAL ASSESSMENT" : currentStep === 4 ? "COMPLETION RULES" : currentStep === 5 ? "CERTIFICATE" : "REVIEW"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[11.5px] text-slate-500">
                   <Clock className="h-3.5 w-3.5" />
@@ -2101,17 +3242,19 @@ export default function CourseCreation() {
                 </span>
               </div>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
-                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Course Structure & Training Modules" : currentStep === 3 ? "Assessments & Evaluation Scheme" : currentStep === 4 ? "Completion Requirements & Eligibility Protocols" : "Review & Create Course"}
+                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Modules & Module Assessments" : currentStep === 3 ? "Final Overall Assessment" : currentStep === 4 ? "Completion Requirements & Eligibility Protocols" : currentStep === 5 ? "Certificate & Credential Configuration" : "Review & Create Course"}
               </h1>
               <p className="mt-2 text-[13.5px] leading-relaxed text-slate-500">
                 {currentStep === 1
                   ? "Define the fundamental parameters, operational codes, class sizes, and prerequisite credentials for this course programme. New courses initialize as Draft."
                   : currentStep === 2
-                  ? "Structure learning units, reorder modules, define delivery types (Theory / Practical / Both), and attach training materials with granular visibility controls."
+                  ? "Structure learning units and set up each module's assessment at the same time (type, score, pass mark, attempts)."
                   : currentStep === 3
-                  ? "Attach and configure straightforward evaluations for this course. Supported types: Written, Multiple Choice, Practical, Oral, Trainer Evaluation, Other. Keep tests simple and focused."
+                  ? "Module assessments are done. Is there a final overall assessment? If yes, configure it — if not, move on."
                   : currentStep === 4
                   ? "Configure mandatory attendance thresholds, session attendance rules, required module clearance, and minimum assessment passing cutoffs."
+                  : currentStep === 5
+                  ? "Decide whether a credential is issued at all, whether generation is internal or external, then configure validity and ID syntax for internal issuance."
                   : "Review all course information before creating the course."}
               </p>
             </div>
@@ -2186,7 +3329,7 @@ export default function CourseCreation() {
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                      Port Harcourt
+                      
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5 text-slate-400" />
@@ -2241,7 +3384,7 @@ export default function CourseCreation() {
                   Facility validation
                 </p>
                 <p className="mt-1 text-[13px] font-semibold text-white">
-                  Port Harcourt Well Control Yard #4
+                   Well Control Yard #4
                 </p>
               </div>
             </aside>
@@ -2295,7 +3438,7 @@ export default function CourseCreation() {
                   </Button>
                 )}
 
-                {currentStep < 4 ? (
+                {currentStep < STEPS.length ? (
                   <Button
                     type="button"
                     onClick={handleNext}

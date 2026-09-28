@@ -16,13 +16,32 @@ export interface CourseRecord {
   status?: string;
   individual_enrollment_enabled?: boolean;
   certificate_enabled?: boolean;
+  // External certificate generation/validation (e.g. MISTDO → NMDPRA).
+  // When `certificate_external` is true, generation + official validation are
+  // controlled by the external authority, but records can still be verified
+  // centrally by linking to the official license ID / portal.
+  certificate_external?: boolean;
+  certificate_authority?: string | null;
+  certificate_license_id?: string | null;
+  certificate_portal_url?: string | null;
   thumbnail_url?: string | null;
   image?: string | null;
   min_class_size?: number;
   max_class_size?: number;
   prerequisite_required?: boolean;
+  prerequisite_type?: "internal" | "external" | null;
+  prerequisite_course_id?: number | null;
   prerequisite_description?: string;
   created_at: string;
+}
+
+export interface ModuleAssessmentConfig {
+  type: string;
+  max_score: number;
+  pass_mark: number;
+  attempts_allowed: number;
+  required: boolean;
+  description?: string;
 }
 
 export interface CourseModule {
@@ -30,6 +49,15 @@ export interface CourseModule {
   description?: string;
   scheduled_date?: string;
   has_assessment?: boolean;
+  // Inline per-module assessment setup (configured at module-creation time, Step 2).
+  // Persisted to the backend as part of the module payload; unknown keys are
+  // ignored by older backends, and the `has_assessment` flag always stays in sync.
+  assessment_type?: string;
+  assessment_max_score?: number;
+  assessment_pass_mark?: number;
+  assessment_attempts_allowed?: number;
+  assessment_required?: boolean;
+  assessment_description?: string;
   sort_order?: number;
   is_required?: boolean;
   materials?: any[];

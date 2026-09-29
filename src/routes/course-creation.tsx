@@ -72,6 +72,7 @@ import {
 import { createCourse, fetchCourses } from "@/lib/courses";
 import type { CourseModule, CourseRecord } from "@/lib/courses";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const COURSE_CATEGORIES = [
   "HSF & Safety",
@@ -226,6 +227,8 @@ type FormData = {
   certificate_authority: string;
   certificate_license_id: string;
   certificate_portal_url: string;
+  thumbnail_url: string;
+  thumbnail_file: File | null;
   modules: CourseModule[];
   expandedModules: number[];
   // Completion requirements
@@ -355,8 +358,26 @@ function FinalAssessmentForm({ value, onChange, courseTitle }: {
           <div className="relative flex items-center">
             <Input
               type="number"
-              value={formData.max_score}
-              onChange={(e) => set("max_score", parseInt(e.target.value) || 100)}
+              value={formData.max_score === 0 ? "" : formData.max_score}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "") {
+                  set("max_score", 0);
+                } else {
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    set("max_score", numValue);
+                  }
+                }
+              }}
+              onBlur={(e) => {
+                const value = parseInt(e.target.value);
+                if (isNaN(value) || value === 0) {
+                  set("max_score", 100);
+                } else {
+                  set("max_score", value);
+                }
+              }}
               className="h-11 border-slate-200 bg-slate-50/70 text-sm pr-12"
             />
             <span className="absolute right-3 text-[12px] text-slate-400 font-bold">PTS</span>
@@ -368,8 +389,26 @@ function FinalAssessmentForm({ value, onChange, courseTitle }: {
           <div className="relative flex items-center">
             <Input
               type="number"
-              value={formData.pass_mark}
-              onChange={(e) => set("pass_mark", parseInt(e.target.value) || 75)}
+              value={formData.pass_mark === 0 ? "" : formData.pass_mark}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "") {
+                  set("pass_mark", 0);
+                } else {
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    set("pass_mark", numValue);
+                  }
+                }
+              }}
+              onBlur={(e) => {
+                const value = parseInt(e.target.value);
+                if (isNaN(value) || value === 0) {
+                  set("pass_mark", 75);
+                } else {
+                  set("pass_mark", value);
+                }
+              }}
               className="h-11 border-slate-200 bg-slate-50/70 text-sm pr-10"
             />
             <span className="absolute right-3 text-[13px] text-slate-400 font-bold">%</span>
@@ -441,8 +480,26 @@ function ModAssessmentFields({ index, module, updateModule }: {
           <Input
             type="number"
             min={1}
-            value={module.assessment_max_score ?? 100}
-            onChange={(e) => updateModule(index, "assessment_max_score", Math.max(1, parseInt(e.target.value) || 0))}
+            value={(module.assessment_max_score ?? 100) === 0 ? "" : module.assessment_max_score ?? 100}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "") {
+                updateModule(index, "assessment_max_score", 0);
+              } else {
+                const numValue = parseInt(value);
+                if (!isNaN(numValue)) {
+                  updateModule(index, "assessment_max_score", numValue);
+                }
+              }
+            }}
+            onBlur={(e) => {
+              const value = parseInt(e.target.value);
+              if (isNaN(value) || value === 0) {
+                updateModule(index, "assessment_max_score", 100);
+              } else {
+                updateModule(index, "assessment_max_score", Math.max(1, value));
+              }
+            }}
             className="h-10 bg-white pr-10 text-sm"
           />
           <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">PTS</span>
@@ -455,8 +512,26 @@ function ModAssessmentFields({ index, module, updateModule }: {
             type="number"
             min={0}
             max={100}
-            value={module.assessment_pass_mark ?? 75}
-            onChange={(e) => updateModule(index, "assessment_pass_mark", Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+            value={(module.assessment_pass_mark ?? 75) === 0 ? "" : module.assessment_pass_mark ?? 75}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "") {
+                updateModule(index, "assessment_pass_mark", 0);
+              } else {
+                const numValue = parseInt(value);
+                if (!isNaN(numValue)) {
+                  updateModule(index, "assessment_pass_mark", numValue);
+                }
+              }
+            }}
+            onBlur={(e) => {
+              const value = parseInt(e.target.value);
+              if (isNaN(value) || value === 0) {
+                updateModule(index, "assessment_pass_mark", 75);
+              } else {
+                updateModule(index, "assessment_pass_mark", Math.min(100, Math.max(0, value)));
+              }
+            }}
             className="h-10 bg-white pr-8 text-sm"
           />
           <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">%</span>
@@ -749,7 +824,6 @@ export default function CourseCreation() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const syllabusRef = useRef<HTMLTextAreaElement | null>(null);
   const [availableCourses, setAvailableCourses] = useState<CourseRecord[]>([]);
@@ -764,6 +838,9 @@ export default function CourseCreation() {
         setAvailableCourses(courses);
       } catch (err) {
         console.error("Failed to fetch courses:", err);
+        toast.error("Failed to load existing courses", {
+          description: err instanceof Error ? err.message : "Unable to fetch courses",
+        });
       }
     };
     loadCourses();
@@ -806,6 +883,8 @@ export default function CourseCreation() {
     certificate_authority: "",
     certificate_license_id: "",
     certificate_portal_url: "",
+    thumbnail_url: "",
+    thumbnail_file: null,
     status: "DRAFT",
     modules: [],
     expandedModules: [],
@@ -1131,8 +1210,7 @@ export default function CourseCreation() {
     if (validateStep(currentStep)) {
       setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
     } else {
-      setError("Some required fields are still empty or invalid on this step.");
-      setTimeout(() => setError(""), 3000);
+      toast.error("Some required fields are still empty or invalid on this step.");
     }
   };
 
@@ -1141,13 +1219,46 @@ export default function CourseCreation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep(6)) {
-      setError("Add at least one named module before creating the course.");
-      setTimeout(() => setError(""), 3000);
+      toast.error("Add at least one named module before creating the course.");
       return;
     }
 
     try {
       setLoading(true);
+
+      // Upload thumbnail if file is selected
+      let thumbnailUrl = formData.thumbnail_url;
+      if (formData.thumbnail_file) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', formData.thumbnail_file);
+        
+        try {
+          const token = localStorage.getItem("token");
+          const uploadResponse = await fetch(
+            `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/upload`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              body: formDataUpload,
+            }
+          );
+          
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload image");
+          }
+          
+          const uploadData = await uploadResponse.json();
+          thumbnailUrl = `${import.meta.env.VITE_API_URL || "http://localhost:4000"}${uploadData.url}`;
+        } catch (uploadError) {
+          toast.error("Failed to upload course image", {
+            description: uploadError instanceof Error ? uploadError.message : "Image upload failed",
+          });
+          return;
+        }
+      }
+
       // Certificate-related payload (Step 5): only the backend-supported
       // external generation flag + authority linkage (NMDPRA for MISTDO) is
       // sent. The richer design fields (title, template, validity, ID syntax)
@@ -1178,6 +1289,7 @@ export default function CourseCreation() {
         has_final_assessment: _hasFinalAssessment,
         final_assessment: _finalAssessment,
         assessments: _assessments,
+        thumbnail_file: _thumbnailFile,
         ...restForm
       } = formData;
       // External linkage only ships when issuance is ON and external mode is
@@ -1187,6 +1299,7 @@ export default function CourseCreation() {
       const externalOn = formData.certificate_enabled && formData.certificate_external;
       const coursePayload: Record<string, any> = {
         ...restForm,
+        thumbnail_url: thumbnailUrl || null,
         certificate_external: externalOn,
         certificate_authority: externalOn ? formData.certificate_authority : null,
         certificate_license_id: externalOn ? formData.certificate_license_id : null,
@@ -1248,8 +1361,7 @@ export default function CourseCreation() {
       setSuccess(true);
       setTimeout(() => navigate(`/training/course/${course.id}`), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The course could not be created.");
-      setTimeout(() => setError(""), 4000);
+      toast.error(err instanceof Error ? err.message : "The course could not be created.");
     } finally {
       setLoading(false);
     }
@@ -1386,6 +1498,83 @@ export default function CourseCreation() {
                 <p className="text-[11.5px] text-slate-400">
                   Shown directly in public training index search results and trainee enrollment portals.
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <FieldLabel htmlFor="thumbnail" hint="Recommended size: 1200x630px (2:1 ratio)">
+                  Course Background Picture
+                </FieldLabel>
+                <div className="relative">
+                  <input
+                    id="thumbnail"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        updateFormData("thumbnail_file", file);
+                        // Create preview URL
+                        const previewUrl = URL.createObjectURL(file);
+                        updateFormData("thumbnail_url", previewUrl);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => document.getElementById('thumbnail')?.click()}
+                    className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all ${
+                      formData.thumbnail_url || formData.thumbnail_file
+                        ? "border-emerald-300 bg-emerald-50/50"
+                        : "border-slate-300 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/50"
+                    }`}
+                  >
+                    {formData.thumbnail_url || formData.thumbnail_file ? (
+                      <div className="relative aspect-[2/1] w-full overflow-hidden rounded-lg">
+                        <img
+                          src={formData.thumbnail_url}
+                          alt="Course background preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="text-white text-center">
+                            <Upload className="h-6 w-6 mx-auto mb-2" />
+                            <p className="text-sm font-medium">Click to change image</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateFormData("thumbnail_file", null);
+                            updateFormData("thumbnail_url", "");
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="aspect-[2/1] w-full flex flex-col items-center justify-center p-8">
+                        <Upload className="h-12 w-12 text-slate-400 mb-3" />
+                        <p className="text-sm font-medium text-slate-700 mb-1">
+                          Upload course background picture
+                        </p>
+                        <p className="text-xs text-slate-500 text-center">
+                          Drag and drop or click to browse
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-2">
+                          PNG, JPG up to 5MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {formData.thumbnail_file && (
+                  <p className="text-[11px] text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {formData.thumbnail_file.name} ({(formData.thumbnail_file.size / 1024 / 1024).toFixed(2)} MB)
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -1539,15 +1728,31 @@ export default function CourseCreation() {
                         id="duration_value"
                         type="number"
                         min="1"
-                        value={formData.duration_value}
+                        value={formData.duration_value === 0 ? "" : formData.duration_value}
                         onKeyDown={(e) => {
                           if (["-", "e", "E", "+"].includes(e.key)) {
                             e.preventDefault();
                           }
                         }}
-                        onChange={(e) =>
-                          updateFormData("duration_value", Math.max(1, parseInt(e.target.value) || 0))
-                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "") {
+                            updateFormData("duration_value", 0);
+                          } else {
+                            const numValue = parseInt(value);
+                            if (!isNaN(numValue)) {
+                              updateFormData("duration_value", numValue);
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (isNaN(value) || value === 0) {
+                            updateFormData("duration_value", 40);
+                          } else {
+                            updateFormData("duration_value", Math.max(1, value));
+                          }
+                        }}
                         className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
                         required
                       />
@@ -1585,15 +1790,31 @@ export default function CourseCreation() {
                           id="min_class_size"
                           type="number"
                           min="1"
-                          value={formData.min_class_size}
+                          value={formData.min_class_size === 0 ? "" : formData.min_class_size}
                           onKeyDown={(e) => {
                             if (["-", "e", "E", "+"].includes(e.key)) {
                               e.preventDefault();
                             }
                           }}
-                          onChange={(e) =>
-                            updateFormData("min_class_size", Math.max(1, parseInt(e.target.value) || 0))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "") {
+                              updateFormData("min_class_size", 0);
+                            } else {
+                              const numValue = parseInt(value);
+                              if (!isNaN(numValue)) {
+                                updateFormData("min_class_size", numValue);
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (isNaN(value) || value === 0) {
+                              updateFormData("min_class_size", 5);
+                            } else {
+                              updateFormData("min_class_size", Math.max(1, value));
+                            }
+                          }}
                           className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
                           required
                         />
@@ -1609,15 +1830,31 @@ export default function CourseCreation() {
                           id="max_class_size"
                           type="number"
                           min="1"
-                          value={formData.max_class_size}
+                          value={formData.max_class_size === 0 ? "" : formData.max_class_size}
                           onKeyDown={(e) => {
                             if (["-", "e", "E", "+"].includes(e.key)) {
                               e.preventDefault();
                             }
                           }}
-                          onChange={(e) =>
-                            updateFormData("max_class_size", Math.max(1, parseInt(e.target.value) || 0))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "") {
+                              updateFormData("max_class_size", 0);
+                            } else {
+                              const numValue = parseInt(value);
+                              if (!isNaN(numValue)) {
+                                updateFormData("max_class_size", numValue);
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (isNaN(value) || value === 0) {
+                              updateFormData("max_class_size", 30);
+                            } else {
+                              updateFormData("max_class_size", Math.max(1, value));
+                            }
+                          }}
                           className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
                           required
                         />
@@ -1874,15 +2111,30 @@ export default function CourseCreation() {
                               type="number"
                               min={0}
                               max={10}
-                              value={module.duration || ""}
+                              value={module.duration === 0 ? "" : module.duration || ""}
                               onKeyDown={(e) => {
                                 if (["-", "e", "E", "+"].includes(e.key)) {
                                   e.preventDefault();
                                 }
                               }}
                               onChange={(e) => {
-                                const val = e.target.value === "" ? 0 : Math.min(10, Math.max(0, parseFloat(e.target.value) || 0));
-                                updateModule(index, "duration", val);
+                                const value = e.target.value;
+                                if (value === "") {
+                                  updateModule(index, "duration", 0);
+                                } else {
+                                  const numValue = parseFloat(value);
+                                  if (!isNaN(numValue)) {
+                                    updateModule(index, "duration", numValue);
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const value = parseFloat(e.target.value);
+                                if (isNaN(value) || value === 0) {
+                                  updateModule(index, "duration", 0);
+                                } else {
+                                  updateModule(index, "duration", Math.min(10, Math.max(0, value)));
+                                }
                               }}
                               placeholder="Hours (max 10)"
                               className="h-10 text-sm"
@@ -2369,8 +2621,26 @@ export default function CourseCreation() {
                         <div className="relative flex-1">
                           <Input
                             type="number"
-                            value={formData.minimum_contact_hours}
-                            onChange={(e) => updateFormData("minimum_contact_hours", Math.max(1, parseInt(e.target.value) || 0))}
+                            value={formData.minimum_contact_hours === 0 ? "" : formData.minimum_contact_hours}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "") {
+                                updateFormData("minimum_contact_hours", 0);
+                              } else {
+                                const numValue = parseInt(value);
+                                if (!isNaN(numValue)) {
+                                  updateFormData("minimum_contact_hours", numValue);
+                                }
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const value = parseInt(e.target.value);
+                              if (isNaN(value) || value === 0) {
+                                updateFormData("minimum_contact_hours", 36);
+                              } else {
+                                updateFormData("minimum_contact_hours", Math.max(1, value));
+                              }
+                            }}
                             className="text-lg font-bold px-3 py-1.5 rounded-lg"
                           />
                           <span className="absolute right-3 top-2.5 text-[12px] font-semibold text-slate-400">HRS</span>
@@ -2488,11 +2758,11 @@ export default function CourseCreation() {
                           <Input
                             id="theory_passing_score"
                             type="number"
-                            value={formData.theory_passing_score}
+                            value={formData.theory_passing_score === 0 ? "" : formData.theory_passing_score}
                             onChange={(e) => {
                               const value = e.target.value;
                               if (value === "") {
-                                updateFormData("theory_passing_score", 75);
+                                updateFormData("theory_passing_score", 0);
                               } else {
                                 const numValue = parseInt(value);
                                 if (!isNaN(numValue)) {
@@ -2502,7 +2772,7 @@ export default function CourseCreation() {
                             }}
                             onBlur={(e) => {
                               const value = parseInt(e.target.value);
-                              if (isNaN(value)) {
+                              if (isNaN(value) || value === 0) {
                                 updateFormData("theory_passing_score", 75);
                               } else {
                                 updateFormData("theory_passing_score", Math.max(50, Math.min(100, value)));
@@ -2846,13 +3116,26 @@ export default function CourseCreation() {
                     <Input
                       type="number"
                       min={1}
-                      value={formData.certificate_validity_duration}
-                      onChange={(e) =>
-                        updateFormData(
-                          "certificate_validity_duration",
-                          Math.max(1, parseInt(e.target.value) || 1),
-                        )
-                      }
+                      value={formData.certificate_validity_duration === 0 ? "" : formData.certificate_validity_duration}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "") {
+                          updateFormData("certificate_validity_duration", 0);
+                        } else {
+                          const numValue = parseInt(value);
+                          if (!isNaN(numValue)) {
+                            updateFormData("certificate_validity_duration", numValue);
+                          }
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (isNaN(value) || value === 0) {
+                          updateFormData("certificate_validity_duration", 24);
+                        } else {
+                          updateFormData("certificate_validity_duration", Math.max(1, value));
+                        }
+                      }}
                       disabled={formData.certificate_validity_framework === "Perpetual / Lifetime"}
                       className="h-11 border-slate-200 bg-slate-50/70 text-sm"
                     />
@@ -3669,13 +3952,6 @@ export default function CourseCreation() {
               </div>
             </div>
           </div>
-
-          {error && (
-            <div className="mt-5 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span className="font-medium">{error}</span>
-            </div>
-          )}
 
           {/* Form + rail */}
           <form onSubmit={handleSubmit} className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">

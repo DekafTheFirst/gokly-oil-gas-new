@@ -136,6 +136,75 @@ const EXTERNAL_CERT_AUTHORITIES = [
 const isMistdoCourse = (title: string, code: string) =>
   /mistdo/i.test(`${title || ""} ${code || ""}`);
 
+/* Frontend-only enum of the expected external certification courses that can
+   gate enrollment when Prerequisite Type = "External Certification".
+   TODO: replace with the dedicated external-certifications module when it
+   lands; until then the selection is stored in prerequisite_description. */
+const EXTERNAL_PREREQUISITE_COURSES = [
+  "IWCF Level 4 — Well Control Certification",
+  "IADC WellSharp — Well Control",
+  "H2S Alive / H2S Awareness",
+  "BOSIET / HUET — Offshore Safety Induction",
+  "Sea Survival & Personal Survival Techniques",
+  "Fire Fighting & Fire Warden",
+  "First Aid, CPR & AED",
+  "Confined Space Entry & Rescue",
+  "Working at Height & Fall Arrest",
+  "NEBOSH International General Certificate (IGC)",
+  "IOSH Managing Safely",
+  "MISTDO — Downstream Safety Training",
+];
+
+/* First two (max 4-char) words of a course name, uppercased and hyphenated:
+   "Fire Safety Training" -> "FIRE-SAFE". */
+const titleWords = (title: string) =>
+  title
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w.slice(0, 4).toUpperCase())
+    .join("-");
+
+/* Derive the GOK taxonomy code from a course name: GOK-WORD-WORD-NNN.
+   The 3-digit serial is carried over from the previous code (unless a fresh
+   one is requested) so live typing only changes the word part and the code
+   never flickers. */
+const buildCourseCode = (title: string, previousCode = "", freshSerial = false) => {
+  const base = titleWords(title) || "GOK";
+  const serial = freshSerial
+    ? String(Math.floor(100 + Math.random() * 900))
+    : /\d{3}$/.exec(previousCode)?.[0] ?? String(Math.floor(100 + Math.random() * 900));
+  return `GOK-${base}-${serial}`;
+};
+
+/* Certificate ID prefix suggested from the course name: "FIRE-SAFE". */
+const deriveIdPrefix = (title: string) => titleWords(title);
+
+/* One-click certificate validity presets — each sets duration + unit together. */
+const CERTIFICATE_DURATION_PRESETS = [
+  { label: "6 months", duration: 6, unit: "Months" },
+  { label: "1 year", duration: 1, unit: "Years" },
+  { label: "2 years", duration: 2, unit: "Years" },
+  { label: "3 years", duration: 3, unit: "Years" },
+  { label: "5 years", duration: 5, unit: "Years" },
+  { label: "10 years", duration: 10, unit: "Years" },
+];
+
+/* Normalise a stored duration + unit to months so the matching preset lights up. */
+const validityDurationInMonths = (duration: number, unit: string) => {
+  const u = (unit || "").toLowerCase();
+  if (u.startsWith("day")) return Math.round(duration / 30);
+  if (u.startsWith("year")) return duration * 12;
+  return duration;
+};
+
+/* "2 Years" -> "2 years", "1 Year" -> "1 year" (never "yearss"). */
+const formatValidityDuration = (duration: number, unit: string) => {
+  const singular = (unit || "").split(" ")[0].toLowerCase().replace(/s$/, "");
+  return `${duration} ${duration === 1 ? singular : `${singular}s`}`;
+};
+
 const DELIVERY_TYPES = [
   { value: "theory", label: "Theory" },
   { value: "practical", label: "Practical" },
@@ -829,6 +898,13 @@ export default function CourseCreation() {
   const [availableCourses, setAvailableCourses] = useState<CourseRecord[]>([]);
   const [previousAttendancePercentage, setPreviousAttendancePercentage] = useState(80);
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
+  // While true the course code is kept in sync with the course name as the
+  // user types; typing a custom code by hand switches it off (clearing the
+  // field or pressing Gen switches it back on).
+  const [codeAuto, setCodeAuto] = useState(true);
+  // Same idea as codeAuto: keep the certificate ID prefix in sync with the
+  // course name until the user types a custom prefix by hand.
+  const [idPrefixAuto, setIdPrefixAuto] = useState(true);
 
   // Fetch available courses for prerequisite selection
   useEffect(() => {
@@ -865,15 +941,16 @@ export default function CourseCreation() {
     individual_enrollment_enabled: true,
     certificate_enabled: true,
     // Certificate step (Step 5) design defaults — mirrors the reference
-    // certificate canvas (title, Gold Foil template, auto issuance, 24-month
-    // validity, NCDMB-GOG / hyphen / YY / 3-digit ID syntax).
+    // certificate canvas (title, Gold Foil template, auto issuance, 2-year
+    // validity, hyphen / YY / 3-digit ID syntax). The ID prefix starts empty
+    // on purpose: it is auto-suggested from the course name as they type.
     certificate_title: "Advanced Offshore Well Control & Blowout Prevention Qualification",
     certificate_template: "Gokly Industrial Gold Foil & Guilloche Standard",
     certificate_issuance_mode: "automatic",
     certificate_validity_framework: "Fixed Term Validity",
-    certificate_validity_duration: 24,
-    certificate_validity_unit: "Months (2 Years)",
-    certificate_id_prefix: "NCDMB-GOG",
+    certificate_validity_duration: 2,
+    certificate_validity_unit: "Years",
+    certificate_id_prefix: "",
     certificate_id_separator: "-",
     certificate_id_year_schema: "YY",
     certificate_id_sequence_type: "3-Digit (001...)",
@@ -921,6 +998,18 @@ export default function CourseCreation() {
         ) {
           next.certificate_title = value.trim() || value;
         }
+      }
+      // Live-derive the course code from the course name while the code field
+      // is still auto-managed, so the code updates as they type (no manual
+      // refresh / Gen click needed).
+      if (field === "title" && typeof value === "string" && codeAuto) {
+        const trimmed = value.trim();
+        next.code = trimmed ? buildCourseCode(trimmed, String(prev.code || "")) : "";
+      }
+      // Auto-suggest the certificate ID prefix from the course name while the
+      // field is still auto-managed (stops as soon as it is typed by hand).
+      if (field === "title" && typeof value === "string" && idPrefixAuto) {
+        next.certificate_id_prefix = deriveIdPrefix(value);
       }
       // Auto-suggest external NMDPRA certification when title/code looks like MISTDO.
       if ((field === "title" || field === "code") && !prev.certificate_external) {
@@ -1115,18 +1204,10 @@ export default function CourseCreation() {
 
   const removeFinalAssessment = () => toggleFinalAssessment(false);
 
-  /* auto-generate a course code from the title + category */
+  /* re-generate a course code from the title + category (fresh serial) */
   const generateCode = () => {
-    const base =
-      formData.title
-        .replace(/[^a-zA-Z0-9 ]/g, "")
-        .split(" ")
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((w) => w.slice(0, 4).toUpperCase())
-        .join("-") || "GOK";
-    const serial = String(Math.floor(100 + Math.random() * 900));
-    updateFormData("code", `GOK-${base}-${serial}`);
+    setCodeAuto(true);
+    updateFormData("code", buildCourseCode(formData.title, formData.code, true));
   };
 
   /* markdown toolbar for the syllabus field */
@@ -1407,11 +1488,7 @@ export default function CourseCreation() {
               icon={FileText}
               title="Course Identification & Nomenclature"
               subtitle="Standard operational nomenclature adhering to offshore syllabus regulations."
-              aside={
-                <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                  Status: {formData.status === "DRAFT" ? "Draft" : formData.status}
-                </span>
-              }
+              
             >
               <div className="space-y-2">
                 <FieldLabel htmlFor="title" required hint="Accredited qualification title">
@@ -1421,6 +1498,13 @@ export default function CourseCreation() {
                   id="title"
                   value={formData.title}
                   onChange={(e) => updateFormData("title", e.target.value)}
+                  onBlur={() => {
+                    // "Done typing" pass: refill the code if it is still
+                    // auto-managed but currently empty (e.g. cleared earlier).
+                    if (codeAuto && formData.title.trim() && !formData.code) {
+                      updateFormData("code", buildCourseCode(formData.title, ""));
+                    }
+                  }}
                   placeholder="Enter course name"
                   className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
                   required
@@ -1436,7 +1520,13 @@ export default function CourseCreation() {
                     <Input
                       id="code"
                       value={formData.code}
-                      onChange={(e) => updateFormData("code", e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        const v = e.target.value.toUpperCase();
+                        // Hand-editing the code stops the live title→code sync;
+                        // clearing the field (or pressing Gen) resumes it.
+                        setCodeAuto(v === "");
+                        updateFormData("code", v);
+                      }}
                       placeholder="GOK-WELL-402-EXP"
                       className="h-11 border-slate-200 bg-slate-50/70 pr-[72px] font-mono text-sm tracking-wide focus-visible:bg-white"
                       required
@@ -1444,6 +1534,7 @@ export default function CourseCreation() {
                     <button
                       type="button"
                       onClick={generateCode}
+                      title="Regenerate code from course name"
                       className="absolute right-1.5 top-1.5 inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-600 hover:border-emerald-200 hover:text-emerald-700"
                     >
                       <RefreshCw className="h-3 w-3" />
@@ -1483,7 +1574,7 @@ export default function CourseCreation() {
                   required
                   hint={`${formData.short_description.length} / 250 characters`}
                 >
-                  Executive Short Summary
+                  Short Description
                 </FieldLabel>
                 <Textarea
                   id="short_description"
@@ -1637,36 +1728,20 @@ export default function CourseCreation() {
               subtitle="Define training methodology, simulator requirements, and safety-critical seating limits."
             >
               <div className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <FieldLabel htmlFor="tier" required>Course Tier</FieldLabel>
-                    <Select value={formData.tier} onValueChange={(value) => updateFormData("tier", value)}>
-                      <SelectTrigger id="tier" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                        <SelectValue placeholder="Select difficulty level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIERS.map((tier) => (
-                          <SelectItem key={tier} value={tier}>
-                            {tier}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <FieldLabel htmlFor="status" required>Course Status</FieldLabel>
-                    <Select value={formData.status} onValueChange={(value) => updateFormData("status", value)}>
-                      <SelectTrigger id="status" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DRAFT">Draft</SelectItem>
-                        <SelectItem value="PUBLISHED">Published</SelectItem>
-                        <SelectItem value="ARCHIVED">Archived</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <FieldLabel htmlFor="tier" required>Course Tier</FieldLabel>
+                  <Select value={formData.tier} onValueChange={(value) => updateFormData("tier", value)}>
+                    <SelectTrigger id="tier" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                      <SelectValue placeholder="Select difficulty level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIERS.map((tier) => (
+                        <SelectItem key={tier} value={tier}>
+                          {tier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-3">
@@ -1872,19 +1947,19 @@ export default function CourseCreation() {
 
             <SectionCard
               icon={ShieldCheck}
-              title="Prerequisites & Entry Clearance"
-              subtitle="Automated safety compliance verification prior to terminal badge activation."
+              title="Course Prerequisites"
+              subtitle="Set what learners must already complete or hold before they can enroll in this course."
               aside={
                 <div className="flex items-center gap-2.5">
                   <span className="text-[11.5px] font-medium leading-tight text-slate-600">
-                    Gating
+                    Prerequisites
                     <br />
-                    {formData.prerequisite_required ? "Active" : "Off"}
+                    {formData.prerequisite_required ? "Required" : "Not required"}
                   </span>
                   <Toggle
                     checked={formData.prerequisite_required}
                     onChange={(v) => updateFormData("prerequisite_required", v)}
-                    label="Prerequisite gating"
+                    label="Require prerequisites before enrollment"
                   />
                 </div>
               }
@@ -1893,7 +1968,7 @@ export default function CourseCreation() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <FieldLabel htmlFor="prerequisite_type" required>
-                      Prerequisite Type
+                      What Must Come First
                     </FieldLabel>
                     <Select
                       value={formData.prerequisite_type}
@@ -1903,11 +1978,11 @@ export default function CourseCreation() {
                         id="prerequisite_type"
                         className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
                       >
-                        <SelectValue placeholder="Select prerequisite type" />
+                        <SelectValue placeholder="Select what must come first" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="internal">Internal Course</SelectItem>
-                        <SelectItem value="external">External Certification</SelectItem>
+                        <SelectItem value="internal">Course on this platform</SelectItem>
+                        <SelectItem value="external">External certification</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1915,7 +1990,7 @@ export default function CourseCreation() {
                   {formData.prerequisite_type === "internal" ? (
                     <div className="space-y-2">
                       <FieldLabel htmlFor="prerequisite_course_id" required>
-                        Select Prerequisite Course
+                        Prerequisite Course
                       </FieldLabel>
                       <Select
                         value={formData.prerequisite_course_id?.toString() || ""}
@@ -1925,7 +2000,7 @@ export default function CourseCreation() {
                           id="prerequisite_course_id"
                           className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
                         >
-                          <SelectValue placeholder="Select a course" />
+                          <SelectValue placeholder="Select the course that must be completed first" />
                         </SelectTrigger>
                         <SelectContent>
                           {availableCourses.length > 0 ? (
@@ -1943,34 +2018,52 @@ export default function CourseCreation() {
                       </Select>
                       <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Learners must complete the selected course before enrolling.
+                        Learners must complete this course before they can enroll.
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <FieldLabel htmlFor="prerequisite_description" required>
-                        External Certification Requirements
+                        Prerequisite Certification
                       </FieldLabel>
-                      <Textarea
-                        id="prerequisite_description"
+                      <Select
                         value={formData.prerequisite_description}
-                        onChange={(e) => updateFormData("prerequisite_description", e.target.value)}
-                        placeholder="e.g. Valid IWCF Level 4 certification or equivalent offshore experience"
-                        rows={3}
-                        className="resize-none border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white"
-                        required
-                      />
+                        onValueChange={(value) => updateFormData("prerequisite_description", value)}
+                      >
+                        <SelectTrigger
+                          id="prerequisite_description"
+                          className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
+                        >
+                          <SelectValue placeholder="Select the certification learners must hold" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Keep any earlier free-typed requirement selectable. */}
+                          {formData.prerequisite_description &&
+                            !EXTERNAL_PREREQUISITE_COURSES.includes(
+                              formData.prerequisite_description,
+                            ) && (
+                              <SelectItem value={formData.prerequisite_description}>
+                                {formData.prerequisite_description}
+                              </SelectItem>
+                            )}
+                          {EXTERNAL_PREREQUISITE_COURSES.map((course) => (
+                            <SelectItem key={course} value={course}>
+                              {course}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Auto-verifies against Nigeria NOGICD / IWCF Central Database records upon enrollment.
+                        Learners must already hold this certification before they can enroll.
                       </p>
                     </div>
                   )}
                 </div>
               ) : (
                 <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-center text-[12.5px] text-slate-500">
-                  Entry is open to all trainees. Turn on gating to require prior certification or
-                  verified offshore experience.
+                  No prerequisites — anyone can enroll in this course right away. Turn on the switch
+                  above to require a course or an external certification first.
                 </p>
               )}
             </SectionCard>
@@ -3111,51 +3204,85 @@ export default function CourseCreation() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2 sm:col-span-3">
-                    <FieldLabel>Duration</FieldLabel>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={formData.certificate_validity_duration === 0 ? "" : formData.certificate_validity_duration}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "") {
-                          updateFormData("certificate_validity_duration", 0);
-                        } else {
-                          const numValue = parseInt(value);
-                          if (!isNaN(numValue)) {
-                            updateFormData("certificate_validity_duration", numValue);
-                          }
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (isNaN(value) || value === 0) {
-                          updateFormData("certificate_validity_duration", 24);
-                        } else {
-                          updateFormData("certificate_validity_duration", Math.max(1, value));
-                        }
-                      }}
-                      disabled={formData.certificate_validity_framework === "Perpetual / Lifetime"}
-                      className="h-11 border-slate-200 bg-slate-50/70 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-4">
-                    <FieldLabel>Unit</FieldLabel>
-                    <Select
-                      value={formData.certificate_validity_unit}
-                      onValueChange={(v) => updateFormData("certificate_validity_unit", v)}
-                    >
-                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Days">Days</SelectItem>
-                        <SelectItem value="Months">Months</SelectItem>
-                        <SelectItem value="Months (2 Years)">Months (2 Years)</SelectItem>
-                        <SelectItem value="Years">Years</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-6 sm:col-span-7">
+                    <FieldLabel>Certificate Duration</FieldLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {CERTIFICATE_DURATION_PRESETS.map((preset) => {
+                        const disabled =
+                          formData.certificate_validity_framework === "Perpetual / Lifetime";
+                        const active =
+                          validityDurationInMonths(
+                            formData.certificate_validity_duration,
+                            formData.certificate_validity_unit,
+                          ) === validityDurationInMonths(preset.duration, preset.unit);
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                              updateFormData("certificate_validity_duration", preset.duration);
+                              updateFormData("certificate_validity_unit", preset.unit);
+                            }}
+                            className={`h-9 rounded-lg border px-3 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                              active
+                                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                                : "border-slate-200 bg-slate-50/70 text-slate-600 hover:border-slate-300 hover:bg-white"
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-col  gap-2 mt-4">
+                      <span className="text-[11.5px] font-medium text-slate-500">Custom</span>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          aria-label="Custom duration amount"
+                          value={formData.certificate_validity_duration === 0 ? "" : formData.certificate_validity_duration}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "") {
+                              updateFormData("certificate_validity_duration", 0);
+                            } else {
+                              const numValue = parseInt(value);
+                              if (!isNaN(numValue)) {
+                                updateFormData("certificate_validity_duration", numValue);
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (isNaN(value) || value === 0) {
+                              updateFormData("certificate_validity_duration", 2);
+                            } else {
+                              updateFormData("certificate_validity_duration", Math.max(1, value));
+                            }
+                          }}
+                          disabled={formData.certificate_validity_framework === "Perpetual / Lifetime"}
+                          className="h-9 w-24 border-slate-200 bg-slate-50/70 text-sm"
+                        />
+                        <Select
+                          value={formData.certificate_validity_unit}
+                          onValueChange={(v) => updateFormData("certificate_validity_unit", v)}
+                        >
+                          <SelectTrigger
+                            disabled={formData.certificate_validity_framework === "Perpetual / Lifetime"}
+                            className="h-9 w-36 border-slate-200 bg-slate-50/70 text-sm"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Days">Days</SelectItem>
+                            <SelectItem value="Months">Months</SelectItem>
+                            <SelectItem value="Years">Years</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -3200,10 +3327,30 @@ export default function CourseCreation() {
                     <FieldLabel>Prefix</FieldLabel>
                     <Input
                       value={formData.certificate_id_prefix}
-                      onChange={(e) => updateFormData("certificate_id_prefix", e.target.value)}
-                      placeholder="e.g., NCDMB-GOG"
+                      onChange={(e) => {
+                        const v = e.target.value.toUpperCase();
+                        // Hand-editing stops the live course-name suggestion;
+                        // clearing the field resumes it.
+                        setIdPrefixAuto(v === "");
+                        updateFormData("certificate_id_prefix", v);
+                      }}
+                      onBlur={() => {
+                        // "Done typing" pass: fill the suggestion if the field
+                        // is still auto-managed but currently empty.
+                        if (
+                          idPrefixAuto &&
+                          !formData.certificate_id_prefix.trim() &&
+                          formData.title.trim()
+                        ) {
+                          updateFormData("certificate_id_prefix", deriveIdPrefix(formData.title));
+                        }
+                      }}
+                      placeholder={deriveIdPrefix(formData.title) || "e.g., FIRE-SAFE"}
                       className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm uppercase focus-visible:bg-white"
                     />
+                    <p className="text-[11.5px] text-slate-500">
+                      Auto-suggested from the course name — type to override.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <FieldLabel>Separator</FieldLabel>
@@ -3327,7 +3474,7 @@ export default function CourseCreation() {
                     <span className="text-right text-[11.5px] font-medium text-slate-800">
                       {formData.certificate_validity_framework === "Perpetual / Lifetime"
                         ? "No expiration"
-                        : `${formData.certificate_validity_duration} ${formData.certificate_validity_unit.split(" ")[0].toLowerCase()}${formData.certificate_validity_duration === 1 ? "" : "s"} from issue`}
+                        : `${formatValidityDuration(formData.certificate_validity_duration, formData.certificate_validity_unit)} from issue`}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
@@ -3511,19 +3658,19 @@ export default function CourseCreation() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs font-medium uppercase">
-                              {formData.prerequisite_type}
+                              {formData.prerequisite_type === "internal" ? "Internal course" : "External certification"}
                             </span>
                           </div>
                           {formData.prerequisite_type === "internal" && formData.prerequisite_course_id ? (
                             <span className="font-medium text-slate-900">
-                              Required Course: {availableCourses.find(c => c.id === formData.prerequisite_course_id)?.title || `ID: ${formData.prerequisite_course_id}`}
+                              Must complete first: {availableCourses.find(c => c.id === formData.prerequisite_course_id)?.title || `ID: ${formData.prerequisite_course_id}`}
                             </span>
                           ) : formData.prerequisite_type === "external" ? (
-                            <p className="font-medium text-slate-900">{formData.prerequisite_description}</p>
+                            <p className="font-medium text-slate-900">Must hold: {formData.prerequisite_description}</p>
                           ) : null}
                         </div>
                       ) : (
-                        <span className="text-slate-400 italic">No prerequisites required</span>
+                        <span className="text-slate-400 italic">None — anyone can enroll</span>
                       )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3927,7 +4074,7 @@ export default function CourseCreation() {
               </h1>
               <p className="mt-2 text-[13.5px] leading-relaxed text-slate-500">
                 {currentStep === 1
-                  ? "Define the fundamental parameters, operational codes, class sizes, and prerequisite credentials for this course programme. New courses initialize as Draft."
+                  ? "Define the fundamental parameters, operational codes, class sizes, and course prerequisites for this course programme. New courses initialize as Draft."
                   : currentStep === 2
                   ? "Structure learning units and set up each module's assessment at the same time (type, score, pass mark, attempts)."
                   : currentStep === 3

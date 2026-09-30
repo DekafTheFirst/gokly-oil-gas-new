@@ -1,11 +1,8 @@
 /**
  * Course-wizard submission helpers.
  *
- * Creating a course is a four-phase sequence across three endpoints:
- * upload → course → modules → final assessment. Each phase has different
- * failure semantics (see `handleSubmit`), so the payload builders and API calls
- * live here — pure, documented and unit-testable — instead of inline `fetch`
- * calls scattered through the route component.
+ * Creating a course is now a single unified endpoint that handles:
+ * course data, modules, final assessment, and image upload in one transaction.
  */
 import { apiFetch, API_BASE_URL } from "./api";
 import { getAuthToken } from "./auth";
@@ -36,11 +33,8 @@ const WIZARD_ONLY_KEYS = [
   "theory_passing_score",
   "practical_required",
   "sequential_progression",
-  "modules",
   "expandedModules",
   "assessments",
-  "has_final_assessment",
-  "final_assessment",
   "thumbnail_file",
 ] as const;
 
@@ -117,16 +111,16 @@ export const toModulePayloads = (modules: CourseModule[]): ModulePayload[] =>
  */
 export const buildCoursePayload = <T extends object>(
   formData: T,
-  thumbnailUrl: string | null,
+  thumbnailBase64: string | null,
 ): Record<string, unknown> => {
   const source = formData as unknown as Record<string, unknown>;
-  const payload: Record<string, unknown> = { ...formData };
+  const payload: Record<string, unknown> = { ...source };
   for (const key of WIZARD_ONLY_KEYS) delete payload[key];
 
   // External linkage only ships when issuance is ON *and* external mode is on —
   // otherwise the backend's "authority + license ID" guard rejects the course.
   const externalOn = Boolean(source.certificate_enabled && source.certificate_external);
-  payload.thumbnail_url = thumbnailUrl || null;
+  payload.thumbnail_base64 = thumbnailBase64 || null;
   payload.certificate_external = externalOn;
   payload.certificate_authority = externalOn ? source.certificate_authority : null;
   payload.certificate_license_id = externalOn ? source.certificate_license_id : null;
@@ -136,6 +130,18 @@ export const buildCoursePayload = <T extends object>(
     source.prerequisite_required && source.prerequisite_type === "internal"
       ? source.prerequisite_course_id
       : null;
+  
+  // Include modules in the payload for the unified endpoint
+  if (source.modules && Array.isArray(source.modules)) {
+    payload.modules = toModulePayloads(source.modules as CourseModule[]);
+  }
+  
+  // Include final assessment if present
+  if (source.has_final_assessment && source.final_assessment) {
+    payload.has_final_assessment = true;
+    payload.final_assessment = source.final_assessment;
+  }
+  
   return payload;
 };
 
@@ -168,36 +174,17 @@ export const readApiError = async (response: Response, fallback: string): Promis
   return `${fallback} (HTTP ${response.status})`;
 };
 
-/** Upload the course image and return an absolute, browser-loadable URL. */
-export const uploadCourseImage = async (file: File): Promise<string> => {
-  const body = new FormData();
-  body.append("file", file);
-  // `Content-Type` stays unset so the browser can add the multipart boundary.
-  const response = await fetch(`${API_BASE_URL}/upload`, {
-    method: "POST",
-    headers: authHeaders(),
-    body,
+/** Convert a file to base64 string for upload */
+export const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
-  if (!response.ok) {
-    throw new Error(await readApiError(response, "Upload failed"));
-  }
-  const data = await response.json();
-  return absoluteAssetUrl(data.url);
 };
 
-export const saveCourseModules = async (courseId: number, modules: CourseModule[]) =>
-  apiFetch(`/courses/${courseId}/modules`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: { modules: toModulePayloads(modules) },
-  });
 
-export const saveCourseAssessment = async (
-  courseId: number,
-  assessment: FinalAssessmentInput,
-) =>
-  apiFetch(`/courses/${courseId}/assessments`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: toFinalAssessmentPayload(assessment),
-  });

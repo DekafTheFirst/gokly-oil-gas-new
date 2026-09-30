@@ -34,16 +34,38 @@ describe("toModulePayloads", () => {
       {
         name: "Helicopter Aerodynamics",
         description: "Lift in forward flight",
+        code: "MOD-001",
         scheduled_date: null,
         has_assessment: false,
         sort_order: 0,
+        duration: 0,
+        delivery_type: "both",
+        is_required: true,
+        materials: [],
+        assessment_type: null,
+        assessment_max_score: null,
+        assessment_pass_mark: null,
+        assessment_attempts_allowed: null,
+        assessment_required: null,
+        assessment_description: null,
       },
       {
         name: "Hurricane Ops",
         description: "",
+        code: "MOD-008",
         scheduled_date: "2026-03-01",
         has_assessment: true,
         sort_order: 7,
+        duration: 0,
+        delivery_type: "both",
+        is_required: true,
+        materials: [],
+        assessment_type: "mcq",
+        assessment_max_score: 100,
+        assessment_pass_mark: 75,
+        assessment_attempts_allowed: 3,
+        assessment_required: true,
+        assessment_description: null,
       },
     ]);
   });
@@ -120,15 +142,13 @@ describe("buildCoursePayload", () => {
       "attendance_percentage",
       "theory_passing_score",
       "minimum_contact_hours",
-      "modules",
       "expandedModules",
-      "has_final_assessment",
-      "final_assessment",
       "assessments",
       "thumbnail_file",
     ]) {
       expect(payload).not.toHaveProperty(key);
     }
+    expect(payload.modules).toBeDefined();
     // Backend-supported fields still ride through untouched.
     expect(payload.duration_value).toBe(40);
     expect(payload.code).toBe("SR-2026");

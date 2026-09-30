@@ -99,12 +99,10 @@ describe("course autofill -> submission payloads", () => {
     const payload = buildCoursePayload(fullForm, uploaded) as Record<string, unknown>;
 
     /* Wizard scratch state never reaches the API. */
-    expect(payload).not.toHaveProperty("modules");
     expect(payload).not.toHaveProperty("expandedModules");
     expect(payload).not.toHaveProperty("assessments");
-    expect(payload).not.toHaveProperty("has_final_assessment");
-    expect(payload).not.toHaveProperty("final_assessment");
     expect(payload).not.toHaveProperty("thumbnail_file");
+    expect(payload.modules).toBeDefined();
 
     /* Only the freshly uploaded picture is forwarded - never the local preview. */
     expect(payload.thumbnail_url).toBe(uploaded);

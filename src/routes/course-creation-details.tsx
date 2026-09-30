@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -971,8 +971,9 @@ export default function CourseCreation() {
   }, []);
 
   // Load course data if in view/edit mode
+  const { courseId: routeCourseId } = useParams();
   useEffect(() => {
-    const courseId = searchParams.get("courseId");
+    const courseId = routeCourseId || searchParams.get("courseId");
     if (courseId) {
       const loadCourse = async () => {
         setInitialLoading(true);
@@ -987,20 +988,22 @@ export default function CourseCreation() {
           setEditingCourseId(parseInt(courseId));
 
           // Map modules to the expected format
-          const mappedModules = modules.map((mod: any) => ({
-            name: mod.name,
+          const mappedModules = modules.map((mod: any, index: number) => ({
+            name: mod.name || "",
             description: mod.description || "",
             has_assessment: mod.has_assessment || false,
-            sort_order: mod.sort_order || 0,
+            sort_order: Number.isInteger(mod.sort_order) ? mod.sort_order : index,
+            code: mod.code || `MOD-${String((mod.sort_order ?? index) + 1).padStart(3, "0")}`,
+            duration: typeof mod.duration === "number" ? mod.duration : (parseInt(mod.duration, 10) || 0),
+            delivery_type: mod.delivery_type || "both",
+            is_required: mod.is_required !== false,
+            materials: Array.isArray(mod.materials) ? mod.materials : [],
             assessment_type: mod.assessment_type || "mcq",
-            assessment_max_score: mod.assessment_max_score || 100,
-            assessment_pass_mark: mod.assessment_pass_mark || 75,
-            assessment_attempts_allowed: mod.assessment_attempts_allowed || 3,
+            assessment_max_score: mod.assessment_max_score ?? 100,
+            assessment_pass_mark: mod.assessment_pass_mark ?? 75,
+            assessment_attempts_allowed: mod.assessment_attempts_allowed ?? 3,
             assessment_required: mod.assessment_required !== false,
             assessment_description: mod.assessment_description || "",
-            materials: [],
-            duration: 0,
-            delivery_type: "both",
           }));
 
           // Map final assessment if exists
@@ -1109,7 +1112,7 @@ export default function CourseCreation() {
       };
       loadCourse();
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, routeCourseId]);
 
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -1710,6 +1713,10 @@ export default function CourseCreation() {
         });
       }
 
+      if (course && course.thumbnail_url) {
+        setFormData((prev) => ({ ...prev, thumbnail_url: course.thumbnail_url, thumbnail_file: null }));
+      }
+
       setSuccess(true);
       setTimeout(() => {
         if (isEditMode) {
@@ -1944,7 +1951,7 @@ export default function CourseCreation() {
                     <div className="p-4 bg-slate-50 flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-700 text-[12px] font-bold tracking-wide">
-                          MOD-{String(index + 1).padStart(3, '0')}
+                          {module.code || `MOD-${String(index + 1).padStart(3, '0')}`}
                         </span>
                         <div>
                           <h3 className="font-semibold text-slate-900">{module.name}</h3>
@@ -2725,30 +2732,35 @@ export default function CourseCreation() {
                       <FieldLabel htmlFor="prerequisite_course_id" required>
                         Prerequisite Course
                       </FieldLabel>
-                      <Select
-                        value={formData.prerequisite_course_id?.toString() || ""}
-                        onValueChange={(value) => updateFormData("prerequisite_course_id", value ? parseInt(value) : null)}
-                      >
-                        <SelectTrigger
-                          id="prerequisite_course_id"
-                          className={errCls("prerequisite_course_id", "h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white")}
+                      {availableCourses.filter((c) => c.id !== editingCourseId).length > 0 ? (
+                        <Select
+                          value={formData.prerequisite_course_id?.toString() || ""}
+                          onValueChange={(value) => updateFormData("prerequisite_course_id", value ? parseInt(value) : null)}
                         >
-                          <SelectValue placeholder="Select the course that must be completed first" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableCourses.length > 0 ? (
-                            availableCourses.map((course) => (
-                              <SelectItem key={course.id} value={course.id.toString()}>
-                                {course.code ? `${course.code} - ` : ""}{course.title}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="" disabled>
-                              No courses available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                          <SelectTrigger
+                            id="prerequisite_course_id"
+                            className={errCls("prerequisite_course_id", "h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white")}
+                          >
+                            <SelectValue placeholder="Select the course that must be completed first" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableCourses
+                              .filter((c) => c.id !== editingCourseId)
+                              .map((course) => (
+                                <SelectItem key={course.id} value={course.id.toString()}>
+                                  {course.code ? `${course.code} - ` : ""}{course.title}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-800">
+                          <p className="font-semibold text-amber-900">No other courses available</p>
+                          <p className="mt-1 text-amber-700">
+                            Create another course first to select it as an internal prerequisite, or choose &quot;External certification&quot; above.
+                          </p>
+                        </div>
+                      )}
                       <FieldError message={fieldErrors.prerequisite_course_id} />
                       <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />

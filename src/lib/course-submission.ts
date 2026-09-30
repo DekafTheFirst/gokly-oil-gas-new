@@ -58,19 +58,23 @@ export interface FinalAssessmentPayload {
   is_required: boolean;
 }
 
-/** Module-level assessment config has no table yet, so only the flag persists. */
 export interface ModulePayload {
   name: string;
   description: string;
   scheduled_date: string | null;
   has_assessment: boolean;
   sort_order: number;
-  assessment_type?: string;
-  assessment_max_score?: number;
-  assessment_pass_mark?: number;
-  assessment_attempts_allowed?: number;
-  assessment_required?: boolean;
-  assessment_description?: string;
+  code?: string;
+  duration?: number;
+  delivery_type?: string;
+  is_required?: boolean;
+  materials?: any[];
+  assessment_type?: string | null;
+  assessment_max_score?: number | null;
+  assessment_pass_mark?: number | null;
+  assessment_attempts_allowed?: number | null;
+  assessment_required?: boolean | null;
+  assessment_description?: string | null;
 }
 
 const ASSESSMENT_TYPE_MAP: Record<string, string> = {
@@ -103,12 +107,23 @@ export const toModulePayloads = (modules: CourseModule[]): ModulePayload[] =>
   modules.map((module, index) => ({
     name: (module.name ?? "").trim(),
     description: (module.description ?? "").trim(),
+    code: module.code?.trim() || `MOD-${String((Number.isInteger(module.sort_order) ? module.sort_order : index) + 1).padStart(3, "0")}`,
     // The wizard keeps "no date" as "" — forwarding that would reach Postgres as
     // an invalid timestamp, so it is normalised to null (the column became
     // optional in migrations/make-module-schedule-optional.js).
     scheduled_date: module.scheduled_date ? module.scheduled_date : null,
     has_assessment: Boolean(module.has_assessment),
     sort_order: Number.isInteger(module.sort_order) ? (module.sort_order as number) : index,
+    duration: typeof module.duration === "number" ? module.duration : Number(module.duration) || 0,
+    delivery_type: module.delivery_type || "both",
+    is_required: module.is_required !== false,
+    materials: Array.isArray(module.materials) ? module.materials : [],
+    assessment_type: module.has_assessment ? module.assessment_type || "mcq" : null,
+    assessment_max_score: module.has_assessment ? (module.assessment_max_score ?? 100) : null,
+    assessment_pass_mark: module.has_assessment ? (module.assessment_pass_mark ?? 75) : null,
+    assessment_attempts_allowed: module.has_assessment ? (module.assessment_attempts_allowed ?? 3) : null,
+    assessment_required: module.has_assessment ? (module.assessment_required !== false) : null,
+    assessment_description: module.has_assessment ? (module.assessment_description?.trim() || null) : null,
   }));
 
 /**
@@ -126,7 +141,13 @@ export const buildCoursePayload = <T extends object>(
   // External linkage only ships when issuance is ON *and* external mode is on —
   // otherwise the backend's "authority + license ID" guard rejects the course.
   const externalOn = Boolean(source.certificate_enabled && source.certificate_external);
-  payload.thumbnail_base64 = thumbnailBase64 || null;
+  if (thumbnailBase64 && thumbnailBase64.startsWith("data:")) {
+    payload.thumbnail_base64 = thumbnailBase64;
+    payload.thumbnail_url = null;
+  } else {
+    payload.thumbnail_url = thumbnailBase64 || null;
+    payload.thumbnail_base64 = null;
+  }
   payload.certificate_external = externalOn;
   payload.certificate_authority = externalOn ? source.certificate_authority : null;
   payload.certificate_license_id = externalOn ? source.certificate_license_id : null;

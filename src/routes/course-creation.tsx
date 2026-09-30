@@ -2102,30 +2102,33 @@ export default function CourseCreation() {
                       <FieldLabel htmlFor="prerequisite_course_id" required>
                         Prerequisite Course
                       </FieldLabel>
-                      <Select
-                        value={formData.prerequisite_course_id?.toString() || ""}
-                        onValueChange={(value) => updateFormData("prerequisite_course_id", value ? parseInt(value) : null)}
-                      >
-                        <SelectTrigger
-                          id="prerequisite_course_id"
-                          className={errCls("prerequisite_course_id", "h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white")}
+                      {availableCourses.length > 0 ? (
+                        <Select
+                          value={formData.prerequisite_course_id?.toString() || ""}
+                          onValueChange={(value) => updateFormData("prerequisite_course_id", value ? parseInt(value) : null)}
                         >
-                          <SelectValue placeholder="Select the course that must be completed first" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableCourses.length > 0 ? (
-                            availableCourses.map((course) => (
+                          <SelectTrigger
+                            id="prerequisite_course_id"
+                            className={errCls("prerequisite_course_id", "h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white")}
+                          >
+                            <SelectValue placeholder="Select the course that must be completed first" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableCourses.map((course) => (
                               <SelectItem key={course.id} value={course.id.toString()}>
                                 {course.code ? `${course.code} - ` : ""}{course.title}
                               </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="" disabled>
-                              No courses available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-800">
+                          <p className="font-semibold text-amber-900">No existing courses found on this platform</p>
+                          <p className="mt-1 text-amber-700">
+                            Create at least one course first to select it as an internal prerequisite, or choose &quot;External certification&quot; above.
+                          </p>
+                        </div>
+                      )}
                       <FieldError message={fieldErrors.prerequisite_course_id} />
                       <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />

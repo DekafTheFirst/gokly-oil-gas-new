@@ -1181,7 +1181,13 @@ export default function CourseCreation() {
       // Auto-suggest the certificate ID prefix from the course name while the
       // field is still auto-managed (stops as soon as it is typed by hand).
       if (field === "title" && typeof value === "string" && idPrefixAuto) {
-        next.certificate_id_prefix = deriveIdPrefix(value);
+        const derived = deriveIdPrefix(value);
+        // Only push a new prefix when we have real words — if the title is
+        // temporarily empty (user is backspacing) keep the last good value so
+        // the preview never shows "e.g., FIRE-SAFE" mid-edit.
+        if (derived) {
+          next.certificate_id_prefix = derived;
+        }
       }
       // Auto-suggest external NMDPRA certification when title/code looks like MISTDO.
       if ((field === "title" || field === "code") && !prev.certificate_external) {
@@ -2798,7 +2804,18 @@ export default function CourseCreation() {
                       value={[formData.attendance_percentage]}
                       onValueChange={(value) => {
                         const snapValue = snapToImportantPercentage(value[0]);
-                        updateFormData("attendance_percentage", snapValue);
+                        if (snapValue === 100 && !formData.strict_attendance) {
+                          // Dragged all the way to 100 — auto-enable strict mode.
+                          setPreviousAttendancePercentage(formData.attendance_percentage < 100 ? formData.attendance_percentage : 80);
+                          updateFormData("strict_attendance", true);
+                          updateFormData("attendance_percentage", 100);
+                        } else if (snapValue < 100 && formData.strict_attendance) {
+                          // Dragged away from 100 — auto-release strict mode.
+                          updateFormData("strict_attendance", false);
+                          updateFormData("attendance_percentage", snapValue);
+                        } else {
+                          updateFormData("attendance_percentage", snapValue);
+                        }
                       }}
                       min={50}
                       max={100}

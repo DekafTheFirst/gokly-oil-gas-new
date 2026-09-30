@@ -986,6 +986,7 @@ export default function CourseCreation() {
           setIsViewMode(true);
           setIsEditMode(false);
           setEditingCourseId(parseInt(courseId));
+          setIdPrefixAuto(true);
 
           // Map modules to the expected format
           const mappedModules = modules.map((mod: any, index: number) => ({
@@ -1081,7 +1082,7 @@ export default function CourseCreation() {
             certificate_validity_framework: prev.certificate_validity_framework,
             certificate_validity_duration: prev.certificate_validity_duration,
             certificate_validity_unit: prev.certificate_validity_unit,
-            certificate_id_prefix: prev.certificate_id_prefix,
+            certificate_id_prefix: deriveIdPrefix(course.title || "") || prev.certificate_id_prefix,
             certificate_id_separator: prev.certificate_id_separator,
             certificate_id_year_schema: prev.certificate_id_year_schema,
             certificate_id_sequence_type: prev.certificate_id_sequence_type,
@@ -1329,7 +1330,12 @@ export default function CourseCreation() {
       // Auto-suggest the certificate ID prefix from the course name while the
       // field is still auto-managed (stops as soon as it is typed by hand).
       if (field === "title" && typeof value === "string" && idPrefixAuto) {
-        next.certificate_id_prefix = deriveIdPrefix(value);
+        const derived = deriveIdPrefix(value);
+        // Only push when we have real words — keep the last good value while
+        // the user is temporarily mid-backspace on an empty title field.
+        if (derived) {
+          next.certificate_id_prefix = derived;
+        }
       }
       // Auto-suggest external NMDPRA certification when title/code looks like MISTDO.
       if ((field === "title" || field === "code") && !prev.certificate_external) {
@@ -1649,8 +1655,7 @@ export default function CourseCreation() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (publish: boolean = false, exitAfterSave: boolean = false) => {
     // A slow save plus an eager Enter key can fire this twice, and a second run
     // would create a duplicate course — ignore submits while one is in flight.
     if (loading) return;
@@ -1684,6 +1689,13 @@ export default function CourseCreation() {
     try {
       setLoading(true);
 
+      // Set status based on whether we're publishing or saving as draft
+      if (publish) {
+        setFormData((prev) => ({ ...prev, status: "PUBLISHED" }));
+      } else {
+        setFormData((prev) => ({ ...prev, status: "DRAFT" }));
+      }
+
       // Convert image to base64 if present
       let thumbnailBase64 = null;
       if (formData.thumbnail_file) {
@@ -1698,18 +1710,18 @@ export default function CourseCreation() {
         }
       }
 
-      const payload = buildCoursePayload(formData, thumbnailBase64);
+      const payload = buildCoursePayload(publish ? { ...formData, status: "PUBLISHED" } : { ...formData, status: "DRAFT" }, thumbnailBase64);
 
       let course;
       if (isEditMode && editingCourseId) {
         course = await updateCourse(editingCourseId, payload);
-        toast.success("Course updated successfully", {
-          description: "The course has been saved",
+        toast.success(publish ? "Course published successfully" : "Course updated successfully", {
+          description: publish ? "The course is now live and available for enrollment" : "The course has been saved as draft",
         });
       } else {
         course = await createCourse(payload);
-        toast.success("Course created successfully", {
-          description: "The course has been added to the catalog",
+        toast.success(publish ? "Course created and published" : "Course created successfully", {
+          description: publish ? "The course is now live and available for enrollment" : "The course has been added to the catalog as draft",
         });
       }
 
@@ -1719,7 +1731,9 @@ export default function CourseCreation() {
 
       setSuccess(true);
       setTimeout(() => {
-        if (isEditMode) {
+        if (exitAfterSave) {
+          navigate("/training/course-management");
+        } else if (isEditMode) {
           setIsViewMode(true);
           setIsEditMode(false);
           setCurrentStep(1);
@@ -3430,7 +3444,18 @@ export default function CourseCreation() {
                       value={[formData.attendance_percentage]}
                       onValueChange={(value) => {
                         const snapValue = snapToImportantPercentage(value[0]);
-                        updateFormData("attendance_percentage", snapValue);
+                        if (snapValue === 100 && !formData.strict_attendance) {
+                          // Dragged all the way to 100 — auto-enable strict mode.
+                          setPreviousAttendancePercentage(formData.attendance_percentage < 100 ? formData.attendance_percentage : 80);
+                          updateFormData("strict_attendance", true);
+                          updateFormData("attendance_percentage", 100);
+                        } else if (snapValue < 100 && formData.strict_attendance) {
+                          // Dragged away from 100 — auto-release strict mode.
+                          updateFormData("strict_attendance", false);
+                          updateFormData("attendance_percentage", snapValue);
+                        } else {
+                          updateFormData("attendance_percentage", snapValue);
+                        }
                       }}
                       min={50}
                       max={100}
@@ -4906,7 +4931,7 @@ export default function CourseCreation() {
           </div>
 
           {/* Form + rail */}
-          <form onSubmit={handleSubmit} noValidate className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <form noValidate className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0">{renderStep()}</div>
 
             {/* Right rail */}
@@ -5031,7 +5056,7 @@ export default function CourseCreation() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => navigate("/training/course-management")}
+                  onClick={() => handleSubmit(false, true)}
                   className="h-9 gap-2 text-[13px] text-slate-600"
                 >
                   <Save className="h-4 w-4" />
@@ -5074,14 +5099,27 @@ export default function CourseCreation() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="h-10 gap-2 bg-emerald-700 px-5 text-[13px] font-semibold text-white hover:bg-emerald-800"
-                  >
-                    {loading ? (isEditMode ? "Updating course…" : "Creating course…") : (isEditMode ? "Update course" : "Create course")}
-                    <CheckCircle className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => handleSubmit(false)}
+                      disabled={loading}
+                      variant="outline"
+                      className="h-10 gap-2 border-slate-300 px-4 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      {loading ? "Saving…" : "Save as Draft"}
+                      <Save className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleSubmit(true)}
+                      disabled={loading}
+                      className="h-10 gap-2 bg-emerald-700 px-5 text-[13px] font-semibold text-white hover:bg-emerald-800"
+                    >
+                      {loading ? (isEditMode ? "Publishing…" : "Creating & publishing…") : (isEditMode ? "Publish Course" : "Create & Publish")}
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

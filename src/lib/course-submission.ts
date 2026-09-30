@@ -64,6 +64,7 @@ export interface ModulePayload {
   scheduled_date: string | null;
   has_assessment: boolean;
   sort_order: number;
+  code?: string;
   duration?: number;
   delivery_type?: string;
   is_required?: boolean;
@@ -106,6 +107,7 @@ export const toModulePayloads = (modules: CourseModule[]): ModulePayload[] =>
   modules.map((module, index) => ({
     name: (module.name ?? "").trim(),
     description: (module.description ?? "").trim(),
+    code: module.code?.trim() || `MOD-${String((Number.isInteger(module.sort_order) ? (module.sort_order as number) : index) + 1).padStart(3, "0")}`,
     // The wizard keeps "no date" as "" — forwarding that would reach Postgres as
     // an invalid timestamp, so it is normalised to null (the column became
     // optional in migrations/make-module-schedule-optional.js).

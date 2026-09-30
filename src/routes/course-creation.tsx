@@ -1487,8 +1487,7 @@ export default function CourseCreation() {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (publish: boolean = false) => {
     // A slow save plus an eager Enter key can fire this twice, and a second run
     // would create a duplicate course — ignore submits while one is in flight.
     if (loading) return;
@@ -1522,6 +1521,13 @@ export default function CourseCreation() {
     try {
       setLoading(true);
 
+      // Set status based on whether we're publishing or saving as draft
+      if (publish) {
+        setFormData((prev) => ({ ...prev, status: "PUBLISHED" }));
+      } else {
+        setFormData((prev) => ({ ...prev, status: "DRAFT" }));
+      }
+
       // Convert image to base64 if present
       let thumbnailBase64 = null;
       if (formData.thumbnail_file) {
@@ -1537,7 +1543,11 @@ export default function CourseCreation() {
       }
 
       // Single unified endpoint call
-      const course = await createCourse(buildCoursePayload(formData, thumbnailBase64));
+      const course = await createCourse(buildCoursePayload(publish ? { ...formData, status: "PUBLISHED" } : { ...formData, status: "DRAFT" }, thumbnailBase64));
+
+      toast.success(publish ? "Course created and published" : "Course created successfully", {
+        description: publish ? "The course is now live and available for enrollment" : "The course has been added to the catalog as draft",
+      });
 
       setSuccess(true);
       setTimeout(() => navigate(`/training/course/${course.id}`), 2000);
@@ -4278,7 +4288,7 @@ export default function CourseCreation() {
           </div>
 
           {/* Form + rail */}
-          <form onSubmit={handleSubmit} noValidate className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <form noValidate className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0">{renderStep()}</div>
 
             {/* Right rail */}
@@ -4446,14 +4456,27 @@ export default function CourseCreation() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="h-10 gap-2 bg-emerald-700 px-5 text-[13px] font-semibold text-white hover:bg-emerald-800"
-                  >
-                    {loading ? "Creating course…" : "Create course"}
-                    <CheckCircle className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => handleSubmit(false)}
+                      disabled={loading}
+                      variant="outline"
+                      className="h-10 gap-2 border-slate-300 px-4 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      {loading ? "Saving…" : "Save as Draft"}
+                      <Save className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleSubmit(true)}
+                      disabled={loading}
+                      className="h-10 gap-2 bg-emerald-700 px-5 text-[13px] font-semibold text-white hover:bg-emerald-800"
+                    >
+                      {loading ? "Creating & publishing…" : "Create & Publish"}
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

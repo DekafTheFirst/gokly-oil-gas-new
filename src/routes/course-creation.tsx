@@ -73,6 +73,11 @@ import { createCourse, fetchCourses } from "@/lib/courses";
 import type { CourseModule, CourseRecord } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  collectStepErrors as collectSchemaErrors,
+  collectModuleErrors,
+  type FieldErrors,
+} from "@/lib/course-creation-validation";
 
 const COURSE_CATEGORIES = [
   "HSF & Safety",
@@ -205,6 +210,17 @@ const formatValidityDuration = (duration: number, unit: string) => {
   return `${duration} ${duration === 1 ? singular : `${singular}s`}`;
 };
 
+/* Inline red message rendered directly under a field that failed validation. */
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="flex items-start gap-1.5 text-[12px] font-medium text-rose-600">
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>{message}</span>
+    </p>
+  );
+}
+
 const DELIVERY_TYPES = [
   { value: "theory", label: "Theory" },
   { value: "practical", label: "Practical" },
@@ -334,11 +350,14 @@ type Assessment = {
 
 /* ---------------------------------- bits ---------------------------------- */
 
-function FinalAssessmentForm({ value, onChange, courseTitle }: {
+function FinalAssessmentForm({ value, onChange, courseTitle, errors }: {
   value: Assessment;
   onChange: (field: keyof Assessment, v: any) => void;
   courseTitle: string;
+  errors?: FieldErrors;
 }) {
+  const errCls = (field: string, base: string) =>
+    errors?.[field] ? `${base} border-rose-500 focus-visible:ring-rose-500` : base;
   const [formData, setFormData] = useState({
     name: value.name,
     type: value.type,
@@ -380,9 +399,10 @@ function FinalAssessmentForm({ value, onChange, courseTitle }: {
           placeholder={courseTitle?.trim() ? `${courseTitle.trim()} — Final Assessment` : "e.g. Final Capstone Examination"}
           value={formData.name}
           onChange={(e) => set("name", e.target.value)}
-          className="h-11 border-slate-200 bg-slate-50/70 text-sm"
+          className={errCls("final_assessment.name", "h-11 border-slate-200 bg-slate-50/70 text-sm")}
           required
         />
+        <FieldError message={errors?.["final_assessment.name"]} />
       </div>
 
       {/* Type */}
@@ -447,10 +467,11 @@ function FinalAssessmentForm({ value, onChange, courseTitle }: {
                   set("max_score", value);
                 }
               }}
-              className="h-11 border-slate-200 bg-slate-50/70 text-sm pr-12"
+              className={errCls("final_assessment.max_score", "h-11 border-slate-200 bg-slate-50/70 text-sm pr-12")}
             />
             <span className="absolute right-3 text-[12px] text-slate-400 font-bold">PTS</span>
           </div>
+          <FieldError message={errors?.["final_assessment.max_score"]} />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -520,11 +541,14 @@ function FinalAssessmentForm({ value, onChange, courseTitle }: {
   );
 }
 
-function ModAssessmentFields({ index, module, updateModule }: {
+function ModAssessmentFields({ index, module, updateModule, errors }: {
   index: number;
   module: CourseModule;
   updateModule: (index: number, field: keyof CourseModule, value: any) => void;
+  errors?: FieldErrors;
 }) {
+  const errCls = (field: string, base: string) =>
+    errors?.[field] ? `${base} border-rose-500 focus-visible:ring-rose-500` : base;
   return (
     <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-12">
       <div className="flex flex-col gap-1.5 md:col-span-6">
@@ -569,10 +593,11 @@ function ModAssessmentFields({ index, module, updateModule }: {
                 updateModule(index, "assessment_max_score", Math.max(1, value));
               }
             }}
-            className="h-10 bg-white pr-10 text-sm"
+            className={errCls(`modules.${index}.assessment_max_score`, "h-10 bg-white pr-10 text-sm")}
           />
           <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">PTS</span>
         </div>
+        <FieldError message={errors?.[`modules.${index}.assessment_max_score`]} />
       </div>
       <div className="flex flex-col gap-1.5 md:col-span-2">
         <Label className="text-sm font-semibold text-slate-700">Pass Mark</Label>
@@ -601,10 +626,11 @@ function ModAssessmentFields({ index, module, updateModule }: {
                 updateModule(index, "assessment_pass_mark", Math.min(100, Math.max(0, value)));
               }
             }}
-            className="h-10 bg-white pr-8 text-sm"
+            className={errCls(`modules.${index}.assessment_pass_mark`, "h-10 bg-white pr-8 text-sm")}
           />
           <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">%</span>
         </div>
+        <FieldError message={errors?.[`modules.${index}.assessment_pass_mark`]} />
       </div>
       <div className="flex flex-col gap-1.5 md:col-span-2">
         <Label className="text-sm font-semibold text-slate-700">Attempts</Label>
@@ -647,7 +673,7 @@ function ModAssessmentFields({ index, module, updateModule }: {
   );
 }
 
-function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleExternal, onAuthority, onLicense, onPortal }: {
+function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleExternal, onAuthority, onLicense, onPortal, errors }: {
   external: boolean;
   authority: string;
   licenseId: string;
@@ -656,7 +682,10 @@ function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleE
   onAuthority: (v: string) => void;
   onLicense: (v: string) => void;
   onPortal: (v: string) => void;
+  errors?: FieldErrors;
 }) {
+  const errCls = (field: string, base: string) =>
+    errors?.[field] ? `${base} border-rose-500 focus-visible:ring-rose-500` : base;
   const known = EXTERNAL_CERT_AUTHORITIES.find((a) => a.value === (authority || "NMDPRA"));
   return (
     <SectionCard
@@ -745,7 +774,7 @@ function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleE
               <div className="space-y-2">
                 <FieldLabel htmlFor="certificate_authority" required>External Authority</FieldLabel>
                 <Select value={authority || "NMDPRA"} onValueChange={onAuthority}>
-                  <SelectTrigger id="certificate_authority" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                  <SelectTrigger id="certificate_authority" className={errCls("certificate_authority", "h-11 border-slate-200 bg-slate-50/70 text-sm")}>
                     <SelectValue placeholder="Select authority" />
                   </SelectTrigger>
                   <SelectContent>
@@ -754,6 +783,7 @@ function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleE
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldError message={errors?.["certificate_authority"]} />
                 <p className="text-[11.5px] text-slate-400">{known?.hint}</p>
               </div>
               <div className="space-y-2">
@@ -765,9 +795,10 @@ function ExternalCertCard({ external, authority, licenseId, portalUrl, onToggleE
                   value={licenseId}
                   onChange={(e) => onLicense(e.target.value)}
                   placeholder="e.g. NMDPRA/MISTDO/2024/001"
-                  className="h-11 border-slate-200 bg-slate-50/70 font-mono text-sm focus-visible:bg-white"
+                  className={errCls("certificate_license_id", "h-11 border-slate-200 bg-slate-50/70 font-mono text-sm focus-visible:bg-white")}
                   required
                 />
+                <FieldError message={errors?.["certificate_license_id"]} />
               </div>
             </div>
             <div className="space-y-2">
@@ -905,6 +936,9 @@ export default function CourseCreation() {
   // Same idea as codeAuto: keep the certificate ID prefix in sync with the
   // course name until the user types a custom prefix by hand.
   const [idPrefixAuto, setIdPrefixAuto] = useState(true);
+  // Field-level validation errors keyed by form field ("title",
+  // "modules.0.name", …) — cleared as soon as the field is edited again.
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   // Fetch available courses for prerequisite selection
   useEffect(() => {
@@ -982,7 +1016,25 @@ export default function CourseCreation() {
     assessments: [],
   });
 
+  /* Drop validation errors whose key matches ("certificate_authority" or any
+     "certificate_authority.child" key) as soon as the field is edited. */
+  const clearErrorsFor = (match: (key: string) => boolean) =>
+    setFieldErrors((prev) => {
+      const keys = Object.keys(prev).filter(match);
+      if (keys.length === 0) return prev;
+      const next = { ...prev };
+      keys.forEach((k) => delete next[k]);
+      return next;
+    });
+
+  /* Merge a red border + rose focus ring into an input's base classes when
+     its field failed validation. (rose sorts after slate in Tailwind's
+     palette order, so border-rose-500 wins the cascade.) */
+  const errCls = (field: string, base: string) =>
+    fieldErrors[field] ? `${base} border-rose-500 focus-visible:ring-rose-500` : base;
+
   const updateFormData = (field: keyof FormData, value: any) => {
+    clearErrorsFor((k) => k === field || k.startsWith(`${field}.`));
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
       // Keep the certificate preview title in sync with the course title until
@@ -1028,6 +1080,7 @@ export default function CourseCreation() {
   };
 
   const setExternalAuthority = (authority: string) => {
+    clearErrorsFor((k) => k === "certificate_authority");
     const known = EXTERNAL_CERT_AUTHORITIES.find((a) => a.value === authority);
     setFormData((prev) => ({
       ...prev,
@@ -1037,6 +1090,7 @@ export default function CourseCreation() {
   };
 
   const addModule = () => {
+    clearErrorsFor((k) => k.startsWith("modules"));
     setFormData((prev) => ({
       ...prev,
       modules: [
@@ -1061,6 +1115,8 @@ export default function CourseCreation() {
     MODULE_ASSESSMENT_TYPES.find((t) => t.value === type)?.label || "Multiple Choice (Auto-graded)";
 
   const removeModule = (index: number) => {
+    // Indices shift after removal, so drop every module-scoped error.
+    clearErrorsFor((k) => k.startsWith("modules"));
     setFormData((prev) => {
       const modules = prev.modules.filter((_, i) => i !== index);
       // Rebuild module assessments for the surviving (re-indexed) modules.
@@ -1099,6 +1155,7 @@ export default function CourseCreation() {
   };
 
   const updateModule = (index: number, field: keyof CourseModule, value: any) => {
+    clearErrorsFor((k) => k.startsWith(`modules.${index}.`));
     setFormData((prev) => {
       const modules = prev.modules.map((mod, i) => {
         if (i !== index) return mod;
@@ -1191,6 +1248,7 @@ export default function CourseCreation() {
   };
 
   const updateFinalAssessment = (field: keyof Assessment, value: any) => {
+    clearErrorsFor((k) => k.startsWith("final_assessment"));
     setFormData((prev) => {
       if (!prev.final_assessment) return prev;
       const final = { ...prev.final_assessment, [field]: value, module_association: "whole" };
@@ -1236,73 +1294,101 @@ export default function CourseCreation() {
     return value;
   };
 
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        const prerequisiteValid = !formData.prerequisite_required || (
-          formData.prerequisite_type === "internal"
-            ? formData.prerequisite_course_id !== null
-            : formData.prerequisite_description.trim().length > 0
-        );
-        return (
-          formData.title.trim().length > 3 &&
-          formData.code.trim().length > 2 &&
-          formData.category.trim().length > 2 &&
-          formData.short_description.trim().length > 5 &&
-          formData.tier &&
-          formData.status &&
-          formData.delivery_mode &&
-          formData.duration_value > 0 &&
-          prerequisiteValid
-        );
-      case 2:
-        return formData.modules.length > 0
-          && formData.modules.every((m) => m.name.trim().length > 0)
-          && formData.modules
-            .filter((m) => m.has_assessment)
-            .every((m) => (m.assessment_max_score ?? 0) > 0 && (m.assessment_pass_mark ?? 0) >= 0);
-      case 3:
-        // Final assessment is gated: no final = valid; final on = must be named + scored.
-        if (!formData.has_final_assessment) return true;
-        return !!(
-          formData.final_assessment
-          && formData.final_assessment.name.trim().length > 0
-          && formData.final_assessment.max_score > 0
-        );
-      case 4:
-        return formData.minimum_contact_hours > 0;
-      case 5:
-        // Certificate step: issuance off = valid; issuance on + external mode
-        // must name the authority + license ID for central verification.
-        if (!formData.certificate_enabled) return true;
-        if (!formData.certificate_external) return true;
-        return (
-          formData.certificate_authority.trim().length > 0 &&
-          formData.certificate_license_id.trim().length > 0
-        );
-      case 6:
-        return true;
-      default:
-        return true;
-    }
+  /* Field-level errors for a step (schemas live in course-creation-validation). */
+  const collectStepErrors = (step: number): FieldErrors =>
+    collectSchemaErrors(step, formData);
+
+  const validateStep = (step: number): boolean =>
+    Object.keys(collectStepErrors(step)).length === 0;
+
+  /* When a module fails validation, expand it so the red fields are actually
+     visible next to the toast. */
+  const expandModulesWithErrors = (errors: FieldErrors) => {
+    const indexes = new Set<number>();
+    Object.keys(errors).forEach((k) => {
+      const m = /^modules\.(\d+)\./.exec(k);
+      if (m) indexes.add(parseInt(m[1], 10));
+    });
+    if (indexes.size === 0) return;
+    setFormData((prev) => ({
+      ...prev,
+      expandedModules: Array.from(new Set([...prev.expandedModules, ...indexes])),
+    }));
   };
 
   const handleNext = () => {
-    if (validateStep(currentStep)) {
+    const errors = collectStepErrors(currentStep);
+    const messages = Object.values(errors);
+    setFieldErrors(errors);
+    if (messages.length === 0) {
       setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
     } else {
-      toast.error("Some required fields are still empty or invalid on this step.");
+      expandModulesWithErrors(errors);
+      toast.error("Some required fields are still empty or invalid on this step.", {
+        description: `${messages.length} issue${messages.length === 1 ? "" : "s"}: ${messages
+          .slice(0, 3)
+          .join(" • ")}${messages.length > 3 ? " • …" : ""}`,
+      });
     }
   };
 
-  const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
+  /* Validate a single module when its "Done" button is clicked: red-field the
+     offending inputs and keep the card open on failure; collapse it only when
+     it passes. */
+  const validateModuleOnDone = (index: number): boolean => {
+    const prefix = `modules.${index}.`;
+    const mine = collectModuleErrors(collectStepErrors(2), index);
+    // Replace (not just add) this module's errors so fixes are reflected.
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(prefix)) delete next[k];
+      });
+      return { ...next, ...mine };
+    });
+    const messages = Object.values(mine);
+    if (messages.length === 0) return true;
+    toast.error(`Module ${index + 1} still has issues to fix.`, {
+      description: `${messages.length} issue${messages.length === 1 ? "" : "s"}: ${messages
+        .slice(0, 3)
+        .join(" • ")}${messages.length > 3 ? " • …" : ""}`,
+    });
+    return false;
+  };
+
+  const handleBack = () => {
+    setFieldErrors({});
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep(6)) {
-      toast.error("Add at least one named module before creating the course.");
+    // Validate every step up-front; if anything fails, jump to the first
+    // offending step so the red fields sit next to the toast.
+    const failing: { step: number; errors: FieldErrors }[] = [];
+    for (let step = 1; step <= STEPS.length; step++) {
+      const errors = collectStepErrors(step);
+      if (Object.keys(errors).length > 0) failing.push({ step, errors });
+    }
+    if (failing.length > 0) {
+      const merged: FieldErrors = {};
+      failing.forEach(({ errors }) => Object.assign(merged, errors));
+      const total = failing.reduce((n, f) => n + Object.keys(f.errors).length, 0);
+      const first = failing[0];
+      const firstMessages = Object.values(first.errors);
+      setFieldErrors(merged);
+      setCurrentStep(first.step);
+      expandModulesWithErrors(merged);
+      toast.error("Fix the highlighted fields before creating the course.", {
+        description: `${total} issue${total === 1 ? "" : "s"} across ${
+          failing.length
+        } step${failing.length === 1 ? "" : "s"} — Step ${first.step}: ${firstMessages
+          .slice(0, 3)
+          .join(" • ")}${firstMessages.length > 3 ? " • …" : ""}`,
+      });
       return;
     }
+    setFieldErrors({});
 
     try {
       setLoading(true);
@@ -1506,9 +1592,10 @@ export default function CourseCreation() {
                     }
                   }}
                   placeholder="Enter course name"
-                  className="h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white"
+                  className={errCls("title", "h-11 border-slate-200 bg-slate-50/70 text-sm focus-visible:bg-white")}
                   required
                 />
+                <FieldError message={fieldErrors.title} />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -1528,7 +1615,7 @@ export default function CourseCreation() {
                         updateFormData("code", v);
                       }}
                       placeholder="GOK-WELL-402-EXP"
-                      className="h-11 border-slate-200 bg-slate-50/70 pr-[72px] font-mono text-sm tracking-wide focus-visible:bg-white"
+                      className={errCls("code", "h-11 border-slate-200 bg-slate-50/70 pr-[72px] font-mono text-sm tracking-wide focus-visible:bg-white")}
                       required
                     />
                     <button
@@ -1541,6 +1628,7 @@ export default function CourseCreation() {
                       Gen
                     </button>
                   </div>
+                  <FieldError message={fieldErrors.code} />
                 </div>
 
                 <div className="space-y-2">
@@ -1553,7 +1641,7 @@ export default function CourseCreation() {
                   >
                     <SelectTrigger
                       id="category"
-                      className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
+                      className={errCls("category", "h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white")}
                     >
                       <SelectValue placeholder="Select discipline" />
                     </SelectTrigger>
@@ -1565,6 +1653,7 @@ export default function CourseCreation() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FieldError message={fieldErrors.category} />
                 </div>
               </div>
 
@@ -1583,16 +1672,17 @@ export default function CourseCreation() {
                   placeholder="Enter short description"
                   rows={3}
                   maxLength={250}
-                  className="resize-none border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white"
+                  className={errCls("short_description", "resize-none border-slate-200 bg-slate-50/70 text-sm leading-relaxed focus-visible:bg-white")}
                   required
                 />
+                <FieldError message={fieldErrors.short_description} />
                 <p className="text-[11.5px] text-slate-400">
                   Shown directly in public training index search results and trainee enrollment portals.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <FieldLabel htmlFor="thumbnail" hint="Recommended size: 1200x630px (2:1 ratio)">
+                <FieldLabel htmlFor="thumbnail" required hint="Recommended size: 1200x630px (2:1 ratio)">
                   Course Background Picture
                 </FieldLabel>
                 <div className="relative">
@@ -1614,7 +1704,9 @@ export default function CourseCreation() {
                   <div
                     onClick={() => document.getElementById('thumbnail')?.click()}
                     className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all ${
-                      formData.thumbnail_url || formData.thumbnail_file
+                      fieldErrors.thumbnail_file
+                        ? "border-rose-400 bg-rose-50/40"
+                        : formData.thumbnail_url || formData.thumbnail_file
                         ? "border-emerald-300 bg-emerald-50/50"
                         : "border-slate-300 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/50"
                     }`}
@@ -1660,6 +1752,7 @@ export default function CourseCreation() {
                     )}
                   </div>
                 </div>
+                <FieldError message={fieldErrors.thumbnail_file} />
                 {formData.thumbnail_file && (
                   <p className="text-[11px] text-emerald-600 flex items-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -1669,8 +1762,14 @@ export default function CourseCreation() {
               </div>
 
               <div className="space-y-2">
-                <FieldLabel htmlFor="description">Detailed Syllabus & Operational Scope</FieldLabel>
-                <div className="overflow-hidden rounded-lg border border-slate-200">
+                <FieldLabel
+                  htmlFor="description"
+                  required
+                  hint={`${formData.description.trim().length} characters (min 50)`}
+                >
+                  Detailed Syllabus & Operational Scope
+                </FieldLabel>
+                <div className={errCls("description", "overflow-hidden rounded-lg border border-slate-200")}>
                   <div className="flex items-center gap-0.5 border-b border-slate-200 bg-slate-50 px-2 py-1.5">
                     {[
                       { icon: Bold, action: () => wrapSelection("**"), label: "Bold" },
@@ -1719,6 +1818,7 @@ export default function CourseCreation() {
                     className="resize-y rounded-none border-0 text-sm leading-relaxed focus-visible:ring-0"
                   />
                 </div>
+                <FieldError message={fieldErrors.description} />
               </div>
             </SectionCard>
 
@@ -1731,7 +1831,7 @@ export default function CourseCreation() {
                 <div className="space-y-2">
                   <FieldLabel htmlFor="tier" required>Course Tier</FieldLabel>
                   <Select value={formData.tier} onValueChange={(value) => updateFormData("tier", value)}>
-                    <SelectTrigger id="tier" className="h-11 border-slate-200 bg-slate-50/70 text-sm">
+                    <SelectTrigger id="tier" className={errCls("tier", "h-11 border-slate-200 bg-slate-50/70 text-sm")}>
                       <SelectValue placeholder="Select difficulty level" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1742,6 +1842,7 @@ export default function CourseCreation() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FieldError message={fieldErrors.tier} />
                 </div>
 
                 <div className="space-y-3">
@@ -1828,7 +1929,7 @@ export default function CourseCreation() {
                             updateFormData("duration_value", Math.max(1, value));
                           }
                         }}
-                        className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
+                        className={errCls("duration_value", "h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white")}
                         required
                       />
                       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
@@ -1851,6 +1952,7 @@ export default function CourseCreation() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <FieldError message={fieldErrors.duration_value} />
                   <p className="text-[11.5px] leading-snug text-slate-400">
                     Mandates 8 contact hours/day under IWCF curriculum regulations.
                   </p>
@@ -1998,7 +2100,7 @@ export default function CourseCreation() {
                       >
                         <SelectTrigger
                           id="prerequisite_course_id"
-                          className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
+                          className={errCls("prerequisite_course_id", "h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white")}
                         >
                           <SelectValue placeholder="Select the course that must be completed first" />
                         </SelectTrigger>
@@ -2016,6 +2118,7 @@ export default function CourseCreation() {
                           )}
                         </SelectContent>
                       </Select>
+                      <FieldError message={fieldErrors.prerequisite_course_id} />
                       <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Learners must complete this course before they can enroll.
@@ -2032,7 +2135,7 @@ export default function CourseCreation() {
                       >
                         <SelectTrigger
                           id="prerequisite_description"
-                          className="h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white"
+                          className={errCls("prerequisite_description", "h-11 border-slate-200 bg-slate-50/70 text-sm data-[state=open]:bg-white")}
                         >
                           <SelectValue placeholder="Select the certification learners must hold" />
                         </SelectTrigger>
@@ -2053,6 +2156,7 @@ export default function CourseCreation() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <FieldError message={fieldErrors.prerequisite_description} />
                       <p className="flex items-center gap-1.5 text-[11.5px] text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Learners must already hold this certification before they can enroll.
@@ -2115,10 +2219,24 @@ export default function CourseCreation() {
 
             {/* Modules List */}
             <div className="space-y-4">
+              {fieldErrors.modules && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+                  <FieldError message={fieldErrors.modules} />
+                </div>
+              )}
               {formData.modules.map((module, index) => {
                 const isExpanded = formData.expandedModules.includes(index);
+                const moduleHasErrors = Object.keys(fieldErrors).some((k) =>
+                  k.startsWith(`modules.${index}.`),
+                );
                 return (
-                  <Card key={index} className="bg-white rounded-xl shadow-md overflow-hidden">
+                  <Card
+                    key={index}
+                    className={cn(
+                      "bg-white rounded-xl shadow-md overflow-hidden",
+                      moduleHasErrors && "ring-2 ring-rose-400",
+                    )}
+                  >
                     {/* Module Header */}
                     <div className="bg-slate-50 p-5 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -2182,9 +2300,10 @@ export default function CourseCreation() {
                               value={module.name}
                               onChange={(e) => updateModule(index, "name", e.target.value)}
                               placeholder="Module title"
-                              className="h-10 text-sm"
+                              className={errCls(`modules.${index}.name`, "h-10 text-sm")}
                               required
                             />
+                            <FieldError message={fieldErrors[`modules.${index}.name`]} />
                           </div>
 
                           {/* Module Code */}
@@ -2199,7 +2318,9 @@ export default function CourseCreation() {
 
                           {/* Duration */}
                           <div className="md:col-span-4 flex flex-col gap-1.5">
-                            <Label className="text-sm font-semibold text-slate-700">Duration (Hours)</Label>
+                            <Label className="text-sm font-semibold text-slate-700">
+                              Duration (Hours) <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                               type="number"
                               min={0}
@@ -2230,8 +2351,9 @@ export default function CourseCreation() {
                                 }
                               }}
                               placeholder="Hours (max 10)"
-                              className="h-10 text-sm"
+                              className={errCls(`modules.${index}.duration`, "h-10 text-sm")}
                             />
+                            <FieldError message={fieldErrors[`modules.${index}.duration`]} />
                           </div>
 
                           {/* Delivery Type */}
@@ -2276,14 +2398,17 @@ export default function CourseCreation() {
 
                           {/* Description */}
                           <div className="md:col-span-12 flex flex-col gap-1.5">
-                            <Label className="text-sm font-semibold text-slate-700">Module Description</Label>
+                            <Label className="text-sm font-semibold text-slate-700">
+                              Module Description <span className="text-red-500">*</span>
+                            </Label>
                             <Textarea
                               value={module.description}
                               onChange={(e) => updateModule(index, "description", e.target.value)}
                               placeholder="Module syllabus and learning objectives..."
                               rows={3}
-                              className="text-sm resize-none"
+                              className={errCls(`modules.${index}.description`, "text-sm resize-none")}
                             />
+                            <FieldError message={fieldErrors[`modules.${index}.description`]} />
                           </div>
 
                           {/* Per-module assessment setup — done with module creation */}
@@ -2307,7 +2432,7 @@ export default function CourseCreation() {
                               </div>
                             </div>
                             {module.has_assessment ? (
-                              <ModAssessmentFields index={index} module={module} updateModule={updateModule} />
+                              <ModAssessmentFields index={index} module={module} updateModule={updateModule} errors={fieldErrors} />
                             ) : (
                               <p className="mt-2 text-[12.5px] text-slate-500">
                                 Turn on to configure this module's assessment now (type, score, pass mark, attempts).
@@ -2425,7 +2550,12 @@ export default function CourseCreation() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => toggleModuleExpand(index)}
+                          onClick={() => {
+                            // Validate this module before collapsing it.
+                            if (validateModuleOnDone(index)) {
+                              toggleModuleExpand(index);
+                            }
+                          }}
                           className="flex items-center gap-1.5"
                         >
                           <CheckCircle className="h-4 w-4" />
@@ -2499,6 +2629,7 @@ export default function CourseCreation() {
                     value={formData.final_assessment}
                     courseTitle={formData.title}
                     onChange={updateFinalAssessment}
+                    errors={fieldErrors}
                   />
                 </div>
               )}
@@ -2734,12 +2865,13 @@ export default function CourseCreation() {
                                 updateFormData("minimum_contact_hours", Math.max(1, value));
                               }
                             }}
-                            className="text-lg font-bold px-3 py-1.5 rounded-lg"
+                            className={errCls("minimum_contact_hours", "text-lg font-bold px-3 py-1.5 rounded-lg")}
                           />
                           <span className="absolute right-3 top-2.5 text-[12px] font-semibold text-slate-400">HRS</span>
                         </div>
                         <Clock className="h-6 w-6 text-emerald-600" />
                       </div>
+                      <FieldError message={fieldErrors.minimum_contact_hours} />
                       <span className="text-[11px] text-slate-500 mt-1.5">Classroom + Rig Simulator</span>
                     </div>
                   </div>
@@ -3002,6 +3134,7 @@ export default function CourseCreation() {
                     authority={formData.certificate_authority}
                     licenseId={formData.certificate_license_id}
                     portalUrl={formData.certificate_portal_url}
+                    errors={fieldErrors}
                     onToggleExternal={(v) =>
                       setFormData((prev) => ({
                         ...prev,
@@ -4101,7 +4234,7 @@ export default function CourseCreation() {
           </div>
 
           {/* Form + rail */}
-          <form onSubmit={handleSubmit} className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <form onSubmit={handleSubmit} noValidate className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0">{renderStep()}</div>
 
             {/* Right rail */}

@@ -14,6 +14,9 @@ export type FieldErrors = Record<string, string>;
 const SYLLABUS_MIN_CHARS = 50;
 /* Background picture cap — matches the UI hint "PNG, JPG up to 5MB". */
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
+/* Must mirror the backend's multer fileFilter (backend/routes/upload.js) —
+   anything else gets rejected by the server with a 500. */
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 /* Step 1 — identification, delivery & prerequisites. */
 const step1Schema = z
@@ -64,11 +67,11 @@ const step1Schema = z
         message: "Upload a course background picture.",
       });
     } else if (file) {
-      if (!String(file.type || "").startsWith("image/")) {
+      if (!ALLOWED_IMAGE_TYPES.includes(String(file.type || "").toLowerCase())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["thumbnail_file"],
-          message: "Background picture must be an image file (PNG or JPG).",
+          message: "Background picture must be a JPG, PNG, GIF or WEBP image.",
         });
       } else if (file.size > MAX_THUMBNAIL_BYTES) {
         ctx.addIssue({

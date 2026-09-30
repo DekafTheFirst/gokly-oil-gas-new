@@ -259,7 +259,53 @@ describe("course creation step validation (zod schemas)", () => {
     const small = new File([new Uint8Array(2048)], "cover.png", { type: "image/png" });
     expect(errorsFor(1, { ...validStep1, thumbnail_file: small })).toEqual({});
 
+    // Types the backend's multer fileFilter rejects (e.g. iPhone HEIC/SVG)
+    // are caught client-side instead of causing a 500 mid-submit.
+    const heic = new File([new Uint8Array(16)], "photo.heic", { type: "image/heic" });
+    expect(errorsFor(1, { ...validStep1, thumbnail_file: heic }).thumbnail_file).toMatch(
+      /JPG, PNG, GIF or WEBP/,
+    );
+
     // An already-uploaded URL (no pending file) also satisfies the rule.
     expect(errorsFor(1, { ...validStep1, thumbnail_file: null })).toEqual({});
+  });
+
+  it("a fully completed form passes every step (submit is never blocked)", () => {
+    const filled = {
+      title: "Fire Safety Training",
+      code: "GOK-FIRE-SAF-123",
+      category: "Fire Safety",
+      short_description: "Advanced firefighting techniques for offshore crews.",
+      description:
+        "Covers hazard identification, emergency shutdown procedures, portable extinguisher drills and practical assessment across six modules.",
+      tier: "FOUNDATION",
+      duration_value: 40,
+      delivery_mode: "PHYSICAL",
+      thumbnail_file: null,
+      thumbnail_url: "http://localhost:4000/assets/uploads/file-1712345678-987654321.png",
+      prerequisite_required: false,
+      prerequisite_type: "internal" as const,
+      prerequisite_course_id: null,
+      prerequisite_description: "",
+      minimum_contact_hours: 36,
+      has_final_assessment: false,
+      final_assessment: null,
+      certificate_enabled: true,
+      certificate_external: false,
+      certificate_authority: "",
+      certificate_license_id: "",
+      modules: [
+        {
+          ...namedModule,
+          has_assessment: true,
+          assessment_max_score: 100,
+          assessment_pass_mark: 75,
+        },
+      ],
+    };
+
+    for (const step of [1, 2, 3, 4, 5, 6]) {
+      expect(errorsFor(step, filled), `step ${step} should pass a completed form`).toEqual({});
+    }
   });
 });

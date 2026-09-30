@@ -71,6 +71,12 @@ import {
 } from "lucide-react";
 import { createCourse, fetchCourses } from "@/lib/courses";
 import type { CourseModule, CourseRecord } from "@/lib/courses";
+import {
+  buildCoursePayload,
+  saveCourseAssessment,
+  saveCourseModules,
+  uploadCourseImage,
+} from "@/lib/course-submission";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -1363,6 +1369,9 @@ export default function CourseCreation() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // A slow save plus an eager Enter key can fire this twice, and a second run
+    // would create a duplicate course — ignore submits while one is in flight.
+    if (loading) return;
     // Validate every step up-front; if anything fails, jump to the first
     // offending step so the red fields sit next to the toast.
     const failing: { step: number; errors: FieldErrors }[] = [];
@@ -1393,139 +1402,61 @@ export default function CourseCreation() {
     try {
       setLoading(true);
 
-      // Upload thumbnail if file is selected
+      // Phase 1 — thumbnail upload. Blocking on purpose: the course row stores
+      // the image URL, so there is nothing worth creating without the picture
+      // Step 1 requires. A failure keeps the admin on the form with the reason.
       let thumbnailUrl = formData.thumbnail_url;
       if (formData.thumbnail_file) {
-        const formDataUpload = new FormData();
-        formDataUpload.append('file', formData.thumbnail_file);
-        
         try {
-          const token = localStorage.getItem("token");
-          const uploadResponse = await fetch(
-            `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/upload`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-              body: formDataUpload,
-            }
-          );
-          
-          if (!uploadResponse.ok) {
-            throw new Error("Failed to upload image");
-          }
-          
-          const uploadData = await uploadResponse.json();
-          thumbnailUrl = `${import.meta.env.VITE_API_URL || "http://localhost:4000"}${uploadData.url}`;
+          thumbnailUrl = await uploadCourseImage(formData.thumbnail_file);
         } catch (uploadError) {
           toast.error("Failed to upload course image", {
-            description: uploadError instanceof Error ? uploadError.message : "Image upload failed",
+            description:
+              uploadError instanceof Error ? uploadError.message : "Image upload failed",
           });
-          return;
+          return; // `finally` below still clears the loading flag.
         }
       }
 
-      // Certificate-related payload (Step 5): only the backend-supported
-      // external generation flag + authority linkage (NMDPRA for MISTDO) is
-      // sent. The richer design fields (title, template, validity, ID syntax)
-      // stay frontend-only until backend columns land — strip them here so
-      // unknown keys never reach the API.
-      const {
-        certificate_title: _certTitle,
-        certificate_template: _certTemplate,
-        certificate_issuance_mode: _certMode,
-        certificate_validity_framework: _certFramework,
-        certificate_validity_duration: _certDuration,
-        certificate_validity_unit: _certUnit,
-        certificate_id_prefix: _certPrefix,
-        certificate_id_separator: _certSep,
-        certificate_id_year_schema: _certYear,
-        certificate_id_sequence_type: _certSeq,
-        modules: _modules,
-        expandedModules: _expandedModules,
-        attendance_required: _attendanceRequired,
-        attendance_percentage: _attendancePercentage,
-        strict_attendance: _strictAttendance,
-        minimum_contact_hours: _minimumContactHours,
-        module_completion_mode: _moduleCompletionMode,
-        assessment_required: _assessmentRequired,
-        theory_passing_score: _theoryPassingScore,
-        practical_required: _practicalRequired,
-        sequential_progression: _sequentialProgression,
-        has_final_assessment: _hasFinalAssessment,
-        final_assessment: _finalAssessment,
-        assessments: _assessments,
-        thumbnail_file: _thumbnailFile,
-        ...restForm
-      } = formData;
-      // External linkage only ships when issuance is ON and external mode is
-      // active — otherwise the backend's "authority + license ID" guard would
-      // reject a course with issuance disabled (e.g. MISTDO auto-detect while
-      // the certificate toggle is off).
-      const externalOn = formData.certificate_enabled && formData.certificate_external;
-      const coursePayload: Record<string, any> = {
-        ...restForm,
-        thumbnail_url: thumbnailUrl || null,
-        certificate_external: externalOn,
-        certificate_authority: externalOn ? formData.certificate_authority : null,
-        certificate_license_id: externalOn ? formData.certificate_license_id : null,
-        certificate_portal_url: externalOn ? formData.certificate_portal_url || null : null,
-        prerequisite_type: formData.prerequisite_required ? formData.prerequisite_type : null,
-        prerequisite_course_id: formData.prerequisite_required && formData.prerequisite_type === "internal" ? formData.prerequisite_course_id : null,
-      };
-      const course = await createCourse(coursePayload);
+      // Phase 2 — the course row itself. Fatal: nothing has been written yet if
+      // this throws, so the outer handler reports it and stays on the wizard.
+      const course = await createCourse(buildCoursePayload(formData, thumbnailUrl));
+
+      // Phases 3 and 4 are non-blocking: the course already exists, so a failure
+      // must never be reported as "the course could not be created". They are
+      // collected as warnings and shown next to the success screen instead.
+      const warnings: string[] = [];
 
       if (course.id && formData.modules.length > 0) {
-        const token = localStorage.getItem("token");
-        await fetch(
-          `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/courses/${course.id}/modules`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ modules: formData.modules }),
-          },
-        );
+        try {
+          await saveCourseModules(course.id, formData.modules);
+        } catch (moduleError) {
+          warnings.push(
+            `Modules were not saved (${moduleError instanceof Error ? moduleError.message : "unknown error"}).`,
+          );
+        }
       }
 
-      // Persist the final overall assessment (if the gate is ON) to the
-      // training-management `assessments` table. Module-level assessments ride
-      // on the module payload above; failures here must not fail course creation.
+      // Final overall assessment (Step 3 gate). Per-module assessment settings
+      // ride on the module payload; only the `has_assessment` flag persists
+      // until the backend grows a module-assessment table.
       if (course.id && formData.has_final_assessment && formData.final_assessment) {
         try {
-          const token = localStorage.getItem("token");
-          const f = formData.final_assessment;
-          const typeMap: Record<string, string> = {
-            written: "THEORY", mcq: "THEORY", practical: "PRACTICAL",
-            oral: "OTHER", trainer: "OTHER", other: "OTHER", final: "FINAL",
-          };
-          await fetch(
-            `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/courses/${course.id}/assessments`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                title: f.name,
-                description: f.description || "",
-                type: typeMap[f.type] || "FINAL",
-                max_score: f.max_score,
-                pass_mark: (f.max_score * f.pass_mark) / 100,
-                is_required: f.required,
-              }),
-            },
+          await saveCourseAssessment(course.id, formData.final_assessment);
+        } catch (assessmentError) {
+          warnings.push(
+            `Final assessment was not saved (${assessmentError instanceof Error ? assessmentError.message : "unknown error"}).`,
           );
-        } catch {
-          // Non-blocking: course + modules already saved.
         }
       }
 
       setSuccess(true);
+      if (warnings.length > 0) {
+        toast.warning("Course created, but part of it needs attention", {
+          description: warnings.join(" "),
+          duration: 12000,
+        });
+      }
       setTimeout(() => navigate(`/training/course/${course.id}`), 2000);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "The course could not be created.");
@@ -1689,7 +1620,7 @@ export default function CourseCreation() {
                   <input
                     id="thumbnail"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -1746,7 +1677,7 @@ export default function CourseCreation() {
                           Drag and drop or click to browse
                         </p>
                         <p className="text-[10px] text-slate-400 mt-2">
-                          PNG, JPG up to 5MB
+                          JPG, PNG, GIF or WEBP up to 5MB
                         </p>
                       </div>
                     )}
@@ -4160,7 +4091,7 @@ export default function CourseCreation() {
                 <div key={step.id} className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => (true || step.id < currentStep) && setCurrentStep(step.id)}
+                    onClick={() => setCurrentStep(step.id)}
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
                       state === "current"
                         ? "bg-emerald-700 text-white"

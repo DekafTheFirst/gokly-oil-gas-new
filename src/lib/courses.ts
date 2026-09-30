@@ -47,7 +47,6 @@ export interface ModuleAssessmentConfig {
 export interface CourseModule {
   name: string;
   description?: string;
-  scheduled_date?: string;
   has_assessment?: boolean;
   // Inline per-module assessment setup (configured at module-creation time, Step 2).
   // Persisted to the backend as part of the module payload; unknown keys are
@@ -123,4 +122,22 @@ export const enrollInCourse = async (courseId: number): Promise<void> => {
   });
 };
 
-export default { fetchCourses, fetchAdminCourses, createCourse, enrollInCourse };
+export const fetchCourseById = async (courseId: number): Promise<{ course: CourseRecord; modules: CourseModule[]; trainers: Array<{ id: number; name: string; email: string }> }> => {
+  const token = getAuthToken();
+  const data = await apiFetch(`/courses/${courseId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+};
+
+export const updateCourse = async (courseId: number, payload: Partial<CourseRecord>): Promise<CourseRecord> => {
+  const token = getAuthToken();
+  const data = await apiFetch(`/courses/${courseId}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: payload,
+  });
+  return data.course;
+};
+
+export default { fetchCourses, fetchAdminCourses, createCourse, enrollInCourse, fetchCourseById, updateCourse };

@@ -31,7 +31,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import UserManagement from "./routes/user-management";
 import CourseManagement from "./routes/course-management";
 import CourseCreation from "./routes/course-creation";
-import CourseDetail from "./routes/course-detail";
+import CourseDetail from "./routes/course-creation-details";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +68,7 @@ const AppRoutes = () => {
         <Route path="/training/user-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><UserManagement /></ProtectedRoute>} />
         <Route path="/training/course-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseManagement /></ProtectedRoute>} />
         <Route path="/training/course-creation" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseCreation /></ProtectedRoute>} />
+        <Route path="/training/course-creation-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseDetail /></ProtectedRoute>} />
         <Route path="/training/course/:courseId" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseDetail /></ProtectedRoute>} />
         <Route path="/training/verify" element={<TrainingVerify />} />
         <Route path="/public-verification" element={<PublicVerification />} />

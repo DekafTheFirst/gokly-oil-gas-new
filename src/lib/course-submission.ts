@@ -65,6 +65,12 @@ export interface ModulePayload {
   scheduled_date: string | null;
   has_assessment: boolean;
   sort_order: number;
+  assessment_type?: string;
+  assessment_max_score?: number;
+  assessment_pass_mark?: number;
+  assessment_attempts_allowed?: number;
+  assessment_required?: boolean;
+  assessment_description?: string;
 }
 
 const ASSESSMENT_TYPE_MAP: Record<string, string> = {

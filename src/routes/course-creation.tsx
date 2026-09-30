@@ -4160,7 +4160,7 @@ export default function CourseCreation() {
       <div className="flex min-h-screen flex-col bg-slate-50/80 pb-[100px]">
         {/* Step rail */}
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur py-3">
-          <div className="flex items-center gap-2 overflow-x-auto sm:px-6">
+          <div className="flex py-3 items-center gap-2 overflow-x-auto sm:px-6">
             {STEPS.map((step, i) => {
               const state =
                 step.id === currentStep ? "current" : step.id < currentStep ? "done" : "todo";

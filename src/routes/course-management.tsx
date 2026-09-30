@@ -151,7 +151,7 @@ export default function CourseManagement() {
                       </td>
                       <td className="text-muted-foreground">{new Date(course.created_at).toLocaleDateString()}</td>
                       <td className="text-right">
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigate(`/training/course/${course.id}`); }}>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigate(`/training/course-creation-details?courseId=${course.id}`); }}>
                           View
                         </Button>
                       </td>

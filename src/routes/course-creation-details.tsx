@@ -70,7 +70,7 @@ import {
   Smartphone,
   Sparkles,
 } from "lucide-react";
-import { createCourse, fetchCourses } from "@/lib/courses";
+import { createCourse, fetchCourses, fetchCourseById, updateCourse } from "@/lib/courses";
 import type { CourseModule, CourseRecord } from "@/lib/courses";
 import {
   buildCoursePayload,
@@ -938,6 +938,11 @@ export default function CourseCreation() {
   const [availableCourses, setAvailableCourses] = useState<CourseRecord[]>([]);
   const [previousAttendancePercentage, setPreviousAttendancePercentage] = useState(80);
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [searchParams] = useSearchParams();
   // While true the course code is kept in sync with the course name as the
   // user types; typing a custom code by hand switches it off (clearing the
   // field or pressing Gen switches it back on).
@@ -964,6 +969,147 @@ export default function CourseCreation() {
     };
     loadCourses();
   }, []);
+
+  // Load course data if in view/edit mode
+  useEffect(() => {
+    const courseId = searchParams.get("courseId");
+    if (courseId) {
+      const loadCourse = async () => {
+        setInitialLoading(true);
+        try {
+          const data = await fetchCourseById(parseInt(courseId));
+          const course = data.course;
+          const modules = data.modules || [];
+          const finalAssessment = data.final_assessment;
+
+          setIsViewMode(true);
+          setIsEditMode(false);
+          setEditingCourseId(parseInt(courseId));
+
+          // Map modules to the expected format
+          const mappedModules = modules.map((mod: any) => ({
+            name: mod.name,
+            description: mod.description || "",
+            has_assessment: mod.has_assessment || false,
+            sort_order: mod.sort_order || 0,
+            assessment_type: mod.assessment_type || "mcq",
+            assessment_max_score: mod.assessment_max_score || 100,
+            assessment_pass_mark: mod.assessment_pass_mark || 75,
+            assessment_attempts_allowed: mod.assessment_attempts_allowed || 3,
+            assessment_required: mod.assessment_required !== false,
+            assessment_description: mod.assessment_description || "",
+            materials: [],
+            duration: 0,
+            delivery_type: "both",
+          }));
+
+          // Map final assessment if exists
+          let finalAssessmentData = null;
+          let hasFinalAssessment = false;
+          if (finalAssessment) {
+            hasFinalAssessment = true;
+            finalAssessmentData = {
+              id: finalAssessment.id,
+              name: finalAssessment.title,
+              type: finalAssessment.type === "THEORY" ? "written" : finalAssessment.type === "PRACTICAL" ? "practical" : "other",
+              module_association: "whole",
+              description: finalAssessment.description || "",
+              max_score: finalAssessment.max_score,
+              pass_mark: Math.round((finalAssessment.pass_mark / finalAssessment.max_score) * 100),
+              attempts_allowed: 1,
+              required: finalAssessment.is_required,
+            };
+          }
+
+          // Build module assessments
+          const moduleAssessments = mappedModules.flatMap((mod, index) =>
+            mod.has_assessment
+              ? [
+                  {
+                    id: `module-${index}-${Date.now()}`,
+                    name: `${mod.name} — Assessment`,
+                    type: mod.assessment_type || "mcq",
+                    module_association: `mod-${index}`,
+                    description: mod.assessment_description || "",
+                    max_score: mod.assessment_max_score ?? 100,
+                    pass_mark: mod.assessment_pass_mark ?? 75,
+                    attempts_allowed: mod.assessment_attempts_allowed ?? 3,
+                    required: mod.assessment_required ?? true,
+                  },
+                ]
+              : [],
+          );
+
+          setFormData((prev) => ({
+            ...prev,
+            title: course.title || "",
+            code: course.code || "",
+            category: course.category || "",
+            short_description: course.short_description || "",
+            description: course.description || "",
+            tier: course.tier || "",
+            duration_value: course.duration_value || 40,
+            duration_unit: course.duration_unit || "HOURS",
+            delivery_mode: course.delivery_mode || "PHYSICAL",
+            status: course.status || "DRAFT",
+            min_class_size: course.min_class_size || 5,
+            max_class_size: course.max_class_size || 30,
+            prerequisite_required: course.prerequisite_required || false,
+            prerequisite_type: course.prerequisite_type || "internal",
+            prerequisite_course_id: course.prerequisite_course_id || null,
+            prerequisite_description: course.prerequisite_description || "",
+            individual_enrollment_enabled: course.individual_enrollment_enabled ?? true,
+            certificate_enabled: course.certificate_enabled ?? true,
+            certificate_external: course.certificate_external || false,
+            certificate_authority: course.certificate_authority || "",
+            certificate_license_id: course.certificate_license_id || "",
+            certificate_portal_url: course.certificate_portal_url || "",
+            thumbnail_url: course.thumbnail_url || "",
+            thumbnail_file: null,
+            modules: mappedModules,
+            expandedModules: mappedModules.map((_, i) => i),
+            has_final_assessment: hasFinalAssessment,
+            final_assessment: finalAssessmentData,
+            assessments: [...moduleAssessments, ...(finalAssessmentData ? [finalAssessmentData] : [])],
+            // Certificate design fields (use defaults if not saved)
+            certificate_title: prev.certificate_title,
+            certificate_template: prev.certificate_template,
+            certificate_issuance_mode: prev.certificate_issuance_mode,
+            certificate_validity_framework: prev.certificate_validity_framework,
+            certificate_validity_duration: prev.certificate_validity_duration,
+            certificate_validity_unit: prev.certificate_validity_unit,
+            certificate_id_prefix: prev.certificate_id_prefix,
+            certificate_id_separator: prev.certificate_id_separator,
+            certificate_id_year_schema: prev.certificate_id_year_schema,
+            certificate_id_sequence_type: prev.certificate_id_sequence_type,
+            // Completion requirements (use defaults if not saved)
+            attendance_required: prev.attendance_required,
+            attendance_percentage: prev.attendance_percentage,
+            strict_attendance: prev.strict_attendance,
+            minimum_contact_hours: prev.minimum_contact_hours,
+            module_completion_mode: prev.module_completion_mode,
+            assessment_required: prev.assessment_required,
+            theory_passing_score: prev.theory_passing_score,
+            practical_required: prev.practical_required,
+            sequential_progression: prev.sequential_progression,
+          }));
+
+          toast.success("Course loaded successfully", {
+            description: "You can now edit the course details",
+          });
+        } catch (err) {
+          console.error("Failed to load course:", err);
+          toast.error("Failed to load course", {
+            description: err instanceof Error ? err.message : "Unable to fetch course details",
+          });
+          navigate("/training/course-creation");
+        } finally {
+          setInitialLoading(false);
+        }
+      };
+      loadCourse();
+    }
+  }, [searchParams, navigate]);
 
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -1048,7 +1194,6 @@ export default function CourseCreation() {
   const autofillBusy = useRef(false);
   const [autofilling, setAutofilling] = useState(false);
 
-  const [searchParams] = useSearchParams();
   const autofillParam = searchParams.get("autofill");
   /* Dev builds always show the control; ?autofill=1|run reveals it in any build. */
   const showAutofill = import.meta.env.DEV || autofillParam !== null;
@@ -1218,7 +1363,6 @@ export default function CourseCreation() {
         {
           name: "",
           description: "",
-          scheduled_date: "",
           has_assessment: false,
           sort_order: prev.modules.length,
           materials: [],
@@ -1382,6 +1526,23 @@ export default function CourseCreation() {
 
   const removeFinalAssessment = () => toggleFinalAssessment(false);
 
+  const handleEditClick = () => {
+    setIsViewMode(false);
+    setIsEditMode(true);
+    toast.success("Edit mode enabled", {
+      description: "You can now modify the course details",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsViewMode(true);
+    setIsEditMode(false);
+    setCurrentStep(1);
+    toast.info("Edit cancelled", {
+      description: "Changes have been discarded",
+    });
+  };
+
   /* re-generate a course code from the title + category (fresh serial) */
   const generateCode = () => {
     setCodeAuto(true);
@@ -1478,7 +1639,11 @@ export default function CourseCreation() {
 
   const handleBack = () => {
     setFieldErrors({});
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    if (isEditMode && currentStep === 1) {
+      handleCancelEdit();
+    } else {
+      setCurrentStep((prev) => Math.max(prev - 1, 1));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1502,7 +1667,7 @@ export default function CourseCreation() {
       setFieldErrors(merged);
       setCurrentStep(first.step);
       expandModulesWithErrors(merged);
-      toast.error("Fix the highlighted fields before creating the course.", {
+      toast.error(`Fix the highlighted fields before ${isEditMode ? "saving" : "creating"} the course.`, {
         description: `${total} issue${total === 1 ? "" : "s"} across ${
           failing.length
         } step${failing.length === 1 ? "" : "s"} — Step ${first.step}: ${firstMessages
@@ -1530,13 +1695,34 @@ export default function CourseCreation() {
         }
       }
 
-      // Single unified endpoint call
-      const course = await createCourse(buildCoursePayload(formData, thumbnailBase64));
+      const payload = buildCoursePayload(formData, thumbnailBase64);
+
+      let course;
+      if (isEditMode && editingCourseId) {
+        course = await updateCourse(editingCourseId, payload);
+        toast.success("Course updated successfully", {
+          description: "The course has been saved",
+        });
+      } else {
+        course = await createCourse(payload);
+        toast.success("Course created successfully", {
+          description: "The course has been added to the catalog",
+        });
+      }
 
       setSuccess(true);
-      setTimeout(() => navigate(`/training/course/${course.id}`), 2000);
+      setTimeout(() => {
+        if (isEditMode) {
+          setIsViewMode(true);
+          setIsEditMode(false);
+          setCurrentStep(1);
+          setSuccess(false);
+        } else {
+          navigate(`/training/course/${course.id}`);
+        }
+      }, 2000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "The course could not be created.");
+      toast.error(err instanceof Error ? err.message : `The course could not be ${isEditMode ? "updated" : "created"}.`);
     } finally {
       setLoading(false);
     }
@@ -1564,8 +1750,445 @@ export default function CourseCreation() {
           <div className="mb-5 rounded-full bg-emerald-600 p-4">
             <CheckCircle className="h-10 w-10 text-white" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-900">Course created</h2>
+          <h2 className="text-xl font-semibold text-slate-900">
+            {isEditMode ? "Course updated" : "Course created"}
+          </h2>
           <p className="mt-1 text-sm text-slate-500">Taking you to the course record…</p>
+        </div>
+      </AdminPageShell>
+    );
+  }
+
+  /* -------------------------------- initial loading -------------------------------- */
+
+  if (initialLoading) {
+    return (
+      <AdminPageShell withSidebar>
+        <div className="flex min-h-[420px] flex-col items-center justify-center">
+          <div className="mb-5 rounded-full bg-slate-100 p-4">
+            <RefreshCw className="h-10 w-10 text-slate-400 animate-spin" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900">Loading course...</h2>
+          <p className="mt-1 text-sm text-slate-500">Please wait while we fetch the course details</p>
+        </div>
+      </AdminPageShell>
+    );
+  }
+
+  /* -------------------------------- view mode -------------------------------- */
+
+  if (isViewMode && editingCourseId) {
+    return (
+      <AdminPageShell withSidebar>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                    {formData.status}
+                  </span>
+                  <span className="inline-flex items-center rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-600/20">
+                    {formData.tier}
+                  </span>
+                </div>
+                <h1 className="text-3xl font-bold text-slate-900">{formData.title}</h1>
+                <p className="mt-1 text-lg text-slate-600 font-mono">{formData.code}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/training/course-management")}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Courses
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleEditClick}
+                  className="gap-2"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit Course
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Course Details */}
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <SectionCard
+              icon={FileText}
+              title="Basic Information"
+              subtitle="Course identification and nomenclature"
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Title</span>
+                    <span className="font-medium text-slate-900">{formData.title}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Code</span>
+                    <span className="font-mono font-medium text-slate-900">{formData.code}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Category</span>
+                    <span className="font-medium text-slate-900">{formData.category}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Tier</span>
+                    <span className="font-medium text-slate-900">{formData.tier}</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Short Description</span>
+                  <p className="font-medium text-slate-900">{formData.short_description}</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Duration</span>
+                    <span className="font-medium text-slate-900">{formData.duration_value} {formData.duration_unit}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Delivery Mode</span>
+                    <span className="font-medium text-slate-900">{formData.delivery_mode}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Status</span>
+                    <span className="font-medium text-slate-900">{formData.status}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Min Class Size</span>
+                    <span className="font-medium text-slate-900">{formData.min_class_size}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Max Class Size</span>
+                    <span className="font-medium text-slate-900">{formData.max_class_size}</span>
+                  </div>
+                </div>
+                {formData.thumbnail_url && (
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Image</span>
+                    <img
+                      src={formData.thumbnail_url}
+                      alt="Course thumbnail"
+                      className="mt-2 rounded-lg max-w-md h-auto"
+                    />
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Detailed Description</span>
+                  <div className="mt-2 prose prose-sm max-w-none text-slate-700">
+                    {formData.description}
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Prerequisites */}
+            <SectionCard
+              icon={ShieldCheck}
+              title="Prerequisites"
+              subtitle="Course enrollment requirements"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-sm">Prerequisites Required:</span>
+                  <span className={`font-medium ${formData.prerequisite_required ? "text-emerald-600" : "text-slate-600"}`}>
+                    {formData.prerequisite_required ? "Yes" : "No"}
+                  </span>
+                </div>
+                {formData.prerequisite_required && (
+                  <div className="pl-4 border-l-2 border-slate-200">
+                    <div className="mb-2">
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Type</span>
+                      <span className="font-medium text-slate-900 capitalize">{formData.prerequisite_type}</span>
+                    </div>
+                    {formData.prerequisite_type === "internal" && formData.prerequisite_course_id && (
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Prerequisite Course</span>
+                        <span className="font-medium text-slate-900">
+                          {availableCourses.find(c => c.id === formData.prerequisite_course_id)?.title || "Unknown course"}
+                        </span>
+                      </div>
+                    )}
+                    {formData.prerequisite_type === "external" && formData.prerequisite_description && (
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Required Certification</span>
+                        <span className="font-medium text-slate-900">{formData.prerequisite_description}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+
+            {/* Modules */}
+            <SectionCard
+              icon={Layers}
+              title="Modules"
+              subtitle={`Course structure with ${formData.modules.length} module${formData.modules.length !== 1 ? "s" : ""}`}
+            >
+              <div className="space-y-4">
+                {formData.modules.map((module, index) => (
+                  <div key={index} className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+                    {/* Module Header */}
+                    <div className="p-4 bg-slate-50 flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-700 text-[12px] font-bold tracking-wide">
+                          MOD-{String(index + 1).padStart(3, '0')}
+                        </span>
+                        <div>
+                          <h3 className="font-semibold text-slate-900">{module.name}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            {module.duration && (
+                              <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-xs">
+                                {module.duration} Hours
+                              </span>
+                            )}
+                            {module.delivery_type && (
+                              <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs capitalize">
+                                {module.delivery_type}
+                              </span>
+                            )}
+                            {module.has_assessment && (
+                              <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-xs">
+                                Assessment
+                              </span>
+                            )}
+                            {module.is_required && (
+                              <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs">
+                                Required
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Module Details */}
+                    <div className="p-4 space-y-4">
+                      {module.description && (
+                        <div>
+                          <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Description</span>
+                          <p className="text-sm text-slate-700">{module.description}</p>
+                        </div>
+                      )}
+
+                      {/* Assessment Details */}
+                      {module.has_assessment && (
+                        <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                          <h4 className="text-sm font-semibold text-amber-900 mb-3">Assessment Configuration</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="text-slate-500 block text-xs">Type</span>
+                              <span className="font-medium text-slate-900 capitalize">{module.assessment_type}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block text-xs">Max Score</span>
+                              <span className="font-medium text-slate-900">{module.assessment_max_score}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block text-xs">Pass Mark</span>
+                              <span className="font-medium text-slate-900">{module.assessment_pass_mark}%</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block text-xs">Attempts</span>
+                              <span className="font-medium text-slate-900">{module.assessment_attempts_allowed}</span>
+                            </div>
+                          </div>
+                          {module.assessment_required !== undefined && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-slate-500 text-xs">Required for completion:</span>
+                              <span className={`font-medium text-xs ${module.assessment_required ? "text-emerald-600" : "text-slate-600"}`}>
+                                {module.assessment_required ? "Yes" : "No"}
+                              </span>
+                            </div>
+                          )}
+                          {module.assessment_description && (
+                            <div className="mt-3 pt-3 border-t border-amber-200">
+                              <span className="text-slate-500 block text-xs mb-1">Assessment Description</span>
+                              <p className="text-sm text-slate-700">{module.assessment_description}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Materials/Documents */}
+                      <div className="border-t border-slate-100 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => {
+                            toast.info("Module materials", {
+                              description: "Materials/documents feature coming soon",
+                            });
+                          }}
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1.5" />
+                          View Materials ({module.materials?.length || 0})
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
+            {/* Final Assessment */}
+            {formData.has_final_assessment && formData.final_assessment && (
+              <SectionCard
+                icon={Award}
+                title="Final Assessment"
+                subtitle="Overall course evaluation"
+              >
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Assessment Name</span>
+                      <span className="font-medium text-slate-900">{formData.final_assessment.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Type</span>
+                      <span className="font-medium text-slate-900 capitalize">{formData.final_assessment.type}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Max Score</span>
+                      <span className="font-medium text-slate-900">{formData.final_assessment.max_score}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Pass Mark</span>
+                      <span className="font-medium text-slate-900">{formData.final_assessment.pass_mark}%</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Required</span>
+                      <span className="font-medium text-slate-900">{formData.final_assessment.required ? "Yes" : "No"}</span>
+                    </div>
+                  </div>
+                  {formData.final_assessment.description && (
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Description</span>
+                      <p className="text-sm text-slate-700">{formData.final_assessment.description}</p>
+                    </div>
+                  )}
+                </div>
+              </SectionCard>
+            )}
+
+            {/* Certificate Settings */}
+            <SectionCard
+              icon={Award}
+              title="Certificate Settings"
+              subtitle="Credential issuance configuration"
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">Certificate Enabled:</span>
+                    <span className={`font-medium ${formData.certificate_enabled ? "text-emerald-600" : "text-slate-600"}`}>
+                      {formData.certificate_enabled ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  {formData.certificate_external && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-sm">External Authority:</span>
+                      <span className="font-medium text-slate-900">{formData.certificate_authority}</span>
+                    </div>
+                  )}
+                </div>
+                {formData.certificate_external && (
+                  <div className="pl-4 border-l-2 border-slate-200 space-y-2">
+                    <div>
+                      <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">License ID</span>
+                      <span className="font-mono text-sm text-slate-900">{formData.certificate_license_id}</span>
+                    </div>
+                    {formData.certificate_portal_url && (
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Portal URL</span>
+                        <a href={formData.certificate_portal_url} target="_blank" rel="noreferrer" className="text-sm text-emerald-600 hover:underline">
+                          {formData.certificate_portal_url}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+
+            {/* Completion Requirements */}
+            <SectionCard
+              icon={CheckCircle}
+              title="Completion Requirements"
+              subtitle="Course completion and eligibility criteria"
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">Attendance Required:</span>
+                    <span className={`font-medium ${formData.attendance_required ? "text-emerald-600" : "text-slate-600"}`}>
+                      {formData.attendance_required ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  {formData.attendance_required && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-sm">Attendance Threshold:</span>
+                      <span className="font-medium text-slate-900">{formData.attendance_percentage}%</span>
+                    </div>
+                  )}
+                </div>
+                {formData.attendance_required && (
+                  <div className="pl-4 border-l-2 border-slate-200 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-sm">Strict Attendance:</span>
+                      <span className="font-medium text-slate-900">{formData.strict_attendance ? "Yes" : "No"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-sm">Minimum Contact Hours:</span>
+                      <span className="font-medium text-slate-900">{formData.minimum_contact_hours} hours</span>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">Assessment Required:</span>
+                    <span className={`font-medium ${formData.assessment_required ? "text-emerald-600" : "text-slate-600"}`}>
+                      {formData.assessment_required ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  {formData.assessment_required && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-sm">Theory Passing Score:</span>
+                      <span className="font-medium text-slate-900">{formData.theory_passing_score}%</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-sm">Practical Required:</span>
+                  <span className={`font-medium ${formData.practical_required ? "text-emerald-600" : "text-slate-600"}`}>
+                    {formData.practical_required ? "Yes" : "No"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-sm">Sequential Progression:</span>
+                  <span className={`font-medium ${formData.sequential_progression ? "text-emerald-600" : "text-slate-600"}`}>
+                    {formData.sequential_progression ? "Yes" : "No"}
+                  </span>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
         </div>
       </AdminPageShell>
     );
@@ -3728,8 +4351,8 @@ export default function CourseCreation() {
           <div className="space-y-6">
             <SectionCard
               icon={CheckCircle}
-              title="Review & Create Course"
-              subtitle="Review all course information before creating the course."
+              title={isEditMode ? "Review & Update Course" : "Review & Create Course"}
+              subtitle={`Review all course information before ${isEditMode ? "updating" : "creating"} the course.`}
             >
               <div className="space-y-10">
                 {/* Step 1: Basic Information */}
@@ -4160,7 +4783,7 @@ export default function CourseCreation() {
       <div className="flex min-h-screen flex-col bg-slate-50/80 pb-[100px]">
         {/* Step rail */}
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur py-3">
-          <div className="flex items-center gap-2 overflow-x-auto sm:px-6">
+          <div className="flex py-3 items-center gap-2 overflow-x-auto sm:px-6">
             {STEPS.map((step, i) => {
               const state =
                 step.id === currentStep ? "current" : step.id < currentStep ? "done" : "todo";
@@ -4211,10 +4834,12 @@ export default function CourseCreation() {
                 </span>
               </div>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
-                {currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Modules & Module Assessments" : currentStep === 3 ? "Final Overall Assessment" : currentStep === 4 ? "Completion Requirements & Eligibility Protocols" : currentStep === 5 ? "Certificate & Credential Configuration" : "Review & Create Course"}
+                {isEditMode ? "Edit Course" : currentStep === 1 ? "Course Basic Information" : currentStep === 2 ? "Modules & Module Assessments" : currentStep === 3 ? "Final Overall Assessment" : currentStep === 4 ? "Completion Requirements & Eligibility Protocols" : currentStep === 5 ? "Certificate & Credential Configuration" : "Review & Create Course"}
               </h1>
               <p className="mt-2 text-[13.5px] leading-relaxed text-slate-500">
-                {currentStep === 1
+                {isEditMode
+                  ? "Edit the course details across all steps. Changes will be saved when you submit."
+                  : currentStep === 1
                   ? "Define the fundamental parameters, operational codes, class sizes, and course prerequisites for this course programme. New courses initialize as Draft."
                   : currentStep === 2
                   ? "Structure learning units and set up each module's assessment at the same time (type, score, pass mark, attempts)."
@@ -4229,7 +4854,18 @@ export default function CourseCreation() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              {showAutofill && (
+              {isEditMode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  className="gap-1.5"
+                >
+                  Cancel Edit
+                </Button>
+              )}
+              {showAutofill && !isEditMode && (
                 <Button
                   type="button"
                   variant="outline"
@@ -4412,7 +5048,7 @@ export default function CourseCreation() {
                     className="h-10 gap-2 border-slate-200 text-[13px]"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    Back
+                    {isEditMode && currentStep === 1 ? "Cancel" : "Back"}
                   </Button>
                 )}
 
@@ -4431,7 +5067,7 @@ export default function CourseCreation() {
                     disabled={loading}
                     className="h-10 gap-2 bg-emerald-700 px-5 text-[13px] font-semibold text-white hover:bg-emerald-800"
                   >
-                    {loading ? "Creating course…" : "Create course"}
+                    {loading ? (isEditMode ? "Updating course…" : "Creating course…") : (isEditMode ? "Update course" : "Create course")}
                     <CheckCircle className="h-4 w-4" />
                   </Button>
                 )}

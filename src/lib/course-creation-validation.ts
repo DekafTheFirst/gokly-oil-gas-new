@@ -31,7 +31,6 @@ const step1Schema = z
       .min(SYLLABUS_MIN_CHARS, `Detailed syllabus must be at least ${SYLLABUS_MIN_CHARS} characters.`),
     tier: z.string().min(1, "Select a course tier."),
     delivery_mode: z.string().min(1, "Select a delivery mode."),
-    duration_value: z.number().min(1, "Course duration must be greater than 0."),
     thumbnail_file: z.any().nullable(),
     thumbnail_url: z.string(),
     prerequisite_required: z.boolean(),
@@ -148,21 +147,14 @@ const modulesSchema = z.object({
     }),
 });
 
-/* Step 3 — final assessment only validated when the gate is ON. */
+/* Step 3 — a final assessment object means the gate is ON. */
 const step3Schema = z
   .object({
-    has_final_assessment: z.boolean(),
     final_assessment: z.any().nullable(),
   })
   .superRefine((v, ctx) => {
-    if (!v.has_final_assessment) return;
     const f = v.final_assessment as { name?: string; max_score?: number } | null | undefined;
     if (!f) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["final_assessment"],
-        message: "Add the final assessment details.",
-      });
       return;
     }
     if (!String(f.name ?? "").trim()) {

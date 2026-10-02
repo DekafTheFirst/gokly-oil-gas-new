@@ -35,6 +35,23 @@ export interface CourseRecord {
   created_at: string;
 }
 
+export interface CourseFinalAssessment {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  max_score: number;
+  pass_mark: number;
+  is_required: boolean;
+}
+
+export interface CourseDetailResponse {
+  course: CourseRecord;
+  modules: CourseModule[];
+  trainers: Array<{ id: number; name: string; email: string }>;
+  final_assessment: CourseFinalAssessment | null;
+}
+
 export interface ModuleAssessmentConfig {
   type: string;
   max_score: number;
@@ -122,7 +139,7 @@ export const enrollInCourse = async (courseId: number): Promise<void> => {
   });
 };
 
-export const fetchCourseById = async (courseId: number): Promise<{ course: CourseRecord; modules: CourseModule[]; trainers: Array<{ id: number; name: string; email: string }> }> => {
+export const fetchCourseById = async (courseId: number): Promise<CourseDetailResponse> => {
   const token = getAuthToken();
   const data = await apiFetch(`/courses/${courseId}`, {
     headers: { Authorization: `Bearer ${token}` },

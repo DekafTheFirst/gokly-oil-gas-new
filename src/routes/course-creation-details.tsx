@@ -74,6 +74,7 @@ import { createCourse, fetchCourses, fetchCourseById, updateCourse } from "@/lib
 import type { CourseModule, CourseRecord } from "@/lib/courses";
 import {
   buildCoursePayload,
+  calculateTotalModuleHours,
   fileToBase64,
 } from "@/lib/course-submission";
 import {
@@ -98,7 +99,6 @@ const COURSE_CATEGORIES = [
 ];
 
 const TIERS = ["FOUNDATION", "INTERMEDIATE", "ADVANCED"];
-const DURATION_UNITS = ["HOURS", "DAYS", "WEEKS"];
 
 const CERTIFICATE_TEMPLATES = [
   {
@@ -295,8 +295,8 @@ type FormData = {
   duration_unit: string;
   delivery_mode: string;
   status: string;
-  min_class_size: number;
-  max_class_size: number;
+  min_class_size: number | null;
+  max_class_size: number | null;
   prerequisite_required: boolean;
   prerequisite_type: "internal" | "external";
   prerequisite_course_id: number | null;
@@ -335,10 +335,7 @@ type FormData = {
   theory_passing_score: number;
   practical_required: boolean;
   sequential_progression: boolean;
-  // Final overall assessment (Step 3): only asked about once all module-level
-  // assessments are done. `has_final_assessment` is the yes/no gate; when true
-  // the single capstone assessment is configured via the existing Assessment shape.
-  has_final_assessment: boolean;
+  // Final overall assessment (Step 3); a non-null assessment means it is enabled.
   final_assessment: Assessment | null;
   // Assessments (module-level ones are edited inline in Step 2 via the module
   // payload; this array holds the sync'd module assessments + the final one)
@@ -1009,9 +1006,7 @@ export default function CourseCreation() {
 
           // Map final assessment if exists
           let finalAssessmentData = null;
-          let hasFinalAssessment = false;
           if (finalAssessment) {
-            hasFinalAssessment = true;
             finalAssessmentData = {
               id: finalAssessment.id,
               name: finalAssessment.title,
@@ -1056,8 +1051,8 @@ export default function CourseCreation() {
             duration_unit: course.duration_unit || "HOURS",
             delivery_mode: course.delivery_mode || "PHYSICAL",
             status: course.status || "DRAFT",
-            min_class_size: course.min_class_size || 5,
-            max_class_size: course.max_class_size || 30,
+            min_class_size: course.min_class_size ?? null,
+            max_class_size: course.max_class_size ?? null,
             prerequisite_required: course.prerequisite_required || false,
             prerequisite_type: course.prerequisite_type || "internal",
             prerequisite_course_id: course.prerequisite_course_id || null,
@@ -1072,7 +1067,6 @@ export default function CourseCreation() {
             thumbnail_file: null,
             modules: mappedModules,
             expandedModules: mappedModules.map((_, i) => i),
-            has_final_assessment: hasFinalAssessment,
             final_assessment: finalAssessmentData,
             assessments: [...moduleAssessments, ...(finalAssessmentData ? [finalAssessmentData] : [])],
             // Certificate design fields (use defaults if not saved)
@@ -1125,8 +1119,8 @@ export default function CourseCreation() {
     duration_value: 40,
     duration_unit: "HOURS",
     delivery_mode: "PHYSICAL",
-    min_class_size: 5,
-    max_class_size: 30,
+    min_class_size: null,
+    max_class_size: null,
     prerequisite_required: false,
     prerequisite_type: "internal",
     prerequisite_course_id: null,
@@ -1169,11 +1163,11 @@ export default function CourseCreation() {
     practical_required: true,
     sequential_progression: true,
     // Final overall assessment defaults (Step 3 gate)
-    has_final_assessment: false,
     final_assessment: null,
     // Assessments defaults (sync'd from module-level setup + final)
     assessments: [],
   });
+  const totalModuleHours = calculateTotalModuleHours(formData.modules);
 
   /* Drop validation errors whose key matches ("certificate_authority" or any
      "certificate_authority.child" key) as soon as the field is edited. */
@@ -1262,7 +1256,6 @@ export default function CourseCreation() {
         thumbnail_url: picture ? URL.createObjectURL(picture) : sample.thumbnail_url,
         modules: sample.modules,
         expandedModules: sample.expandedModules,
-        has_final_assessment: sample.has_final_assessment,
         final_assessment: sample.final_assessment,
         assessments: [...moduleAssessments, sample.final_assessment],
       }));
@@ -1415,7 +1408,7 @@ export default function CourseCreation() {
             required: mod.assessment_required ?? true,
           } as Assessment;
         });
-      const finalList = prev.has_final_assessment && prev.final_assessment
+      const finalList = prev.final_assessment
         ? [{ ...prev.final_assessment, module_association: "whole" }]
         : [];
       return {
@@ -1464,7 +1457,7 @@ export default function CourseCreation() {
             required: mod.assessment_required ?? true,
           } as Assessment;
         });
-      const finalList = prev.has_final_assessment && prev.final_assessment
+      const finalList = prev.final_assessment
         ? [{ ...prev.final_assessment, module_association: "whole" }]
         : [];
       return { ...prev, modules, assessments: [...moduleAssessments, ...finalList] };
@@ -1493,7 +1486,6 @@ export default function CourseCreation() {
       if (!on) {
         return {
           ...prev,
-          has_final_assessment: false,
           final_assessment: null,
           assessments: prev.assessments.filter((a) => a.module_association !== "whole"),
         };
@@ -1513,7 +1505,6 @@ export default function CourseCreation() {
           };
       return {
         ...prev,
-        has_final_assessment: true,
         final_assessment: final,
         assessments: [...prev.assessments.filter((a) => a.module_association !== "whole"), final],
       };
@@ -1711,6 +1702,10 @@ export default function CourseCreation() {
       }
 
       const payload = buildCoursePayload(publish ? { ...formData, status: "PUBLISHED" } : { ...formData, status: "DRAFT" }, thumbnailBase64);
+      if (!isEditMode) {
+        delete payload.min_class_size;
+        delete payload.max_class_size;
+      }
 
       let course;
       if (isEditMode && editingCourseId) {
@@ -1874,7 +1869,7 @@ export default function CourseCreation() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Duration</span>
-                    <span className="font-medium text-slate-900">{formData.duration_value} {formData.duration_unit}</span>
+                    <span className="font-medium text-slate-900">{totalModuleHours} HOURS</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Delivery Mode</span>
@@ -1883,16 +1878,6 @@ export default function CourseCreation() {
                   <div>
                     <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Status</span>
                     <span className="font-medium text-slate-900">{formData.status}</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Min Class Size</span>
-                    <span className="font-medium text-slate-900">{formData.min_class_size}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Max Class Size</span>
-                    <span className="font-medium text-slate-900">{formData.max_class_size}</span>
                   </div>
                 </div>
                 {formData.thumbnail_url && (
@@ -2067,7 +2052,7 @@ export default function CourseCreation() {
             </SectionCard>
 
             {/* Final Assessment */}
-            {formData.has_final_assessment && formData.final_assessment && (
+            {formData.final_assessment && (
               <SectionCard
                 icon={Award}
                 title="Final Assessment"
@@ -2476,8 +2461,8 @@ export default function CourseCreation() {
 
             <SectionCard
               icon={Layers}
-              title="Delivery Parameters & Cohort Capacity"
-              subtitle="Define training methodology, simulator requirements, and safety-critical seating limits."
+              title="Delivery Parameters"
+              subtitle="Define the course tier and training delivery mode."
             >
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -2545,157 +2530,6 @@ export default function CourseCreation() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <FieldLabel htmlFor="duration_value" required>
-                    Course Duration
-                  </FieldLabel>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="relative">
-                      <Input
-                        id="duration_value"
-                        type="number"
-                        min="1"
-                        value={formData.duration_value === 0 || formData.duration_value === undefined || formData.duration_value === null ? "" : formData.duration_value}
-                        onKeyDown={(e) => {
-                          if (["-", "e", "E", "+"].includes(e.key)) {
-                            e.preventDefault();
-                          }
-                        }}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === "") {
-                            updateFormData("duration_value", 0);
-                          } else {
-                            const numValue = parseInt(value);
-                            if (!isNaN(numValue)) {
-                              updateFormData("duration_value", numValue);
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const value = parseInt(e.target.value);
-                          if (isNaN(value) || value === 0) {
-                            updateFormData("duration_value", 40);
-                          } else {
-                            updateFormData("duration_value", Math.max(1, value));
-                          }
-                        }}
-                        className={errCls("duration_value", "h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white")}
-                        required
-                      />
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-                        Qty
-                      </span>
-                    </div>
-                    <Select
-                      value={formData.duration_unit}
-                      onValueChange={(value) => updateFormData("duration_unit", value)}
-                    >
-                      <SelectTrigger className="h-11 border-slate-200 bg-slate-50/70 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DURATION_UNITS.map((unit) => (
-                          <SelectItem key={unit} value={unit}>
-                            {unit}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <FieldError message={fieldErrors.duration_value} />
-                  <p className="text-[11.5px] leading-snug text-slate-400">
-                    Mandates 8 contact hours/day under IWCF curriculum regulations.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <FieldLabel required>Simulator Cohort Capacity</FieldLabel>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="relative">
-                        <Input
-                          id="min_class_size"
-                          type="number"
-                          min="1"
-                          value={formData.min_class_size === 0 || formData.min_class_size === undefined || formData.min_class_size === null ? "" : formData.min_class_size}
-                          onKeyDown={(e) => {
-                            if (["-", "e", "E", "+"].includes(e.key)) {
-                              e.preventDefault();
-                            }
-                          }}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === "") {
-                              updateFormData("min_class_size", 0);
-                            } else {
-                              const numValue = parseInt(value);
-                              if (!isNaN(numValue)) {
-                                updateFormData("min_class_size", numValue);
-                              }
-                            }
-                          }}
-                          onBlur={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (isNaN(value) || value === 0) {
-                              updateFormData("min_class_size", 5);
-                            } else {
-                              updateFormData("min_class_size", Math.max(1, value));
-                            }
-                          }}
-                          className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
-                          required
-                        />
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-                          Min
-                        </span>
-                      </div>
-                      <p className="mt-2 text-[11.5px] text-slate-400">Break-even target</p>
-                    </div>
-                    <div>
-                      <div className="relative">
-                        <Input
-                          id="max_class_size"
-                          type="number"
-                          min="1"
-                          value={formData.max_class_size === 0 || formData.max_class_size === undefined || formData.max_class_size === null ? "" : formData.max_class_size}
-                          onKeyDown={(e) => {
-                            if (["-", "e", "E", "+"].includes(e.key)) {
-                              e.preventDefault();
-                            }
-                          }}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === "") {
-                              updateFormData("max_class_size", 0);
-                            } else {
-                              const numValue = parseInt(value);
-                              if (!isNaN(numValue)) {
-                                updateFormData("max_class_size", numValue);
-                              }
-                            }
-                          }}
-                          onBlur={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (isNaN(value) || value === 0) {
-                              updateFormData("max_class_size", 30);
-                            } else {
-                              updateFormData("max_class_size", Math.max(1, value));
-                            }
-                          }}
-                          className="h-11 border-slate-200 bg-slate-50/70 pr-10 text-sm focus-visible:bg-white"
-                          required
-                        />
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-                          Max
-                        </span>
-                      </div>
-                      <p className="mt-2 text-[11.5px] text-slate-400">Console seat cap</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
               </div>
             </SectionCard>
 
@@ -2840,10 +2674,6 @@ export default function CourseCreation() {
                 <div className="flex flex-col pr-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Modules</span>
                   <span className="text-2xl font-bold text-slate-900">{formData.modules.length} </span>
-                </div>
-                <div className="flex flex-col pl-6 pr-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Duration</span>
-                  <span className="text-2xl font-bold text-slate-900">{formData.duration_value} {formData.duration_unit.toLowerCase()}</span>
                 </div>
                 <div className="flex flex-col pl-6">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Materials</span>
@@ -3251,7 +3081,7 @@ export default function CourseCreation() {
                     onClick={() => toggleFinalAssessment(false)}
                     className={cn(
                       "rounded-md px-4 py-2 transition-colors",
-                      !formData.has_final_assessment ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900",
+                      !formData.final_assessment ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900",
                     )}
                   >
                     No
@@ -3261,14 +3091,14 @@ export default function CourseCreation() {
                     onClick={() => toggleFinalAssessment(true)}
                     className={cn(
                       "rounded-md px-4 py-2 transition-colors",
-                      formData.has_final_assessment ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-900",
+                      formData.final_assessment ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-900",
                     )}
                   >
                     Yes
                   </button>
                 </div>
               </div>
-              {!formData.has_final_assessment || !formData.final_assessment ? (
+              {!formData.final_assessment ? (
                 <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
                   No final assessment — Next moves straight to Completion Rules.
                 </div>
@@ -3346,7 +3176,7 @@ export default function CourseCreation() {
                     <div className="relative w-44 h-44 flex items-center justify-center">
                       <div className="text-center">
                         <span className="text-3xl font-bold text-slate-900 leading-none">
-                          {formData.assessments.reduce((total, assessment) => total + assessment.max_score, 0)}
+                          {formData.assessments.reduce((total, assessment) => total + (Number(assessment.max_score) || 0), 0)}
                         </span>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1 block">Total Points</span>
                       </div>
@@ -3356,8 +3186,8 @@ export default function CourseCreation() {
                   {/* Breakdown Legend */}
                   <div className="flex flex-col gap-2.5 pt-2">
                     {formData.assessments.map((assessment, index) => {
-                      const totalScore = formData.assessments.reduce((total, a) => total + a.max_score, 0);
-                      const percentage = totalScore > 0 ? Math.round((assessment.max_score / totalScore) * 100) : 0;
+                      const totalScore = formData.assessments.reduce((total, item) => total + (Number(item.max_score) || 0), 0);
+                      const percentage = totalScore > 0 ? Math.round(((Number(assessment.max_score) || 0) / totalScore) * 100) : 0;
                       const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-blue-500', 'bg-purple-500', 'bg-pink-500'];
                       const color = colors[index % colors.length];
 
@@ -4404,7 +4234,7 @@ export default function CourseCreation() {
                       Edit
                     </Button>
                   </div>
-                  <div className="grid gap-4 text-sm pl-11">
+                  <div className="grid gap-4 text-sm ">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Title</span>
@@ -4429,28 +4259,14 @@ export default function CourseCreation() {
                       <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Short Description</span>
                       <p className="font-medium text-slate-900">{formData.short_description}</p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Duration</span>
-                        <span className="font-medium text-slate-900">{formData.duration_value} {formData.duration_unit}</span>
+                        <span className="font-medium text-slate-900">{totalModuleHours} HOURS</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Delivery Mode</span>
                         <span className="font-medium text-slate-900">{formData.delivery_mode}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Status</span>
-                        <span className="font-medium text-slate-900">{formData.status}</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Min Class Size</span>
-                        <span className="font-medium text-slate-900">{formData.min_class_size}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Max Class Size</span>
-                        <span className="font-medium text-slate-900">{formData.max_class_size}</span>
                       </div>
                     </div>
                     <div>
@@ -4473,20 +4289,6 @@ export default function CourseCreation() {
                       ) : (
                         <span className="text-slate-400 italic">None — anyone can enroll</span>
                       )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Individual Enrollment</span>
-                        <span className={`font-medium ${formData.individual_enrollment_enabled ? "text-emerald-600" : "text-slate-400"}`}>
-                          {formData.individual_enrollment_enabled ? "Enabled" : "Disabled"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Status</span>
-                        <span className={`font-medium ${formData.status === "PUBLISHED" ? "text-emerald-600" : formData.status === "DRAFT" ? "text-amber-600" : "text-slate-600"}`}>
-                          {formData.status}
-                        </span>
-                      </div>
                     </div>
                     {formData.description && (
                       <div>
@@ -4511,7 +4313,7 @@ export default function CourseCreation() {
                       Edit
                     </Button>
                   </div>
-                  <div className="space-y-3 pl-11">
+                  <div className="space-y-3 ">
                     {formData.modules.map((module, index) => (
                       <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-start justify-between gap-4">
@@ -4579,8 +4381,8 @@ export default function CourseCreation() {
                       Edit
                     </Button>
                   </div>
-                  <div className="pl-11">
-                    {formData.has_final_assessment && formData.final_assessment ? (
+                  <div className="">
+                    {formData.final_assessment ? (
                       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                         <div className="flex items-start gap-3">
                           <Award className="h-5 w-5 text-amber-600 mt-0.5" />
@@ -4642,7 +4444,7 @@ export default function CourseCreation() {
                       Edit
                     </Button>
                   </div>
-                  <div className="grid gap-4 text-sm pl-11">
+                  <div className="grid gap-4 text-sm">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Attendance Required</span>
@@ -4697,16 +4499,6 @@ export default function CourseCreation() {
                         {formData.sequential_progression ? "Yes" : "No"}
                       </span>
                     </div>
-                    {formData.individual_enrollment_enabled && (
-                      <div className="rounded-lg bg-emerald-50 p-3">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-emerald-600" />
-                          <span className="text-sm font-medium text-emerald-800">
-                            Individual enrollment is enabled for this course
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -4722,7 +4514,7 @@ export default function CourseCreation() {
                       Edit
                     </Button>
                   </div>
-                  <div className="grid gap-4 text-sm pl-11">
+                  <div className="grid gap-4 text-sm ">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Certificate Enabled</span>
@@ -4817,7 +4609,7 @@ export default function CourseCreation() {
 
   return (
     <AdminPageShell withSidebar>
-      <div className="flex min-h-screen flex-col bg-slate-50/80 pb-[100px]">
+      <div className="flex min-h-screen flex-col bg-slate-50/80 pb-32 lg:pb-24">
         {/* Step rail */}
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur py-3">
           <div className="flex py-3 items-center gap-2 overflow-x-auto sm:px-6">
@@ -4877,7 +4669,7 @@ export default function CourseCreation() {
                 {isEditMode
                   ? "Edit the course details across all steps. Changes will be saved when you submit."
                   : currentStep === 1
-                  ? "Define the fundamental parameters, operational codes, class sizes, and course prerequisites for this course programme. New courses initialize as Draft."
+                  ? "Define the course identity, delivery mode, and prerequisites. New courses initialize as Draft."
                   : currentStep === 2
                   ? "Structure learning units and set up each module's assessment at the same time (type, score, pass mark, attempts)."
                   : currentStep === 3
@@ -4975,16 +4767,11 @@ export default function CourseCreation() {
 
                   <div className="grid grid-cols-2 gap-y-2 border-t border-slate-100 pt-3 text-[11.5px] text-slate-600">
                     <span className="inline-flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-slate-400" />
-                      {formData.duration_value} {formData.duration_unit.toLowerCase()}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-slate-400" />
                       
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5 text-slate-400" />
-                      Max {formData.max_class_size} trainees
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <Award className="h-3.5 w-3.5 text-slate-400" />
@@ -5041,13 +4828,13 @@ export default function CourseCreation() {
             </aside>
 
             {/* Action bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur xl:left-auto">
-              <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-6">
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(15,23,42,0.06)] backdrop-blur lg:left-auto lg:rounded-l-xl lg:border-l">
+              <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:gap-3 sm:px-6 sm:py-3">
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => navigate("/training/course-management")}
-                  className="h-9 gap-2 text-[13px] text-slate-600 hover:text-rose-600"
+                  className="h-9 gap-1.5 whitespace-nowrap px-2 text-[12px] text-slate-600 hover:text-rose-600 sm:gap-2 sm:px-3 sm:text-[13px]"
                 >
                   <Trash className="h-4 w-4" />
                   Discard draft
@@ -5057,13 +4844,13 @@ export default function CourseCreation() {
                   type="button"
                   variant="ghost"
                   onClick={() => handleSubmit(false, true)}
-                  className="h-9 gap-2 text-[13px] text-slate-600"
+                  className="h-9 gap-1.5 whitespace-nowrap px-2 text-[12px] text-slate-600 sm:gap-2 sm:px-3 sm:text-[13px]"
                 >
                   <Save className="h-4 w-4" />
                   Save draft & exit
                 </Button>
 
-                <span className="ml-auto hidden items-center gap-2 text-[12px] text-slate-500 sm:inline-flex">
+                <span className="ml-auto hidden items-center gap-2 text-[12px] text-slate-500 xl:inline-flex">
                   {validateStep(currentStep) ? (
                     <>
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -5082,7 +4869,7 @@ export default function CourseCreation() {
                     type="button"
                     variant="outline"
                     onClick={handleBack}
-                    className="h-10 gap-2 border-slate-200 text-[13px]"
+                    className="h-10 gap-1.5 whitespace-nowrap border-slate-200 px-3 text-[12px] sm:gap-2 sm:text-[13px]"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     {isEditMode && currentStep === 1 ? "Cancel" : "Back"}
@@ -5093,19 +4880,20 @@ export default function CourseCreation() {
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="h-10 gap-2 bg-emerald-700 px-5 text-[13px] font-semibold text-white hover:bg-emerald-800"
+                    className="h-10 gap-1.5 whitespace-nowrap bg-emerald-700 px-3 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
                   >
-                    Proceed to step {currentStep + 1}: {STEPS[currentStep].label}
+                    <span className="sm:hidden">Continue</span>
+                    <span className="hidden sm:inline">Proceed to step {currentStep + 1}: {STEPS[currentStep].label}</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
                     <Button
                       type="button"
                       onClick={() => handleSubmit(false)}
                       disabled={loading}
                       variant="outline"
-                      className="h-10 gap-2 border-slate-300 px-4 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+                      className="h-10 gap-1.5 border-slate-300 px-3 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-4 sm:text-[13px]"
                     >
                       {loading ? "Saving…" : "Save as Draft"}
                       <Save className="h-4 w-4" />
@@ -5114,7 +4902,7 @@ export default function CourseCreation() {
                       type="button"
                       onClick={() => handleSubmit(true)}
                       disabled={loading}
-                      className="h-10 gap-2 bg-emerald-700 px-5 text-[13px] font-semibold text-white hover:bg-emerald-800"
+                      className="h-10 gap-1.5 bg-emerald-700 px-3 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
                     >
                       {loading ? (isEditMode ? "Publishing…" : "Creating & publishing…") : (isEditMode ? "Publish Course" : "Create & Publish")}
                       <CheckCircle className="h-4 w-4" />

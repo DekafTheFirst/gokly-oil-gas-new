@@ -64,7 +64,7 @@ describe("course creation step validation (zod schemas)", () => {
     expect(errors.category).toBeTruthy();
     expect(errors.short_description).toMatch(/at least 6 characters/);
     expect(errors.tier).toBeTruthy();
-    expect(errors.duration_value).toBeTruthy();
+    expect(errors.duration_value).toBeUndefined();
     expect(errors.description).toMatch(/at least 50 characters/);
     expect(errors.thumbnail_file).toMatch(/background picture/i);
     // Always-set fields and gated prerequisites pass when off.
@@ -179,13 +179,10 @@ describe("course creation step validation (zod schemas)", () => {
     expect(collectModuleErrors(all, 1)).toEqual({});
   });
 
-  it("step 3: only validates the final assessment when the gate is ON", () => {
-    expect(errorsFor(3, { has_final_assessment: false, final_assessment: null })).toEqual({});
-
-    expect(errorsFor(3, { has_final_assessment: true, final_assessment: null }).final_assessment).toBeTruthy();
+  it("step 3: validates a final assessment whenever one is configured", () => {
+    expect(errorsFor(3, { final_assessment: null })).toEqual({});
 
     const incomplete = errorsFor(3, {
-      has_final_assessment: true,
       final_assessment: { name: "", max_score: 0 },
     });
     expect(incomplete["final_assessment.name"]).toBeTruthy();
@@ -193,7 +190,6 @@ describe("course creation step validation (zod schemas)", () => {
 
     expect(
       errorsFor(3, {
-        has_final_assessment: true,
         final_assessment: { name: "Capstone", max_score: 100 },
       }),
     ).toEqual({});

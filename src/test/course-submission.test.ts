@@ -121,7 +121,7 @@ describe("buildCoursePayload", () => {
     minimum_contact_hours: 32,
     modules: [{ name: "Abandon ship" }],
     expandedModules: [0],
-    has_final_assessment: true,
+    has_final_assessment: false,
     final_assessment: { name: "Sea test" },
     assessments: [],
     thumbnail_file: { name: "cover.jpg" },
@@ -150,8 +150,39 @@ describe("buildCoursePayload", () => {
     }
     expect(payload.modules).toBeDefined();
     // Backend-supported fields still ride through untouched.
-    expect(payload.duration_value).toBe(40);
+    expect(payload.duration_value).toBe(0);
+    expect(payload.duration_unit).toBe("HOURS");
     expect(payload.code).toBe("SR-2026");
+  });
+
+  it("derives course duration from module hours instead of stale form values", () => {
+    const payload = buildCoursePayload(
+      {
+        ...wizardState,
+        duration_value: 40,
+        duration_unit: "DAYS",
+        modules: [{ name: "Safety briefing", duration: 2.5 }, { name: "Field practice", duration: 3 }],
+      },
+      null,
+    );
+    expect(payload.duration_value).toBe(5.5);
+    expect(payload.duration_unit).toBe("HOURS");
+  });
+
+  it("derives the final-assessment gate from the configured assessment object", () => {
+    const payload = buildCoursePayload(
+      {
+        ...wizardState,
+        has_final_assessment: false,
+        final_assessment: { name: "Final practical", description: "Evaluate field competency." },
+      },
+      null,
+    );
+    expect(payload.has_final_assessment).toBe(true);
+    expect(payload.final_assessment).toMatchObject({
+      name: "Final practical",
+      description: "Evaluate field competency.",
+    });
   });
 
   it("uses the uploaded URL and withholds external cert linkage when off", () => {

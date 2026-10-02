@@ -77,6 +77,11 @@ export interface ModulePayload {
   assessment_description?: string | null;
 }
 
+export const calculateTotalModuleHours = (modules: CourseModule[]): number =>
+  Math.round(
+    modules.reduce((total, module) => total + (Number(module.duration) || 0), 0) * 100,
+  ) / 100;
+
 const ASSESSMENT_TYPE_MAP: Record<string, string> = {
   written: "THEORY",
   mcq: "THEORY",
@@ -160,13 +165,18 @@ export const buildCoursePayload = <T extends object>(
   
   // Include modules in the payload for the unified endpoint
   if (source.modules && Array.isArray(source.modules)) {
-    payload.modules = toModulePayloads(source.modules as CourseModule[]);
+    const modules = source.modules as CourseModule[];
+    payload.duration_value = calculateTotalModuleHours(modules);
+    payload.duration_unit = "HOURS";
+    payload.modules = toModulePayloads(modules);
   }
   
-  // Include final assessment if present
-  if (source.has_final_assessment && source.final_assessment) {
-    payload.has_final_assessment = true;
+  // The final assessment object is the single source of truth for its gate.
+  payload.has_final_assessment = Boolean(source.final_assessment);
+  if (source.final_assessment) {
     payload.final_assessment = source.final_assessment;
+  } else {
+    delete payload.final_assessment;
   }
   
   return payload;

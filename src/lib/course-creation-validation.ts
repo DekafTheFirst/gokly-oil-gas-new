@@ -89,6 +89,7 @@ const MODULE_DESCRIPTION_MIN_CHARS = 20;
 const MODULE_DURATION_MAX_HOURS = 10;
 
 const modulesSchema = z.object({
+  delivery_mode: z.string().optional(),
   modules: z
     .array(
       z.object({
@@ -120,6 +121,7 @@ const modulesSchema = z.object({
             .max(MODULE_DURATION_MAX_HOURS, `Module duration must be between 1 and ${MODULE_DURATION_MAX_HOURS} hours.`),
         ),
         has_assessment: z.preprocess((v) => Boolean(v), z.boolean()),
+        delivery_type: z.string().optional(),
         assessment_max_score: z.number().optional(),
         assessment_pass_mark: z.number().optional(),
       }),
@@ -145,6 +147,17 @@ const modulesSchema = z.object({
         }
       });
     }),
+}).superRefine((data, ctx) => {
+  if (data.delivery_mode !== "ONLINE") return;
+  data.modules.forEach((module, index) => {
+    if (module.delivery_type === "practical" || module.delivery_type === "both") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["modules", index, "delivery_type"],
+        message: "Practical module classifications aren't available with Online E-learning delivery.",
+      });
+    }
+  });
 });
 
 /* Step 3 — a final assessment object means the gate is ON. */

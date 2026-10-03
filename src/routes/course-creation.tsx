@@ -233,7 +233,7 @@ function FieldError({ message }: { message?: string }) {
 const DELIVERY_TYPES = [
   { value: "theory", label: "Theory" },
   { value: "practical", label: "Practical" },
-  { value: "both", label: "Both" },
+  { value: "both", label: "Theory + Practical" },
 ] as const;
 
 const DELIVERY_MODES = [
@@ -245,14 +245,14 @@ const DELIVERY_MODES = [
   },
   {
     value: "ONLINE",
-    label: "Online e-Learning",
-    helper: "Self-paced modules with remote testing",
+    label: "Online E-learning",
+    helper: "Fully online learning and assessment",
     icon: Monitor,
   },
   {
     value: "HYBRID",
-    label: "Hybrid (Theory + Yard Sim)",
-    helper: "Digital theory combined with practical rig simulation",
+    label: "Hybrid (Online + Physical)",
+    helper: "Combines online learning with in-person sessions",
     icon: Share2,
   },
 ];
@@ -1153,6 +1153,13 @@ export default function CourseCreation() {
     clearErrorsFor((k) => k === field || k.startsWith(`${field}.`));
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
+      if (field === "delivery_mode" && value === "ONLINE") {
+        next.modules = prev.modules.map((module) =>
+          module.delivery_type === "practical" || module.delivery_type === "both"
+            ? { ...module, delivery_type: "theory" }
+            : module,
+        );
+      }
       // Keep the certificate preview title in sync with the course title until
       // the user customizes it on the Certificate step.
       if (field === "title" && typeof value === "string") {
@@ -2227,20 +2234,26 @@ export default function CourseCreation() {
 
                           {/* Delivery Type */}
                           <div className="md:col-span-5 flex flex-col gap-1.5">
-                            <Label className="text-sm font-semibold text-slate-700">Delivery Format</Label>
+                            <Label className="text-sm font-semibold text-slate-700">Module Classification</Label>
                             <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg h-10 items-center">
                               {DELIVERY_TYPES.map((type) => {
                                 const isSelected = module.delivery_type === type.value;
+                                const practicalDisabled =
+                                  formData.delivery_mode === "ONLINE" &&
+                                  (type.value === "practical" || type.value === "both");
                                 return (
                                   <button
                                     key={type.value}
                                     type="button"
+                                    disabled={practicalDisabled}
+                                    title={practicalDisabled ? "Practical module classifications are unavailable with Online E-learning delivery." : undefined}
                                     onClick={() => updateModule(index, "delivery_type", type.value)}
                                     className={cn(
                                       "h-full w-full flex items-center justify-center rounded px-1.5 text-[12px] font-semibold select-none",
+                                      practicalDisabled && "cursor-not-allowed opacity-40",
                                       isSelected
                                         ? "bg-emerald-600 text-white shadow-sm cursor-default"
-                                        : "bg-transparent text-slate-600 hover:bg-slate-200 hover:text-slate-900 cursor-pointer"
+                                        : !practicalDisabled && "bg-transparent text-slate-600 hover:bg-slate-200 hover:text-slate-900 cursor-pointer"
                                     )}
                                   >
                                     <span className="pointer-events-none">{type.label}</span>
@@ -2248,6 +2261,11 @@ export default function CourseCreation() {
                                 );
                               })}
                             </div>
+                            {formData.delivery_mode === "ONLINE" && (
+                              <p className="text-[11px] text-slate-500">
+                                Practical and Theory + Practical modules are unavailable with Online E-learning delivery.
+                              </p>
+                            )}
                           </div>
 
                           {/* Required Toggle */}

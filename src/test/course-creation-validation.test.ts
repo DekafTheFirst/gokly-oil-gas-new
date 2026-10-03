@@ -113,6 +113,45 @@ describe("course creation step validation (zod schemas)", () => {
     expect(errorsFor(2, { modules: [namedModule] })).toEqual({});
   });
 
+  it("steps 2 & 6: prevent practical classifications with Online E-learning delivery", () => {
+    const online = errorsFor(2, {
+      delivery_mode: "ONLINE",
+      modules: [{ ...namedModule, delivery_type: "practical" }],
+    });
+    expect(online["modules.0.delivery_type"]).toMatch(/Online E-learning/);
+
+    const onlineTheoryAndPractical = errorsFor(2, {
+      delivery_mode: "ONLINE",
+      modules: [{ ...namedModule, delivery_type: "both" }],
+    });
+    expect(onlineTheoryAndPractical["modules.0.delivery_type"]).toMatch(/Online E-learning/);
+
+    expect(
+      errorsFor(2, {
+        delivery_mode: "PHYSICAL",
+        modules: [{ ...namedModule, delivery_type: "practical" }],
+      }),
+    ).toEqual({});
+    expect(
+      errorsFor(2, {
+        delivery_mode: "HYBRID",
+        modules: [{ ...namedModule, delivery_type: "practical" }],
+      }),
+    ).toEqual({});
+    expect(
+      errorsFor(2, {
+        delivery_mode: "PHYSICAL",
+        modules: [{ ...namedModule, delivery_type: "both" }],
+      }),
+    ).toEqual({});
+    expect(
+      errorsFor(2, {
+        delivery_mode: "HYBRID",
+        modules: [{ ...namedModule, delivery_type: "both" }],
+      }),
+    ).toEqual({});
+  });
+
   it("steps 2 & 6: validate assessment scores when the module has an assessment", () => {
     const bad = errorsFor(2, {
       modules: [{ ...namedModule, has_assessment: true, assessment_max_score: 0 }],

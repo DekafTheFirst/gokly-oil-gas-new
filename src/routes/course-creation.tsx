@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
+import { CourseSaveSuccess, SUCCESS_REDIRECT_MS } from "@/components/educert/CourseSaveSuccess";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,19 +71,19 @@ import {
   Smartphone,
   Sparkles,
 } from "lucide-react";
-import { createCourse, fetchCourses } from "@/lib/courses";
+import { fetchCourses } from "@/lib/courses";
 import type { CourseModule, CourseRecord } from "@/lib/courses";
 import {
   buildCoursePayload,
   calculateTotalModuleHours,
-  fileToBase64,
 } from "@/lib/course-submission";
 import {
   buildSampleCourse,
   createDemoThumbnailFile,
 } from "@/lib/course-autofill";
 import { cn } from "@/lib/utils";
-import { resolveModuleMaterials } from "@/lib/materials";
+import { submitCourseForm, describeUploadFailures } from "@/lib/materials";
+import type { CourseUploadReport } from "@/lib/materials";
 import { toast } from "sonner";
 import {
   collectStepErrors as collectSchemaErrors,
@@ -932,6 +933,8 @@ export default function CourseCreation() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [savedCourseId, setSavedCourseId] = useState<number | null>(null);
+  const [uploadReport, setUploadReport] = useState<CourseUploadReport | undefined>(undefined);
   const syllabusRef = useRef<HTMLTextAreaElement | null>(null);
   const [availableCourses, setAvailableCourses] = useState<CourseRecord[]>([]);
   const [previousAttendancePercentage, setPreviousAttendancePercentage] = useState(80);
@@ -1530,53 +1533,40 @@ export default function CourseCreation() {
         setFormData((prev) => ({ ...prev, status: "DRAFT" }));
       }
 
-      // Convert image to base64 if present
-      let thumbnailBase64 = null;
-      if (formData.thumbnail_file) {
-        try {
-          thumbnailBase64 = await fileToBase64(formData.thumbnail_file);
-        } catch (uploadError) {
-          toast.error("Failed to process course image", {
-            description:
-              uploadError instanceof Error ? uploadError.message : "Image processing failed",
-          });
-          return;
-        }
-      }
-
-      // Upload any freshly-picked module materials before saving. Materials that
-      // already live in Cloudinary (loaded when editing) are left untouched.
-      let resolvedModules: CourseModule[] = formData.modules;
-      try {
-        resolvedModules = await resolveModuleMaterials(formData.modules, (done, total) => {
-          toast.loading(`Uploading module materials… (${done}/${total})`, { id: "material-upload" });
-        });
-      } catch (materialError) {
-        toast.error(
-          materialError instanceof Error ? materialError.message : "Material upload failed",
-        );
-        return;
-      } finally {
-        toast.dismiss("material-upload");
-      }
-
-      // Single unified endpoint call
+      // The cover image travels as a file in the same request; keep any existing
+      // URL when the user did not pick a new one.
+      const thumbnailRef = formData.thumbnail_file ? null : formData.thumbnail_url || null;
       const payload = buildCoursePayload(
-        publish
-          ? { ...formData, modules: resolvedModules, status: "PUBLISHED" }
-          : { ...formData, modules: resolvedModules, status: "DRAFT" },
-        thumbnailBase64,
+        publish ? { ...formData, status: "PUBLISHED" } : { ...formData, status: "DRAFT" },
+        thumbnailRef,
       );
       delete payload.min_class_size;
       delete payload.max_class_size;
-      const course = await createCourse(payload);
+
+      // One request carries the course, its cover image and every material.
+      const { course, uploads } = await submitCourseForm("/courses", payload, {
+        modules: formData.modules,
+        thumbnailFile: formData.thumbnail_file,
+      });
+
+      const failedUploads = describeUploadFailures(uploads);
+      if (failedUploads) {
+        toast.error("Course saved, but some files did not upload", {
+          description: `${failedUploads}. You can re-upload them by editing this course.`,
+        });
+      }
 
       toast.success(publish ? "Course created and published" : "Course created successfully", {
         description: publish ? "The course is now live and available for enrollment" : "The course has been added to the catalog as draft",
       });
 
       setSuccess(true);
-      setTimeout(() => navigate(`/training/course/${course.id}`), 2000);
+      setSavedCourseId(course?.id ?? null);
+      setUploadReport(uploads);
+      setTimeout(
+        () => navigate(`/training/course/${course.id}`),
+        SUCCESS_REDIRECT_MS,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "The course could not be created.");
     } finally {
@@ -1602,13 +1592,15 @@ export default function CourseCreation() {
   if (success) {
     return (
       <AdminPageShell withSidebar>
-        <div className="flex min-h-[420px] flex-col items-center justify-center">
-          <div className="mb-5 rounded-full bg-emerald-600 p-4">
-            <CheckCircle className="h-10 w-10 text-white" />
-          </div>
-          <h2 className="text-xl font-semibold text-slate-900">Course created</h2>
-          <p className="mt-1 text-sm text-slate-500">Taking you to the course record…</p>
-        </div>
+        <CourseSaveSuccess
+          heading="Course created"
+          courseTitle={formData.title}
+          courseCode={formData.code}
+          uploads={uploadReport}
+          redirectNote="Taking you to the course record…"
+          actionLabel="View course now"
+          onAction={() => savedCourseId && navigate(`/training/course/${savedCourseId}`)}
+        />
       </AdminPageShell>
     );
   }

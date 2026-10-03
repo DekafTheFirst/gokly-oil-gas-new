@@ -1,77 +1,16 @@
 /**
- * Module-material uploads.
+ * Single-request course submission.
  *
- * Materials (PDF, slides, spreadsheets, video) are held as local `File`s in the
- * wizard and uploaded to Cloudinary (via the authenticated `/upload/material`
- * endpoint) only when the course is saved. Materials that already carry a
- * Cloudinary reference — e.g. loaded when editing an existing course — are never
- * re-uploaded.
+ * The wizard never uploads on its own any more: it packs the course payload,
+ * the cover image and every pending material into one `FormData` and posts it
+ * in a single request. The API validates the course *before* touching any file,
+ * so an invalid course costs zero uploads; individual upload failures are
+ * reported back instead of aborting the save.
  */
 import { API_BASE_URL } from "./api";
 import { getAuthToken } from "./auth";
-import type { CourseModule } from "./courses";
+import type { CourseModule, CourseRecord } from "./courses";
 
-export interface MaterialReference {
-  name: string;
-  size: number;
-  type: string;
-  url: string;
-  publicId: string;
-  resourceType: string;
-}
-
-interface MaterialUploadResponse {
-  url?: string;
-  secureUrl?: string;
-  publicId?: string;
-  resourceType?: string;
-  name?: string;
-  size?: number;
-  type?: string;
-  error?: string;
-}
-
-/** Upload one material file and return the metadata stored on the module. */
-export const uploadMaterialFile = async (file: File): Promise<MaterialReference> => {
-  const token = getAuthToken();
-  if (!token) {
-    throw new Error("Your session has expired — sign in again and retry.");
-  }
-
-  const body = new FormData();
-  body.append("file", file);
-
-  const response = await fetch(`${API_BASE_URL}/upload/material`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body,
-  });
-
-  const data: MaterialUploadResponse = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data?.error || `Upload failed (HTTP ${response.status})`);
-  }
-
-  const url = data.url || data.secureUrl;
-  if (!url) {
-    throw new Error("Upload succeeded but no URL was returned.");
-  }
-
-  return {
-    name: data.name || file.name,
-    size: data.size ?? file.size,
-    type: data.type || file.type,
-    url,
-    publicId: data.publicId || "",
-    resourceType: data.resourceType || "raw",
-  };
-};
-
-/**
- * A module material as held in the wizard: either an already-uploaded Cloudinary
- * reference, or a freshly-picked local file awaiting upload at submit time.
- */
 export interface MaterialDraft {
   name: string;
   size?: number;
@@ -79,66 +18,99 @@ export interface MaterialDraft {
   url?: string | null;
   publicId?: string | null;
   resourceType?: string | null;
-  /** Present only for files picked this session; stripped before saving. */
+  /** Present only for files picked this session; never serialised. */
   file?: File | null;
+  /** Assigned during submission so the API can match a file to its slot. */
+  fileKey?: string;
   [key: string]: unknown;
 }
 
+export interface MaterialUploadFailure {
+  field: string;
+  name: string;
+  error: string;
+}
+
+export interface CourseUploadReport {
+  succeeded: Array<{ field: string; name: string; url: string }>;
+  failed: MaterialUploadFailure[];
+}
+
+export interface CourseSubmissionResult {
+  course?: CourseRecord;
+  uploads?: CourseUploadReport;
+}
+
+/** Multipart field holding the cover image. */
+export const THUMBNAIL_FIELD = "thumbnail";
+
 /**
- * Resolve every module's materials just before a course is saved.
+ * Pack a course into the multipart body the API expects.
  *
- * - A material that already carries a Cloudinary `url`/`publicId` (e.g. loaded
- *   when editing an existing course) is passed through untouched — it is never
- *   re-uploaded.
- * - A material holding a freshly-picked `file` is uploaded now, once.
- * - The transient `file` handle is stripped from the result, so the payload sent
- *   to the API contains only serialisable Cloudinary references.
+ * Materials already stored in Cloudinary (no `file`) are left untouched, so
+ * editing a course never re-uploads what it already has.
  */
-export const resolveModuleMaterials = async (
-  modules: CourseModule[],
-  onProgress?: (done: number, total: number) => void,
-): Promise<CourseModule[]> => {
-  if (!Array.isArray(modules)) return modules;
+export const buildCourseFormData = (
+  payload: Record<string, unknown>,
+  options: { thumbnailFile?: File | null; modules?: CourseModule[] } = {},
+): FormData => {
+  const form = new FormData();
+  const body = { ...payload };
 
-  const draftsFor = (module: CourseModule): MaterialDraft[] =>
-    Array.isArray(module.materials) ? (module.materials as MaterialDraft[]) : [];
-
-  const total = modules.reduce(
-    (sum, module) =>
-      sum +
-      draftsFor(module).filter((material) =>
-        Boolean(material?.file && !material.url && !material.publicId),
-      ).length,
-    0,
-  );
-  if (total > 0) onProgress?.(0, total);
-
-  let done = 0;
-  const resolved: CourseModule[] = [];
-
-  for (const module of modules) {
-    const materials: MaterialDraft[] = [];
-    for (const material of draftsFor(module)) {
-      if (!material) continue;
-      const { name, size, type, url, publicId, resourceType } = material;
-
-      // Already in Cloudinary, or nothing to upload → keep as-is minus the File.
-      if (url || publicId || !material.file) {
-        materials.push({ name, size, type, url, publicId, resourceType });
-        continue;
-      }
-
-      const uploaded = await uploadMaterialFile(material.file);
-      done += 1;
-      onProgress?.(done, total);
-      materials.push({
-        ...uploaded,
-        size: uploaded.size ?? size,
-        type: uploaded.type || type,
-      });
+  // Give each freshly-picked material a key, then drop the File handle so the
+  // JSON stays serialisable.
+  const pending: Array<{ key: string; file: File }> = [];
+  for (const module of options.modules || []) {
+    for (const material of (module.materials || []) as MaterialDraft[]) {
+      if (!material || typeof material !== "object") continue;
+      if (material.url || material.publicId || !material.file) continue;
+      const key = `m${pending.length}`;
+      pending.push({ key, file: material.file });
+      material.fileKey = key;
+      delete material.file;
     }
-    resolved.push({ ...module, materials });
+  }
+  body.modules = options.modules || [];
+
+  form.append("payload", JSON.stringify(body));
+
+  if (options.thumbnailFile) {
+    form.append(THUMBNAIL_FIELD, options.thumbnailFile, options.thumbnailFile.name);
+  }
+  for (const { key, file } of pending) {
+    form.append(key, file, file.name);
   }
 
-  return resolved;
+  return form;
+};
+
+/** POST/PUT a packed submission and surface both the record and the report. */
+export const submitCourseForm = async (
+  path: string,
+  payload: Record<string, unknown>,
+  options: { method?: "POST" | "PUT"; thumbnailFile?: File | null; modules?: CourseModule[] } = {},
+): Promise<CourseSubmissionResult> => {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Your session has expired — sign in again and retry.");
+  }
+
+  const form = buildCourseFormData(payload, options);
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method || "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || `Save failed (HTTP ${response.status})`);
+  }
+  return data as CourseSubmissionResult;
+};
+
+/** Human-readable summary of uploads the API could not store. */
+export const describeUploadFailures = (report?: CourseUploadReport): string => {
+  if (!report || !report.failed?.length) return "";
+  return report.failed.map((failure) => `${failure.name} (${failure.error})`).join(", ");
 };

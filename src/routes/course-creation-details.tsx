@@ -82,6 +82,7 @@ import {
   createDemoThumbnailFile,
 } from "@/lib/course-autofill";
 import { cn } from "@/lib/utils";
+import { resolveModuleMaterials } from "@/lib/materials";
 import { toast } from "sonner";
 import {
   collectStepErrors as collectSchemaErrors,
@@ -1712,7 +1713,28 @@ export default function CourseCreation() {
         }
       }
 
-      const payload = buildCoursePayload(publish ? { ...formData, status: "PUBLISHED" } : { ...formData, status: "DRAFT" }, thumbnailBase64);
+      // Upload any freshly-picked module materials before saving. Materials that
+      // already live in Cloudinary (loaded when editing) are left untouched.
+      let resolvedModules: CourseModule[] = formData.modules;
+      try {
+        resolvedModules = await resolveModuleMaterials(formData.modules, (done, total) => {
+          toast.loading(`Uploading module materials… (${done}/${total})`, { id: "material-upload" });
+        });
+      } catch (materialError) {
+        toast.error(
+          materialError instanceof Error ? materialError.message : "Material upload failed",
+        );
+        return;
+      } finally {
+        toast.dismiss("material-upload");
+      }
+
+      const payload = buildCoursePayload(
+        publish
+          ? { ...formData, modules: resolvedModules, status: "PUBLISHED" }
+          : { ...formData, modules: resolvedModules, status: "DRAFT" },
+        thumbnailBase64,
+      );
       if (!isEditMode) {
         delete payload.min_class_size;
         delete payload.max_class_size;
@@ -2978,14 +3000,16 @@ export default function CourseCreation() {
                             className="hidden"
                             onChange={(e) => {
                               const files = Array.from(e.target.files || []);
+                              // Hold the File until submit — nothing uploads on selection.
                               if (files.length > 0) {
                                 updateModule(index, "materials", [
                                   ...(module.materials || []),
-                                  ...files.map(file => ({
+                                  ...files.map((file) => ({
                                     name: file.name,
                                     size: file.size,
                                     type: file.type,
-                                  }))
+                                    file,
+                                  })),
                                 ]);
                               }
                               // reset so selecting the same file again still fires onChange
@@ -3022,7 +3046,18 @@ export default function CourseCreation() {
                                     <FileText className="h-5 w-5" />
                                   </div>
                                   <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-slate-900">{file.name}</span>
+                                    {file.url ? (
+                                      <a
+                                        href={file.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm font-bold text-slate-900 hover:text-emerald-600 hover:underline"
+                                      >
+                                        {file.name}
+                                      </a>
+                                    ) : (
+                                      <span className="text-sm font-bold text-slate-900">{file.name}</span>
+                                    )}
                                     <div className="flex items-center gap-3 text-[12px] text-slate-500">
                                       <span>{formatFileSize(file.size)}</span>
                                       <span>•</span>

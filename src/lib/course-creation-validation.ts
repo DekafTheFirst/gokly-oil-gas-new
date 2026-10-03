@@ -14,8 +14,9 @@ export type FieldErrors = Record<string, string>;
 const SYLLABUS_MIN_CHARS = 50;
 /* Background picture cap — matches the UI hint "PNG, JPG up to 5MB". */
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
-/* Must mirror the backend's multer fileFilter (backend/routes/upload.js) —
-   anything else gets rejected by the server with a 500. */
+/* Must mirror the backend's submission allowlist
+   (backend/services/courseSubmissionService.js) — anything else is reported as
+   a failed upload and the course still saves without it. */
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 /* Step 1 — identification, delivery & prerequisites. */

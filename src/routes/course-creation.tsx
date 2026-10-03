@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
+import { ModuleMaterials } from "@/components/educert/ModuleMaterials";
 import { CourseSaveSuccess, SUCCESS_REDIRECT_MS } from "@/components/educert/CourseSaveSuccess";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1340,14 +1341,6 @@ export default function CourseCreation() {
     }));
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-  };
-
   const toggleFinalAssessment = (on: boolean) => {
     setFormData((prev) => {
       if (!on) {
@@ -2406,53 +2399,16 @@ export default function CourseCreation() {
                         </div>
 
                         {module.materials && module.materials.length > 0 && (
-                          <div className="flex flex-col gap-2.5">
-                            {[...module.materials].reverse().map((file, fileIndex) => {
-                              const originalIndex = module.materials.length - 1 - fileIndex;
-                              return (
-                              <div key={originalIndex} className="bg-white p-3.5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                    <FileText className="h-5 w-5" />
-                                  </div>
-                                  <div className="flex flex-col">
-                                    {file.url ? (
-                                      <a
-                                        href={file.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-sm font-bold text-slate-900 hover:text-emerald-600 hover:underline"
-                                      >
-                                        {file.name}
-                                      </a>
-                                    ) : (
-                                      <span className="text-sm font-bold text-slate-900">{file.name}</span>
-                                    )}
-                                    <div className="flex items-center gap-3 text-[12px] text-slate-500">
-                                      <span>{formatFileSize(file.size)}</span>
-                                      <span>•</span>
-                                      <span className="text-emerald-600 font-medium">Trainee Visible</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 text-slate-400">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const newMaterials = module.materials?.filter((_, i) => i !== originalIndex) || [];
-                                      updateModule(index, "materials", newMaterials);
-                                    }}
-                                    className="ml-auto p-1 hover:text-red-600"
-                                  >
-                                    <Trash className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                              );
-                            })}
-                          </div>
+                          <ModuleMaterials
+                            materials={module.materials}
+                            onRemove={(removeIndex) =>
+                              updateModule(
+                                index,
+                                "materials",
+                                module.materials?.filter((_, i) => i !== removeIndex) || [],
+                              )
+                            }
+                          />
                         )}
 
                         

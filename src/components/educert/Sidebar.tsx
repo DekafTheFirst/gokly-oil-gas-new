@@ -11,6 +11,7 @@ import {
   GraduationCap,
   type LucideIcon,
   User,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -21,6 +22,7 @@ const ADMIN_ITEMS: Item[] = [
   { to: "/training/certificate-management", label: "Certificate Management", icon: Award },
   { to: "/training/user-management", label: "User Management", icon: User },
   { to: "/training/course-management", label: "Course Management", icon: BookOpen },
+  { to: "/admin/organization-management", label: "Organization Management", icon: Building2 },
 ];
 
 const TRAINER_ITEMS: Item[] = [

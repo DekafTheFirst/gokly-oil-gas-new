@@ -198,6 +198,34 @@ const buildCourseCode = (title: string, previousCode = "", freshSerial = false) 
 /* Certificate ID prefix suggested from the course name: "FIRE-SAFE". */
 const deriveIdPrefix = (title: string) => titleWords(title);
 
+/**
+ * Map API modules into the wizard's module shape. Shared by the initial load
+ * and the post-save refresh, so a course re-read from the server always looks
+ * identical to one loaded fresh from the catalogue.
+ */
+const mapModulesForWizard = (modules: any[], course: any) =>
+  modules.map((mod: any, index: number) => ({
+    name: mod.name || "",
+    description: mod.description || "",
+    has_assessment: mod.has_assessment || false,
+    sort_order: Number.isInteger(mod.sort_order) ? mod.sort_order : index,
+    code: mod.code || `MOD-${String((mod.sort_order ?? index) + 1).padStart(3, "0")}`,
+    duration: typeof mod.duration === "number" ? mod.duration : (parseInt(mod.duration, 10) || 0),
+    delivery_type:
+      (course?.delivery_mode || "PHYSICAL") === "ONLINE" &&
+      (mod.delivery_type === "practical" || mod.delivery_type === "both")
+        ? "theory"
+        : mod.delivery_type || "both",
+    is_required: mod.is_required !== false,
+    materials: Array.isArray(mod.materials) ? mod.materials : [],
+    assessment_type: mod.assessment_type || "mcq",
+    assessment_max_score: mod.assessment_max_score ?? 100,
+    assessment_pass_mark: mod.assessment_pass_mark ?? 75,
+    assessment_attempts_allowed: mod.assessment_attempts_allowed ?? 3,
+    assessment_required: mod.assessment_required !== false,
+    assessment_description: mod.assessment_description || "",
+  }));
+
 /* One-click certificate validity presets — each sets duration + unit together. */
 const CERTIFICATE_DURATION_PRESETS = [
   { label: "6 months", duration: 6, unit: "Months" },
@@ -991,27 +1019,7 @@ export default function CourseCreation() {
           setIdPrefixAuto(true);
 
           // Map modules to the expected format
-          const mappedModules = modules.map((mod: any, index: number) => ({
-            name: mod.name || "",
-            description: mod.description || "",
-            has_assessment: mod.has_assessment || false,
-            sort_order: Number.isInteger(mod.sort_order) ? mod.sort_order : index,
-            code: mod.code || `MOD-${String((mod.sort_order ?? index) + 1).padStart(3, "0")}`,
-            duration: typeof mod.duration === "number" ? mod.duration : (parseInt(mod.duration, 10) || 0),
-            delivery_type:
-              (course.delivery_mode || "PHYSICAL") === "ONLINE" &&
-              (mod.delivery_type === "practical" || mod.delivery_type === "both")
-                ? "theory"
-                : mod.delivery_type || "both",
-            is_required: mod.is_required !== false,
-            materials: Array.isArray(mod.materials) ? mod.materials : [],
-            assessment_type: mod.assessment_type || "mcq",
-            assessment_max_score: mod.assessment_max_score ?? 100,
-            assessment_pass_mark: mod.assessment_pass_mark ?? 75,
-            assessment_attempts_allowed: mod.assessment_attempts_allowed ?? 3,
-            assessment_required: mod.assessment_required !== false,
-            assessment_description: mod.assessment_description || "",
-          }));
+          const mappedModules = mapModulesForWizard(modules, course);
 
           // Map final assessment if exists
           let finalAssessmentData = null;
@@ -1654,6 +1662,30 @@ export default function CourseCreation() {
     }
   };
 
+  /**
+   * Re-read the course after a save so local state matches what was persisted.
+   *
+   * A save response only carries the `courses` row, so newly uploaded
+   * materials have no URL locally — without this the module list would keep
+   * showing "Uploads when saved" until a manual refresh.
+   */
+  const refreshFromServer = async (courseId: number) => {
+    try {
+      const fresh = await fetchCourseById(courseId);
+      const mapped = mapModulesForWizard(fresh.modules || [], fresh.course);
+      setFormData((prev) => ({
+        ...prev,
+        thumbnail_url: fresh.course?.thumbnail_url || prev.thumbnail_url,
+        thumbnail_file: null,
+        modules: mapped,
+        expandedModules: mapped.map((_, i) => i),
+      }));
+    } catch (err) {
+      // Non-fatal: the save already succeeded, this only tidies the display.
+      console.error("Failed to refresh course after save:", err);
+    }
+  };
+
   const handleSubmit = async (publish: boolean = false, exitAfterSave: boolean = false) => {
     // A slow save plus an eager Enter key can fire this twice, and a second run
     // would create a duplicate course — ignore submits while one is in flight.
@@ -1743,6 +1775,12 @@ export default function CourseCreation() {
 
       if (course && course.thumbnail_url) {
         setFormData((prev) => ({ ...prev, thumbnail_url: course.thumbnail_url, thumbnail_file: null }));
+      }
+
+      // Pull the persisted course back in first, so uploaded materials already
+      // show their URL by the time the success screen (and its redirect) runs.
+      if (course?.id) {
+        await refreshFromServer(course.id);
       }
 
       setSuccess(true);

@@ -58,19 +58,22 @@ export const buildCourseFormData = (
   const body = { ...payload };
 
   // Give each freshly-picked material a key, then drop the File handle so the
-  // JSON stays serialisable.
+  // JSON stays serialisable. This builds a *copy* — mutating the caller's
+  // modules here would strip `file` from React state without ever giving it
+  // the resulting URL back, leaving materials stuck on "uploads when saved".
   const pending: Array<{ key: string; file: File }> = [];
-  for (const module of options.modules || []) {
-    for (const material of (module.materials || []) as MaterialDraft[]) {
-      if (!material || typeof material !== "object") continue;
-      if (material.url || material.publicId || !material.file) continue;
+  const modules = (options.modules || []).map((module) => {
+    const materials = ((module.materials || []) as MaterialDraft[]).map((material) => {
+      if (!material || typeof material !== "object") return material;
+      const { file, ...rest } = material;
+      if (rest.url || rest.publicId || !file) return rest;
       const key = `m${pending.length}`;
-      pending.push({ key, file: material.file });
-      material.fileKey = key;
-      delete material.file;
-    }
-  }
-  body.modules = options.modules || [];
+      pending.push({ key, file });
+      return { ...rest, fileKey: key };
+    });
+    return { ...module, materials };
+  });
+  body.modules = modules;
 
   form.append("payload", JSON.stringify(body));
 

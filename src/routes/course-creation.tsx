@@ -1246,10 +1246,10 @@ export default function CourseCreation() {
     const integerPart = parts[0] || '';
     const decimalPart = parts[1] || '';
 
-    // Add commas to integer part
+    // Add commas ONLY to integer part (never to decimal part)
     const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-    // Always include the decimal point if it was in the input
+    // Combine: formatted integer with untouched decimal part
     if (hasDecimal) {
       return `${formattedInteger}.${decimalPart}`;
     }
@@ -1268,7 +1268,12 @@ export default function CourseCreation() {
     if (formData.price === 0) {
       setPriceInput('');
     } else {
-      setPriceInput(formData.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+      // When setting from autofill or external source, format properly
+      const numStr = formData.price.toString();
+      const parts = numStr.split('.');
+      const formattedInteger = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      const decimalPart = parts[1] || '';
+      setPriceInput(decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger);
     }
   }, [formData.price]);
 

@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, User, Mail, Phone, MapPin, Receipt, Save, Shield, CheckCircle, Building, UserCircle, CreditCard, Building2 as CorporateFare, MailCheck, RefreshCw } from "lucide-react";
 import { createOrganization, fetchOrganizationById, updateOrganization } from "@/lib/organizations";
 import type { OrganizationRecord } from "@/lib/organizations";
+import { COUNTRIES, getStatesForCountry } from "@/lib/location-data";
 import { toast } from "sonner";
 
 const ORGANIZATION_TYPES = [
@@ -33,23 +34,6 @@ const INDUSTRIES = [
   "Petrochemicals",
   "Offshore Marine & Drilling",
   "Renewable Energy",
-];
-
-const STATES = [
-  "Lagos State",
-  "Rivers State",
-  "Delta State",
-  "Akwa Ibom State",
-  "Bayelsa State",
-  "FCT Abuja",
-];
-
-const COUNTRIES = [
-  "Nigeria",
-  "Ghana",
-  "Equatorial Guinea",
-  "United Kingdom",
-  "United States",
 ];
 
 type FormData = {
@@ -76,6 +60,11 @@ type FormData = {
   billing_notes?: string;
   sync_billing: boolean;
   status: string;
+  billing_contact_hidden?: string;
+  billing_email_hidden?: string;
+  billing_address_hidden?: string;
+  logo_url?: string;
+  logo_file?: File | null;
 };
 
 export default function OrganizationCreation() {
@@ -85,19 +74,20 @@ export default function OrganizationCreation() {
   const [success, setSuccess] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingOrganizationId, setEditingOrganizationId] = useState<string | null>(null);
+  const [states, setStates] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
     cac_rc_number: "",
-    organization_type: "IOC / E&P Operator",
-    industry: "Upstream Oil & Gas",
+    organization_type: "",
+    industry: "",
     website: "",
     email: "",
     phone: "",
     address: "",
     city: "",
-    state: "Lagos State",
-    country: "Nigeria",
+    state: "",
+    country: "",
     primary_contact_name: "",
     primary_contact_title: "",
     primary_contact_email: "",
@@ -110,6 +100,11 @@ export default function OrganizationCreation() {
     billing_notes: "",
     sync_billing: true,
     status: "ACTIVE",
+    billing_contact_hidden: "",
+    billing_email_hidden: "",
+    billing_address_hidden: "",
+    logo_url: "",
+    logo_file: null,
   });
 
   // Load organization data if in edit mode
@@ -137,17 +132,22 @@ export default function OrganizationCreation() {
             state: org.state || "",
             country: org.country || "",
             primary_contact_name: org.primary_contact || "",
-            primary_contact_title: "",
+            primary_contact_title: org.primary_contact_title || "",
             primary_contact_email: org.email || "",
             primary_contact_phone: org.phone || "",
             invite_to_portal: true,
-            billing_contact: org.primary_contact || "",
-            billing_email: org.email || "",
-            billing_address: org.address || "",
+            billing_contact: "",
+            billing_email: "",
+            billing_address: "",
             tax_id: "",
             billing_notes: "",
             sync_billing: true,
             status: org.status || "ACTIVE",
+            billing_contact_hidden: org.primary_contact || "",
+            billing_email_hidden: org.email || "",
+            billing_address_hidden: org.address || "",
+            logo_url: org.logo_url || "",
+            logo_file: null,
           });
 
           toast.success("Organization loaded successfully", {
@@ -164,6 +164,22 @@ export default function OrganizationCreation() {
       loadOrganization();
     }
   }, [searchParams, navigate]);
+
+  // Set states based on selected country and clear state when country changes
+  useEffect(() => {
+    if (formData.country) {
+      const countryStates = getStatesForCountry(formData.country);
+      setStates(countryStates);
+
+      // Only clear state if the current state is not valid for the new country
+      // This preserves the state when loading from API
+      if (formData.state && !countryStates.includes(formData.state)) {
+        setFormData((prev) => ({ ...prev, state: "" }));
+      }
+    } else {
+      setStates([]);
+    }
+  }, [formData.country]);
 
   const updateFormData = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -182,12 +198,36 @@ export default function OrganizationCreation() {
     try {
       setLoading(true);
 
-      const payload = {
+      // Convert logo file to base64 if present
+      let logoBase64 = "";
+      if (formData.logo_file) {
+        logoBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]); // Remove data URL prefix
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(formData.logo_file);
+        });
+      }
+
+      // If sync_billing is true, override billing fields with organization/primary contact fields
+      const finalPayload = {
         ...formData,
         organization_type: formData.organization_type,
         primary_contact: formData.primary_contact_name,
+        primary_contact_title: formData.primary_contact_title,
+        billing_contact: formData.sync_billing ? formData.primary_contact_name : formData.billing_contact,
+        billing_email: formData.sync_billing ? formData.primary_contact_email : formData.billing_email,
+        billing_address: formData.sync_billing ? formData.address : formData.billing_address,
+        logo_base64: logoBase64,
+        logo_url: logoBase64 ? null : formData.logo_url, // Only send logo_url if no new file
         status: publish ? "ACTIVE" : "DRAFT",
       };
+
+      // Remove internal fields from payload
+      const { billing_contact_hidden, billing_email_hidden, billing_address_hidden, logo_file, ...payload } = finalPayload;
 
       let organization;
       if (isEditMode && editingOrganizationId) {
@@ -221,11 +261,55 @@ export default function OrganizationCreation() {
     if (sync) {
       setFormData((prev) => ({
         ...prev,
+        billing_contact_hidden: prev.primary_contact_name,
+        billing_email_hidden: prev.primary_contact_email,
+        billing_address_hidden: prev.address,
         billing_contact: prev.primary_contact_name,
         billing_email: prev.primary_contact_email,
         billing_address: prev.address,
       }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        billing_contact: prev.billing_contact_hidden || "",
+        billing_email: prev.billing_email_hidden || "",
+        billing_address: prev.billing_address_hidden || "",
+      }));
     }
+  };
+
+  const handleAutoFill = () => {
+    setFormData({
+      name: "Sample Energy Corporation",
+      cac_rc_number: "RC-123456",
+      organization_type: "IOC / E&P Operator",
+      industry: "Upstream Oil & Gas",
+      website: "https://sampleenergy.com",
+      email: "contact@sampleenergy.com",
+      phone: "+234 801 234 5678",
+      address: "123 Energy Plaza, Victoria Island",
+      city: "Lagos",
+      state: "Lagos",
+      country: "Nigeria",
+      primary_contact_name: "John Doe",
+      primary_contact_title: "Operations Manager",
+      primary_contact_email: "john.doe@sampleenergy.com",
+      primary_contact_phone: "+234 802 345 6789",
+      invite_to_portal: true,
+      billing_contact: "John Doe",
+      billing_email: "billing@sampleenergy.com",
+      billing_address: "123 Energy Plaza, Victoria Island, Lagos",
+      tax_id: "TAX-789012",
+      billing_notes: "Monthly invoicing preferred",
+      sync_billing: true,
+      status: "ACTIVE",
+      billing_contact_hidden: "John Doe",
+      billing_email_hidden: "john.doe@sampleenergy.com",
+      billing_address_hidden: "123 Energy Plaza, Victoria Island",
+      logo_url: "",
+      logo_file: null,
+    });
+    toast.success("Form auto-filled with sample data");
   };
 
   /* --------------------------------- success -------------------------------- */
@@ -258,7 +342,7 @@ export default function OrganizationCreation() {
           </span>
           <span className="text-muted-foreground">/</span>
           <span className="text-primary font-bold">
-            {isEditMode ? "Edit Organization" : "Add / Edit Organization"}
+            {isEditMode ? "Edit Organization" : "Add Organization"}
           </span>
         </nav>
 
@@ -272,23 +356,31 @@ export default function OrganizationCreation() {
               <span className="text-xs text-muted-foreground">Protocol: HSE-REG-v4.2</span>
             </div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-              {isEditMode ? "Edit Organization" : "Add / Edit Organization"}
+              {isEditMode ? "Edit Organization" : "Add Organization"}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               Manage corporate details, statutory identifiers, primary liaison, and invoicing configurations.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {!isEditMode && (
+              <Button variant="ghost" onClick={handleAutoFill} disabled={loading} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Auto Fill
+              </Button>
+            )}
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button variant="outline" onClick={() => handleSubmit(false)} disabled={loading}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
+            {!isEditMode && (
+              <Button variant="outline" onClick={() => handleSubmit(false)} disabled={loading}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Draft
+              </Button>
+            )}
             <Button onClick={() => handleSubmit(true)} disabled={loading} className="gap-2">
               <Building className="h-4 w-4" />
-              {loading ? "Saving..." : "Save Organization"}
+              {loading ? "Saving..." : (isEditMode ? "Save Changes" : "Save Organization")}
             </Button>
           </div>
         </div>
@@ -317,7 +409,7 @@ export default function OrganizationCreation() {
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
                     <span>Organization Name <span className="text-red-500">*</span></span>
-                    <span className="text-xs text-slate-400 font-normal">Required · As shown on official CAC Certificate of Incorporation</span>
+                    <span className="text-xs text-slate-400 font-normal">Required</span>
                   </Label>
                   <Input
                     placeholder="e.g. Chevron Nigeria Limited"
@@ -325,6 +417,58 @@ export default function OrganizationCreation() {
                     onChange={(e) => updateFormData("name", e.target.value)}
                     className="h-11"
                   />
+                </div>
+
+                {/* Company Logo */}
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                    <span>Company Logo</span>
+                    <span className="text-xs text-slate-400 font-normal">Optional</span>
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    {formData.logo_url || formData.logo_file ? (
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200">
+                        {formData.logo_file ? (
+                          <img
+                            src={URL.createObjectURL(formData.logo_file)}
+                            alt="Logo preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img
+                            src={formData.logo_url}
+                            alt="Logo"
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => updateFormData("logo_file", null)}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 border-dashed">
+                        <span className="text-slate-400 text-xs">No logo</span>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            updateFormData("logo_file", file);
+                          }
+                        }}
+                        className="h-11"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Upload company logo (PNG, JPG, or SVG)</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* CAC / RC Number (Optional) */}
@@ -349,7 +493,7 @@ export default function OrganizationCreation() {
                   </Label>
                   <Select value={formData.organization_type} onValueChange={(value) => updateFormData("organization_type", value)}>
                     <SelectTrigger className="h-11">
-                      <SelectValue />
+                      <SelectValue placeholder="Select organization type" />
                     </SelectTrigger>
                     <SelectContent>
                       {ORGANIZATION_TYPES.map((type) => (
@@ -369,7 +513,7 @@ export default function OrganizationCreation() {
                   </Label>
                   <Select value={formData.industry} onValueChange={(value) => updateFormData("industry", value)}>
                     <SelectTrigger className="h-11">
-                      <SelectValue />
+                      <SelectValue placeholder="Select industry" />
                     </SelectTrigger>
                     <SelectContent>
                       {INDUSTRIES.map((industry) => (
@@ -400,7 +544,6 @@ export default function OrganizationCreation() {
                 <div className="flex flex-col gap-2">
                   <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
                     <span>Organization Email</span>
-                    <span className="text-xs text-slate-400 font-normal">General dispatch & correspondence</span>
                   </Label>
                   <Input
                     placeholder="info@chevron.com"
@@ -430,7 +573,7 @@ export default function OrganizationCreation() {
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
                     <span>Address</span>
-                    <span className="text-xs text-slate-400 font-normal">Street / Operational headquarters address</span>
+                    <span className="text-xs text-slate-400 font-normal">Optional</span>
                   </Label>
                   <Input
                     placeholder="e.g. Chevron Drive, Lekki Peninsula, Lagos"
@@ -442,35 +585,16 @@ export default function OrganizationCreation() {
 
                 {/* City, State, Country (3 Columns) */}
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  
+                  
                   <div className="flex flex-col gap-2">
-                    <Label className="text-sm font-medium text-slate-700">City</Label>
-                    <Input
-                      placeholder="e.g. Lekki / Port Harcourt"
-                      value={formData.city}
-                      onChange={(e) => updateFormData("city", e.target.value)}
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-sm font-medium text-slate-700">State / Province</Label>
-                    <Select value={formData.state} onValueChange={(value) => updateFormData("state", value)}>
-                      <SelectTrigger className="h-11">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATES.map((state) => (
-                          <SelectItem key={state} value={state}>
-                            {state}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-sm font-medium text-slate-700">Country</Label>
+                    <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                      <span>Country</span>
+                      <span className="text-xs text-slate-400 font-normal">Optional</span>
+                    </Label>
                     <Select value={formData.country} onValueChange={(value) => updateFormData("country", value)}>
                       <SelectTrigger className="h-11">
-                        <SelectValue />
+                        <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
                         {COUNTRIES.map((country) => (
@@ -480,6 +604,38 @@ export default function OrganizationCreation() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                      <span>State / Province</span>
+                      <span className="text-xs text-slate-400 font-normal">Optional</span>
+                    </Label>
+                    <Select value={formData.state} onValueChange={(value) => updateFormData("state", value)} disabled={!formData.country}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder={states.length > 0 ? "Select state (optional)" : "No states available for this country"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {states.map((state) => (
+                          <SelectItem key={state} value={state}>
+                            {state}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                      <span>City</span>
+                      <span className="text-xs text-slate-400 font-normal">Optional</span>
+                    </Label>
+                    <Input
+                      placeholder="e.g. Lekki / Port Harcourt"
+                      value={formData.city}
+                      onChange={(e) => updateFormData("city", e.target.value)}
+                      className="h-11"
+                    />
                   </div>
                 </div>
               </div>
@@ -603,52 +759,56 @@ export default function OrganizationCreation() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Billing Contact */}
-                <div className="flex flex-col gap-2">
-                  <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
-                    <span>Billing Contact</span>
-                    <span className="text-xs text-slate-400 font-normal">Accounts Payable lead</span>
-                  </Label>
-                  <Input
-                    placeholder="e.g. Mrs. Funke Adeyemi"
-                    value={formData.billing_contact}
-                    onChange={(e) => updateFormData("billing_contact", e.target.value)}
-                    className="h-11"
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {!formData.sync_billing && (
+                  <>
+                    {/* Billing Contact */}
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                        <span>Billing Contact</span>
+                        <span className="text-xs text-slate-400 font-normal">Accounts Payable lead</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. Mrs. Funke Adeyemi"
+                        value={formData.billing_contact}
+                        onChange={(e) => updateFormData("billing_contact", e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
 
-                {/* Billing Email */}
-                <div className="flex flex-col gap-2">
-                  <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
-                    <span>Billing Email</span>
-                    <span className="text-xs text-slate-400 font-normal">For e-invoicing pipelines</span>
-                  </Label>
-                  <Input
-                    placeholder="e.g. invoicing.nigeria@chevron.com"
-                    type="email"
-                    value={formData.billing_email}
-                    onChange={(e) => updateFormData("billing_email", e.target.value)}
-                    className="h-11"
-                  />
-                </div>
+                    {/* Billing Email */}
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                        <span>Billing Email</span>
+                        <span className="text-xs text-slate-400 font-normal">For e-invoicing pipelines</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. invoicing.nigeria@chevron.com"
+                        type="email"
+                        value={formData.billing_email}
+                        onChange={(e) => updateFormData("billing_email", e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
 
-                {/* Billing Address */}
-                <div className="flex flex-col gap-2 md:col-span-2">
-                  <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
-                    <span>Billing Address</span>
-                    <span className="text-xs text-slate-400 font-normal">Corporate HQ / Invoicing Office</span>
-                  </Label>
-                  <Input
-                    placeholder="e.g. Chevron Drive, Lekki Peninsula, Lagos"
-                    value={formData.billing_address}
-                    onChange={(e) => updateFormData("billing_address", e.target.value)}
-                    className="h-11"
-                  />
-                </div>
+                    {/* Billing Address */}
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                      <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                        <span>Billing Address</span>
+                        <span className="text-xs text-slate-400 font-normal">Corporate HQ / Invoicing Office</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. Chevron Drive, Lekki Peninsula, Lagos"
+                        value={formData.billing_address}
+                        onChange={(e) => updateFormData("billing_address", e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {/* Tax ID (Optional) */}
-                <div className="flex flex-col gap-2 md:col-span-2">
+                <div className="flex flex-col gap-2 md:col-span-2 ">
                   <Label className="text-sm font-medium text-slate-700 flex items-center justify-between">
                     <span>Tax ID (TIN / VAT / WHT)</span>
                     <span className="text-xs text-slate-400 font-normal">Optional</span>
@@ -688,9 +848,27 @@ export default function OrganizationCreation() {
                 <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs font-bold">READY</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-emerald-600 shrink-0">
-                  <Building2 className="h-7 w-7" />
-                </div>
+                {(formData.logo_url || formData.logo_file) ? (
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
+                    {formData.logo_file ? (
+                      <img
+                        src={URL.createObjectURL(formData.logo_file)}
+                        alt="Logo preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={formData.logo_url}
+                        alt="Logo"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <Building2 className="h-7 w-7" />
+                  </div>
+                )}
                 <div className="flex flex-col min-w-0">
                   <span className="text-base font-bold text-slate-900 truncate">{formData.name || "Organization Legal Name"}</span>
                   <span className="text-xs text-slate-500 truncate">{formData.organization_type || "Organization Type"}</span>
@@ -708,7 +886,9 @@ export default function OrganizationCreation() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Location</span>
                   <span className="text-slate-900 truncate max-w-[160px] text-right">
-                    {formData.city && formData.country ? `${formData.city}, ${formData.country}` : "—"}
+                    {formData.city && formData.country
+                      ? `${formData.city}${formData.state ? `, ${formData.state}` : ""}, ${formData.country}`
+                      : "—"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200">

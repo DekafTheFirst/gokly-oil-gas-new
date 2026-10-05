@@ -6,6 +6,7 @@ export interface OrganizationRecord {
   name: string;
   organization_type?: string;
   primary_contact?: string;
+  primary_contact_title?: string;
   email?: string;
   phone?: string;
   address?: string;
@@ -19,6 +20,7 @@ export interface OrganizationRecord {
   status: string;
   created_at: string;
   updated_at?: string;
+  logo_url?: string;
 }
 
 export interface OrganizationPagination {

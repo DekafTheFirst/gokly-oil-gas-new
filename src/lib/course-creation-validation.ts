@@ -38,6 +38,8 @@ const step1Schema = z
     prerequisite_type: z.enum(["internal", "external"]),
     prerequisite_course_id: z.number().nullable(),
     prerequisite_description: z.string(),
+    price: z.number().min(0, "Price must be a positive number or zero.").default(0),
+    currency: z.string().default("NGN"),
   })
   .superRefine((v, ctx) => {
     if (v.prerequisite_required) {

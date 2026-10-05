@@ -11,7 +11,7 @@
  * sample data can be asserted on without rendering the form.
  */
 
-import type { CourseModule } from "./course-submission";
+import type { CourseModule } from "./courses";
 
 /* Console/dev hook so the fill can be triggered from DevTools too. */
 declare global {
@@ -126,6 +126,8 @@ export type SampleCourse = {
   certificate_license_id: string;
   certificate_id_prefix: string;
   thumbnail_url: string;
+  price: number;
+  currency: string;
   modules: CourseModule[];
   expandedModules: number[];
   has_final_assessment: boolean;
@@ -177,6 +179,8 @@ export function buildSampleCourse(attempt = 1, stamp = Date.now()): SampleCourse
     certificate_license_id: "",
     certificate_id_prefix: "DEMO",
     thumbnail_url: demoThumbnailFallbackUrl(),
+    price: 150000,
+    currency: "NGN",
     modules: sampleModules(),
     expandedModules: [0],
     has_final_assessment: true,

@@ -306,6 +306,8 @@ type FormData = {
   prerequisite_description: string;
   individual_enrollment_enabled: boolean;
   certificate_enabled: boolean;
+  price: number;
+  currency: string;
   // Certificate step (Step 5) — credential automation + template binding.
   // `certificate_enabled` gates issuance; the design fields below drive the
   // live preview + ID syntax builder (frontend-only until backend columns land).
@@ -985,6 +987,8 @@ export default function CourseCreation() {
     prerequisite_description: "",
     individual_enrollment_enabled: true,
     certificate_enabled: true,
+    price: 0,
+    currency: "NGN",
     // Certificate step (Step 5) design defaults — mirrors the reference
     // certificate canvas (title, Gold Foil template, auto issuance, 2-year
     // validity, hyphen / YY / 3-digit ID syntax). The ID prefix starts empty
@@ -1108,6 +1112,8 @@ export default function CourseCreation() {
         certificate_authority: sample.certificate_authority,
         certificate_license_id: sample.certificate_license_id,
         certificate_id_prefix: sample.certificate_id_prefix,
+        price: sample.price,
+        currency: sample.currency,
         thumbnail_file: picture,
         /* Same convention as the file input below: an object URL drives the
            preview. handleSubmit overwrites it with the uploaded URL before the
@@ -1212,6 +1218,61 @@ export default function CourseCreation() {
       return next;
     });
   };
+
+  const formatPriceWithCommas = (value: string): string => {
+    // Don't format if empty
+    if (!value) return '';
+
+    // Allow only digits and decimal point
+    const cleaned = value.replace(/[^\d.]/g, '');
+
+    // If it's just a decimal point, return it
+    if (cleaned === '.') return '.';
+
+    // Ensure only one decimal point
+    const lastDotIndex = cleaned.lastIndexOf('.');
+    if (lastDotIndex !== cleaned.indexOf('.')) {
+      // Multiple dots, keep only the last one
+      const beforeLastDot = cleaned.substring(0, lastDotIndex).replace(/\./g, '');
+      const afterLastDot = cleaned.substring(lastDotIndex + 1);
+      return `${beforeLastDot}.${afterLastDot}`;
+    }
+
+    // Check if there's a decimal point
+    const hasDecimal = cleaned.includes('.');
+
+    // Split by decimal point
+    const parts = cleaned.split('.');
+    const integerPart = parts[0] || '';
+    const decimalPart = parts[1] || '';
+
+    // Add commas to integer part
+    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    // Always include the decimal point if it was in the input
+    if (hasDecimal) {
+      return `${formattedInteger}.${decimalPart}`;
+    }
+
+    return formattedInteger;
+  };
+
+  const parsePrice = (value: string): number => {
+    const cleaned = value.replace(/[^\d.]/g, '');
+    return parseFloat(cleaned) || 0;
+  };
+
+  const [priceInput, setPriceInput] = useState('');
+
+  useEffect(() => {
+    if (formData.price === 0) {
+      setPriceInput('');
+    } else {
+      setPriceInput(formData.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+    }
+  }, [formData.price]);
+
+
 
   const setExternalAuthority = (authority: string) => {
     clearErrorsFor((k) => k === "certificate_authority");
@@ -1925,6 +1986,25 @@ export default function CourseCreation() {
                       </button>
                     );
                   })}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+                  <div className="space-y-2">
+                    <FieldLabel htmlFor="price">Price (NGN)</FieldLabel>
+                    <Input
+                      id="price"
+                      type="text"
+                      value={priceInput}
+                      onChange={(e) => {
+                        const formatted = formatPriceWithCommas(e.target.value);
+                        setPriceInput(formatted);
+                        updateFormData("price", parsePrice(formatted));
+                      }}
+                      className="h-11 border-slate-200 bg-slate-50/70 text-sm"
+                      placeholder="0.00"
+                    />
+                    <p className="text-[11px] text-slate-500">Set to 0 for free courses</p>
+                  </div>
                 </div>
               </div>
 

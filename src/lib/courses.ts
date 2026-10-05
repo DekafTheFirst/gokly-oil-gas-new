@@ -28,6 +28,8 @@ export interface CourseRecord {
   image?: string | null;
   min_class_size?: number;
   max_class_size?: number;
+  price?: number;
+  currency?: string;
   prerequisite_required?: boolean;
   prerequisite_type?: "internal" | "external" | null;
   prerequisite_course_id?: number | null;
@@ -65,6 +67,7 @@ export interface CourseModule {
   name: string;
   description?: string;
   has_assessment?: boolean;
+  scheduled_date?: string;
   // Inline per-module assessment setup (configured at module-creation time, Step 2).
   // Persisted to the backend as part of the module payload; unknown keys are
   // ignored by older backends, and the `has_assessment` flag always stays in sync.

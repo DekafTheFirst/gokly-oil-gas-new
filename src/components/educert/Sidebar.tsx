@@ -12,6 +12,7 @@ import {
   type LucideIcon,
   User,
   Building2,
+  Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -19,6 +20,7 @@ type Item = { to: string; label: string; icon: LucideIcon };
 
 const ADMIN_ITEMS: Item[] = [
   { to: "/training/admin", label: "Dashboard", icon: ShieldCheck },
+  { to: "/training/engagement-management", label: "Engagements", icon: Briefcase },
   { to: "/training/certificate-management", label: "Certificate Management", icon: Award },
   { to: "/training/user-management", label: "User Management", icon: User },
   { to: "/training/course-management", label: "Course Management", icon: BookOpen },

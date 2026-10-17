@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { AdminPageShell } from "@/components/educert/AdminPageShell";
 
 export default function EngagementManagement() {
   const navigate = useNavigate();
@@ -16,8 +17,8 @@ export default function EngagementManagement() {
   const [stats, setStats] = useState<EngagementStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [organizationFilter, setOrganizationFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("none");
+  const [organizationFilter, setOrganizationFilter] = useState("none");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -31,7 +32,13 @@ export default function EngagementManagement() {
   const loadEngagements = async () => {
     try {
       setLoading(true);
-      const response = await fetchEngagements(currentPage, 10, search, statusFilter, organizationFilter);
+      const response = await fetchEngagements(
+        currentPage,
+        10,
+        search,
+        statusFilter === "none" ? "" : statusFilter,
+        organizationFilter === "none" ? "" : organizationFilter
+      );
       setEngagements(response.engagements);
       setTotalPages(response.pagination.totalPages);
       setTotal(response.pagination.total);
@@ -67,12 +74,12 @@ export default function EngagementManagement() {
   };
 
   const handleStatusChange = (value: string) => {
-    setStatusFilter(value);
+    setStatusFilter(value === "none" ? "" : value);
     setCurrentPage(1);
   };
 
   const handleOrganizationChange = (value: string) => {
-    setOrganizationFilter(value);
+    setOrganizationFilter(value === "none" ? "" : value);
     setCurrentPage(1);
   };
 
@@ -141,7 +148,8 @@ export default function EngagementManagement() {
   };
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-6 py-6 space-y-6">
+    <AdminPageShell withSidebar>
+      <div className="w-full max-w-[1280px] mx-auto px-6 py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4">
         <div className="space-y-2">
@@ -171,11 +179,10 @@ export default function EngagementManagement() {
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Total Engagements</span>
-              <Briefcase className="h-5 w-5 bg-secondary-container/30 p-1.5 rounded-lg text-primary" />
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-blue-500/20 opacity-60">
+              <Briefcase className="h-3 w-3 text-blue-500" />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 relative z-10">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold">{stats.total_engagements}</span>
                 <span className="text-xs font-bold text-primary">Active SOWs</span>
@@ -185,53 +192,49 @@ export default function EngagementManagement() {
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Draft</span>
-              <FileText className="h-5 w-5 bg-tertiary-fixed/30 p-1.5 rounded-lg text-tertiary" />
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-400/20 opacity-60">
+              <FileText className="h-3 w-3 text-gray-400" />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 relative z-10">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold">{stats.draft_count}</span>
-                <span className="text-xs font-bold text-tertiary">In Review</span>
+                <span className="text-xs font-bold text-gray-400">In Review</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Pending commercial sign-off</p>
             </div>
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Active</span>
-              <Clock className="h-5 w-5 bg-secondary-container/40 p-1.5 rounded-lg text-primary-container" />
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-green-500/20 opacity-60">
+              <Clock className="h-3 w-3 text-green-500" />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 relative z-10">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold">{stats.active_count}</span>
-                <span className="text-xs font-bold text-primary-container">Executing</span>
+                <span className="text-xs font-bold text-green-500">Executing</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Active across field batches</p>
             </div>
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Completed</span>
-              <CheckCircle2 className="h-5 w-5 bg-muted p-1.5 rounded-lg text-muted-foreground" />
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-emerald-500/20 opacity-60">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 relative z-10">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold">{stats.completed_count}</span>
-                <span className="text-xs font-bold text-muted-foreground">Reconciled</span>
+                <span className="text-xs font-bold text-emerald-500">Reconciled</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Fully trained & certified</p>
             </div>
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Outstanding</span>
-              <Wallet className="h-5 w-5 bg-tertiary-fixed/30 p-1.5 rounded-lg text-tertiary" />
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-orange-500/20 opacity-60">
+              <Wallet className="h-3 w-3 text-orange-500" />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 relative z-10">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold">{formatCurrency(stats.outstanding_count)}</span>
               </div>
@@ -259,7 +262,7 @@ export default function EngagementManagement() {
                 <SelectValue placeholder="Status: All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Status: All</SelectItem>
+                <SelectItem value="none">Status: All</SelectItem>
                 <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="CONFIRMED">Confirmed / Active</SelectItem>
                 <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
@@ -273,8 +276,8 @@ export default function EngagementManagement() {
                 <SelectValue placeholder="Org: All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Org: All Organizations</SelectItem>
-                {organizations.map((org) => (
+                <SelectItem value="none">Org: All Organizations</SelectItem>
+                {organizations.filter(org => org.id).map((org) => (
                   <SelectItem key={org.id} value={org.id}>
                     {org.name}
                   </SelectItem>
@@ -282,8 +285,8 @@ export default function EngagementManagement() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="icon" onClick={() => { setSearch(""); setStatusFilter(""); setOrganizationFilter(""); setCurrentPage(1); }}>
-              <FilterAltOff className="h-4 w-4" />
+            <Button variant="outline" size="icon" onClick={() => { setSearch(""); setStatusFilter("none"); setOrganizationFilter("none"); setCurrentPage(1); }}>
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -426,5 +429,6 @@ export default function EngagementManagement() {
         </div>
       </div>
     </div>
+    </AdminPageShell>
   );
 }

@@ -7,10 +7,10 @@ import hazmatImg from "@/assets/course-hazmat.jpg";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 
 const stats = [
-  { label: "Training Streak", value: "14 Days", icon: Flame, sub: "Top 5% of Terminal 4 staff", tone: "text-energy-foreground" },
-  { label: "Course Hours", value: "128.5", icon: Clock, sub: "+12.4h from last month", tone: "text-primary" },
-  { label: "Certifications", value: "09", icon: BadgeCheck, sub: "Active & Compliant", tone: "text-primary" },
-  { label: "Global Rank", value: "#242", icon: Trophy, sub: "Across all offshore facilities", tone: "text-primary-deep" },
+  { label: "Training Streak", value: "14 Days", icon: Flame, sub: "Top 5% of Terminal 4 staff", tone: "text-energy-foreground", bg: "bg-gradient-to-br from-orange-500/10 to-orange-600/5", iconBg: "bg-orange-500/20", iconColor: "text-orange-500" },
+  { label: "Course Hours", value: "128.5", icon: Clock, sub: "+12.4h from last month", tone: "text-primary", bg: "bg-gradient-to-br from-blue-500/10 to-blue-600/5", iconBg: "bg-blue-500/20", iconColor: "text-blue-500" },
+  { label: "Certifications", value: "09", icon: BadgeCheck, sub: "Active & Compliant", tone: "text-primary", bg: "bg-gradient-to-br from-emerald-500/10 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-500" },
+  { label: "Global Rank", value: "#242", icon: Trophy, sub: "Across all offshore facilities", tone: "text-primary-deep", bg: "bg-gradient-to-br from-purple-500/10 to-purple-600/5", iconBg: "bg-purple-500/20", iconColor: "text-purple-500" },
 ];
 
 function displayName(user: { first_name?: string; last_name?: string; name?: string; email?: string } | null | undefined) {
@@ -43,13 +43,19 @@ export default function Dashboard() {
         </section>
         <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.label} className="rounded-xl bg-card p-5 shadow-[var(--shadow-card)]">
-              <div className="flex items-start justify-between">
-                <p className="label-eyebrow">{s.label}</p>
-                <s.icon className={`h-5 w-5 ${s.tone}`} />
+            <div key={s.label} className={`rounded-xl ${s.bg} bg-card p-5 shadow-[var(--shadow-card)] hover:shadow-lg transition-shadow duration-200 relative overflow-hidden`}>
+              <div className={`absolute top-0 right-0 w-16 h-16 rounded-bl-2xl ${s.iconBg} opacity-40`} />
+              <div className={`absolute top-2 right-2 p-1.5 rounded-md ${s.iconBg} opacity-60`}>
+                <s.icon className={`h-3 w-3 ${s.iconColor}`} />
               </div>
-              <p className="mt-3 font-display text-3xl font-extrabold">{s.value}</p>
-              <p className="mt-2 text-xs text-muted-foreground">{s.sub}</p>
+              <div className="flex items-start justify-between relative z-10">
+                <p className="label-eyebrow text-xs font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                <div className={`p-2 rounded-lg ${s.iconBg}`}>
+                  <s.icon className={`h-5 w-5 ${s.iconColor}`} />
+                </div>
+              </div>
+              <p className="mt-3 font-display text-3xl font-extrabold tracking-tight relative z-10">{s.value}</p>
+              <p className="mt-2 text-xs text-muted-foreground font-medium relative z-10">{s.sub}</p>
             </div>
           ))}
         </section>

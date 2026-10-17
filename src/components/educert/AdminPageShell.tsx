@@ -31,7 +31,7 @@ export function AdminPageShell({ children, withSidebar = false, searchPlaceholde
   }, [mobileNavOpen, closeMobileNav]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background" style={{ backgroundColor: "#f7f8f9" }}>
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <AdminTopNav
         searchPlaceholder={searchPlaceholder}
         onMenuClick={withSidebar ? () => setMobileNavOpen(true) : undefined}

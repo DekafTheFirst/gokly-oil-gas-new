@@ -138,6 +138,7 @@ export default function EngagementManagement() {
   };
 
   const getOrganizationInitials = (name: string) => {
+    console.log(name)
     if (!name) return "OR";
     return name
       .split(" ")
@@ -179,11 +180,11 @@ export default function EngagementManagement() {
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-blue-500/20 opacity-60">
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-blue-500/20 opacity-90">
               <Briefcase className="h-3 w-3 text-blue-500" />
             </div>
             <div className="mt-4 relative z-10">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-col">
                 <span className="text-3xl font-bold">{stats.total_engagements}</span>
                 <span className="text-xs font-bold text-primary">Active SOWs</span>
               </div>
@@ -192,11 +193,11 @@ export default function EngagementManagement() {
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-400/20 opacity-60">
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-400/20 opacity-90">
               <FileText className="h-3 w-3 text-gray-400" />
             </div>
             <div className="mt-4 relative z-10">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-col">
                 <span className="text-3xl font-bold">{stats.draft_count}</span>
                 <span className="text-xs font-bold text-gray-400">In Review</span>
               </div>
@@ -205,11 +206,11 @@ export default function EngagementManagement() {
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-green-500/20 opacity-60">
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-green-500/20 opacity-90">
               <Clock className="h-3 w-3 text-green-500" />
             </div>
             <div className="mt-4 relative z-10">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-col">
                 <span className="text-3xl font-bold">{stats.active_count}</span>
                 <span className="text-xs font-bold text-green-500">Executing</span>
               </div>
@@ -218,11 +219,11 @@ export default function EngagementManagement() {
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-emerald-500/20 opacity-60">
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-emerald-500/20 opacity-90">
               <CheckCircle2 className="h-3 w-3 text-emerald-500" />
             </div>
             <div className="mt-4 relative z-10">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-col">
                 <span className="text-3xl font-bold">{stats.completed_count}</span>
                 <span className="text-xs font-bold text-emerald-500">Reconciled</span>
               </div>
@@ -231,11 +232,11 @@ export default function EngagementManagement() {
           </div>
 
           <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-orange-500/20 opacity-60">
+            <div className="absolute top-2 right-2 p-1.5 rounded-md bg-orange-500/20 opacity-90">
               <Wallet className="h-3 w-3 text-orange-500" />
             </div>
             <div className="mt-4 relative z-10">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-col">
                 <span className="text-2xl font-bold">{formatCurrency(stats.outstanding_count)}</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Pending billing/invoicing</p>
@@ -350,11 +351,11 @@ export default function EngagementManagement() {
                     </td>
                     <td className="py-4 px-4">
                       <Badge variant="secondary" className="text-xs">
-                        {engagement.item_count || 0} Courses / Svcs
+                        {engagement.item_count || 0}
                       </Badge>
                     </td>
                     <td className="py-4 px-4 font-semibold">
-                      {engagement.total_trainees || 0} Trainees
+                      {engagement.total_trainees || 0} 
                     </td>
                     <td className="py-4 px-4 text-muted-foreground text-xs">
                       {formatDate(engagement.expected_delivery_start)}

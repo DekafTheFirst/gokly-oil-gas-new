@@ -17,6 +17,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { formatNumberWithCommas, parseFormattedNumber } from "@/lib/number-format";
 import {
   Dialog,
   DialogContent,
@@ -1219,61 +1220,14 @@ export default function CourseCreation() {
     });
   };
 
-  const formatPriceWithCommas = (value: string): string => {
-    // Don't format if empty
-    if (!value) return '';
-
-    // Allow only digits and decimal point
-    const cleaned = value.replace(/[^\d.]/g, '');
-
-    // If it's just a decimal point, return it
-    if (cleaned === '.') return '.';
-
-    // Ensure only one decimal point
-    const lastDotIndex = cleaned.lastIndexOf('.');
-    if (lastDotIndex !== cleaned.indexOf('.')) {
-      // Multiple dots, keep only the last one
-      const beforeLastDot = cleaned.substring(0, lastDotIndex).replace(/\./g, '');
-      const afterLastDot = cleaned.substring(lastDotIndex + 1);
-      return `${beforeLastDot}.${afterLastDot}`;
-    }
-
-    // Check if there's a decimal point
-    const hasDecimal = cleaned.includes('.');
-
-    // Split by decimal point
-    const parts = cleaned.split('.');
-    const integerPart = parts[0] || '';
-    const decimalPart = parts[1] || '';
-
-    // Add commas ONLY to integer part (never to decimal part)
-    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-    // Combine: formatted integer with untouched decimal part
-    if (hasDecimal) {
-      return `${formattedInteger}.${decimalPart}`;
-    }
-
-    return formattedInteger;
-  };
-
-  const parsePrice = (value: string): number => {
-    const cleaned = value.replace(/[^\d.]/g, '');
-    return parseFloat(cleaned) || 0;
-  };
-
   const [priceInput, setPriceInput] = useState('');
 
   useEffect(() => {
     if (formData.price === 0) {
       setPriceInput('');
     } else {
-      // When setting from autofill or external source, format properly
-      const numStr = formData.price.toString();
-      const parts = numStr.split('.');
-      const formattedInteger = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      const decimalPart = parts[1] || '';
-      setPriceInput(decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger);
+      // When setting from autofill or an external source, format properly.
+      setPriceInput(formatNumberWithCommas(formData.price));
     }
   }, [formData.price]);
 
@@ -2001,9 +1955,9 @@ export default function CourseCreation() {
                       type="text"
                       value={priceInput}
                       onChange={(e) => {
-                        const formatted = formatPriceWithCommas(e.target.value);
+                        const formatted = formatNumberWithCommas(e.target.value);
                         setPriceInput(formatted);
-                        updateFormData("price", parsePrice(formatted));
+                        updateFormData("price", parseFormattedNumber(formatted));
                       }}
                       className="h-11 border-slate-200 bg-slate-50/70 text-sm"
                       placeholder="0.00"

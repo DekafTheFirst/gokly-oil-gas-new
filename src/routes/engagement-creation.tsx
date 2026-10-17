@@ -1,16 +1,86 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Info, Sparkles, CloudUpload, Scan, FileText, Badge as BadgeIcon, School, PlusCircle, Delete, Lightbulb, Building, CreditCard, CheckCircle, RefreshCw, Calendar } from "lucide-react";
+import { ChevronRight, Info, Sparkles, CloudUpload, Scan, FileText, Badge as BadgeIcon, School, PlusCircle, Delete, Lightbulb, Building, CreditCard, CheckCircle, RefreshCw, Calendar as CalendarIcon } from "lucide-react";
 import { createEngagement, type EngagementRecord, type EngagementItem } from "@/lib/engagements";
 import { fetchOrganizations, type OrganizationRecord } from "@/lib/organizations";
 import { fetchCourses, type CourseRecord } from "@/lib/courses";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
+import { format, parseISO } from "date-fns";
+
+interface DatePickerFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  minDate?: Date;
+}
+
+function DatePickerField({ label, value, onChange, minDate }: DatePickerFieldProps) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const selectedDate = value ? parseISO(value) : undefined;
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide">
+        {label}
+      </label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            aria-label={label}
+            aria-haspopup="dialog"
+            className="w-full justify-start text-left font-normal"
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {selectedDate ? format(selectedDate, "PPP") : <span className="text-muted-foreground">Select a date</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            disabled={minDate ? { before: minDate } : undefined}
+            onSelect={(date) => {
+              if (date && (!minDate || date >= minDate)) {
+                onChange(format(date, "yyyy-MM-dd"));
+                setOpen(false);
+              }
+            }}
+            initialFocus
+          />
+          {value && (
+            <div className="border-t p-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  onChange("");
+                  setOpen(false);
+                }}
+              >
+                Clear date
+              </Button>
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 export default function EngagementCreation() {
   const navigate = useNavigate();
@@ -18,7 +88,6 @@ export default function EngagementCreation() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [referenceId, setReferenceId] = useState("");
-  const [status, setStatus] = useState<"DRAFT" | "CONFIRMED">("DRAFT");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -123,6 +192,11 @@ export default function EngagementCreation() {
     return trainingItems.reduce((sum, item) => sum + calculateItemTotal(item), 0);
   };
 
+  const invalidDeliveryDates =
+    formData.expected_delivery_start &&
+    formData.expected_completion &&
+    formData.expected_completion < formData.expected_delivery_start;
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
@@ -133,13 +207,18 @@ export default function EngagementCreation() {
   };
 
   const handleSubmit = async (saveAsDraft: boolean = false) => {
+    if (invalidDeliveryDates) {
+      toast.error("Expected completion cannot be before the delivery start date");
+      return;
+    }
+
     try {
       setLoading(true);
 
       const engagementPayload: Partial<EngagementRecord> = {
         ...formData,
         reference_id: referenceId,
-        status: saveAsDraft ? "DRAFT" : status,
+        status: saveAsDraft ? "DRAFT" : "CONFIRMED",
         total_amount: calculateGrandTotal(),
         currency: formData.currency,
         items: trainingItems.map((item) => ({
@@ -197,21 +276,21 @@ export default function EngagementCreation() {
           </div>
         </div>
         {/* Alert Banner */}
-        <div className="bg-secondary-container/40 p-4 rounded-xl flex items-center justify-between gap-4">
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
               <Info className="h-4 w-4" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-semibold uppercase tracking-wide text-primary-foreground">
+              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
                 Fulfillment Flexibility Guaranteed
               </span>
-              <span className="text-xs text-primary-foreground/80">
+              <span className="text-xs text-emerald-800">
                 Confirming this commercial engagement commits seats and pricing without forcing immediate batch scheduling.
               </span>
             </div>
           </div>
-          <Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs font-bold uppercase tracking-wider">
+          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider">
             Commercial First
           </Badge>
         </div>
@@ -304,7 +383,17 @@ export default function EngagementCreation() {
               <label className="text-xs font-semibold uppercase tracking-wide">
                 Sponsor / Organization <span className="text-destructive">*</span>
               </label>
-              <Select value={formData.organization_id} onValueChange={(value) => handleInputChange("organization_id", value)}>
+              <Select
+                value={formData.organization_id}
+                onValueChange={(value) => {
+                  const selectedOrganization = organizations.find((org) => org.id === value);
+                  setFormData((current) => ({
+                    ...current,
+                    organization_id: value,
+                    primary_contact: selectedOrganization?.primary_contact || "",
+                  }));
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select organization" />
                 </SelectTrigger>
@@ -324,8 +413,8 @@ export default function EngagementCreation() {
                 <Input
                   className="pl-10"
                   value={formData.primary_contact}
-                  onChange={(e) => handleInputChange("primary_contact", e.target.value)}
-                  placeholder="Contact name and title"
+                  disabled
+                  placeholder={formData.organization_id ? "No representative assigned" : "Select an organization first"}
                 />
               </div>
             </div>
@@ -340,29 +429,34 @@ export default function EngagementCreation() {
                 onChange={(e) => handleInputChange("description", e.target.value)}
               />
             </div>
-            <div className="md:col-span-4 flex flex-col gap-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide">Agreement Execution Date</label>
-              <Input
-                type="date"
+            <div className="md:col-span-4">
+              <DatePickerField
+                label="Agreement Execution Date"
                 value={formData.agreement_execution_date}
-                onChange={(e) => handleInputChange("agreement_execution_date", e.target.value)}
+                onChange={(value) => handleInputChange("agreement_execution_date", value)}
               />
             </div>
-            <div className="md:col-span-4 flex flex-col gap-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide">Expected Delivery Start</label>
-              <Input
-                type="date"
+            <div className="md:col-span-4">
+              <DatePickerField
+                label="Expected Delivery Start"
                 value={formData.expected_delivery_start}
-                onChange={(e) => handleInputChange("expected_delivery_start", e.target.value)}
+                onChange={(value) => handleInputChange("expected_delivery_start", value)}
               />
             </div>
-            <div className="md:col-span-4 flex flex-col gap-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide">Expected Completion</label>
-              <Input
-                type="date"
-                value={formData.expected_completion}
-                onChange={(e) => handleInputChange("expected_completion", e.target.value)}
-              />
+            <div className="md:col-span-4">
+              <div className="space-y-1.5">
+                <DatePickerField
+                  label="Expected Completion"
+                  value={formData.expected_completion}
+                  minDate={formData.expected_delivery_start ? parseISO(formData.expected_delivery_start) : undefined}
+                  onChange={(value) => handleInputChange("expected_completion", value)}
+                />
+                {invalidDeliveryDates && (
+                  <p className="text-sm text-destructive" role="alert">
+                    Completion cannot be before the delivery start date.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -450,13 +544,11 @@ export default function EngagementCreation() {
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Unit Price (₦)
                     </label>
-                    <Input
-                      type="number"
+                    <FormattedNumberInput
                       min={0}
-                      readOnly={true}
-                      step={5000}
+                      disabled={true}
                       value={item.unit_price}
-                      onChange={(e) => handleTrainingItemChange(index, "unit_price", parseInt(e.target.value) || 0)}
+                      onValueChange={() => {}}
                     />
                   </div>
 
@@ -464,21 +556,21 @@ export default function EngagementCreation() {
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Agreed Quantity
                     </label>
-                    <Input
-                      type="number"
+                    <FormattedNumberInput
                       min={0}
+                      allowDecimal={false}
                       value={item.agreed_quantity}
-                      onChange={(e) => handleTrainingItemChange(index, "agreed_quantity", parseInt(e.target.value) || 0)}
+                      onValueChange={(value) => handleTrainingItemChange(index, "agreed_quantity", Number(value))}
                     />
                   </div>
                  
                   <div className="md:col-span-2 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
-                      Discount / Adjust
+                      Discount / Adjust (₦)
                     </label>
-                    <Input
-                      value={item.discount}
-                      onChange={(e) => handleTrainingItemChange(index, "discount", e.target.value)}
+                    <FormattedNumberInput
+                      value={item.discount ?? ""}
+                      onValueChange={(value) => handleTrainingItemChange(index, "discount", String(value))}
                     />
                   </div>
                   <div className="md:col-span-2 flex flex-col gap-1">
@@ -528,7 +620,7 @@ export default function EngagementCreation() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-primary">
-                <Calendar className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
               </div>
               <div>
                 <h2 className="text-xl font-bold">Section C — Delivery Planning & Quota Allocation</h2>
@@ -582,7 +674,7 @@ export default function EngagementCreation() {
             </div>
             <div className="md:col-span-3 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide">Billing Currency</label>
-              <Select value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)}>
+              <Select disabled={true} value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

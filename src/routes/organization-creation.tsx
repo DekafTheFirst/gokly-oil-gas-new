@@ -158,7 +158,7 @@ export default function OrganizationCreation() {
           toast.error("Failed to load organization", {
             description: err instanceof Error ? err.message : "Unable to fetch organization details",
           });
-          navigate("/admin/organization-management");
+          navigate("/training/organization-management");
         }
       };
       loadOrganization();
@@ -244,7 +244,7 @@ export default function OrganizationCreation() {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate("/admin/organization-management");
+        navigate("/training/organization-management");
       }, 2000);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save organization");
@@ -254,7 +254,7 @@ export default function OrganizationCreation() {
   };
 
   const handleCancel = () => {
-    navigate("/admin/organization-management");
+    navigate("/training/organization-management");
   };
 
   const syncBillingFields = (sync: boolean) => {
@@ -337,7 +337,7 @@ export default function OrganizationCreation() {
       <div className="page-padding">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/admin/organization-management")}>
+          <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/training/organization-management")}>
             Organizations & Sponsors
           </span>
           <span className="text-muted-foreground">/</span>

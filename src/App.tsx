@@ -72,9 +72,9 @@ const AppRoutes = () => {
         <Route path="/training/course-creation" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseCreation /></ProtectedRoute>} />
         <Route path="/training/course-creation-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseDetail /></ProtectedRoute>} />
         <Route path="/training/course/:courseId" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseDetail /></ProtectedRoute>} />
-        <Route path="/admin/organization-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationManagement /></ProtectedRoute>} />
-        <Route path="/admin/organization-creation" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
-        <Route path="/admin/organization-creation-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
+        <Route path="/training/organization-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationManagement /></ProtectedRoute>} />
+        <Route path="/training/organization-management/create" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
+        <Route path="/training/organization-management/create-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
         <Route path="/training/verify" element={<TrainingVerify />} />
         <Route path="/public-verification" element={<PublicVerification />} />
         <Route path="*" element={<NotFound />} />

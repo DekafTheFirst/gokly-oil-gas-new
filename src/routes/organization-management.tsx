@@ -78,7 +78,7 @@ export default function OrganizationManagement() {
             <h1 className="admin-page-title">Organization Management</h1>
             <p className="admin-page-subtitle">Create and manage corporate sponsors and training partners.</p>
           </div>
-          <Button onClick={() => navigate("/admin/organization-creation")}>
+          <Button onClick={() => navigate("/training/organization-management/create")}>
             <PlusCircle className="h-4 w-4" /> Create New Organization
           </Button>
         </div>
@@ -167,7 +167,7 @@ export default function OrganizationManagement() {
                       </td>
                       <td className="text-muted-foreground">{new Date(org.created_at).toLocaleDateString()}</td>
                       <td className="text-right">
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigate(`/admin/organization-creation-details?organizationId=${org.id}`); }}>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigate(`/training/organization-management/create-details?organizationId=${org.id}`); }}>
                           View
                         </Button>
                       </td>

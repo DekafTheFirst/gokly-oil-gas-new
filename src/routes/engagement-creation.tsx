@@ -414,13 +414,22 @@ export default function EngagementCreation() {
                     <Select
                       value={item.course_id?.toString() || ""}
                       onValueChange={(value) => {
-                        const selectedCourse = courses.find((c) => c.id === parseInt(value));
+                        const selectedCourse = courses.find((c) => c.id === Number(value));
                         if (selectedCourse) {
-                          handleTrainingItemChange(index, "course_name", selectedCourse.title);
-                          handleTrainingItemChange(index, "course_id", selectedCourse.id);
-                          if (selectedCourse.price !== undefined && selectedCourse.price !== null) {
-                            handleTrainingItemChange(index, "unit_price", selectedCourse.price);
-                          }
+                          setTrainingItems((currentItems) =>
+                            currentItems.map((currentItem, itemIndex) =>
+                              itemIndex === index
+                                ? {
+                                    ...currentItem,
+                                    course_id: selectedCourse.id,
+                                    course_name: selectedCourse.title,
+                                    ...(selectedCourse.price !== undefined && selectedCourse.price !== null
+                                      ? { unit_price: selectedCourse.price }
+                                      : {}),
+                                  }
+                                : currentItem,
+                            ),
+                          );
                         }
                       }}
                     >
@@ -436,6 +445,21 @@ export default function EngagementCreation() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                   <div className="md:col-span-2 flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Unit Price (₦)
+                    </label>
+                    <Input
+                      type="number"
+                      min={0}
+                      readOnly={true}
+                      step={5000}
+                      value={item.unit_price}
+                      onChange={(e) => handleTrainingItemChange(index, "unit_price", parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+
                   <div className="md:col-span-2 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Agreed Quantity
@@ -447,18 +471,7 @@ export default function EngagementCreation() {
                       onChange={(e) => handleTrainingItemChange(index, "agreed_quantity", parseInt(e.target.value) || 0)}
                     />
                   </div>
-                  <div className="md:col-span-2 flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
-                      Unit Price (₦)
-                    </label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={5000}
-                      value={item.unit_price}
-                      onChange={(e) => handleTrainingItemChange(index, "unit_price", parseInt(e.target.value) || 0)}
-                    />
-                  </div>
+                 
                   <div className="md:col-span-2 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Discount / Adjust

@@ -34,6 +34,8 @@ import CourseCreation from "./routes/course-creation";
 import CourseDetail from "./routes/course-creation-details";
 import OrganizationManagement from "./routes/organization-management";
 import OrganizationCreation from "./routes/organization-creation";
+import EngagementManagement from "./routes/engagement-management";
+import EngagementCreation from "./routes/engagement-creation";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +77,8 @@ const AppRoutes = () => {
         <Route path="/training/organization-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationManagement /></ProtectedRoute>} />
         <Route path="/training/organization-management/create" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
         <Route path="/training/organization-management/create-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
+        <Route path="/training/engagement-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EngagementManagement /></ProtectedRoute>} />
+        <Route path="/training/engagement-creation" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EngagementCreation /></ProtectedRoute>} />
         <Route path="/training/verify" element={<TrainingVerify />} />
         <Route path="/public-verification" element={<PublicVerification />} />
         <Route path="*" element={<NotFound />} />

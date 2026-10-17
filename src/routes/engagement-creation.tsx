@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronRight, Info, Sparkles, CloudUpload, Scan, FileText, Badge as BadgeIcon, School, PlusCircle, Delete, Lightbulb, Building, CreditCard, CheckCircle, RefreshCw, Calendar } from "lucide-react";
 import { createEngagement, type EngagementRecord, type EngagementItem } from "@/lib/engagements";
 import { fetchOrganizations, type OrganizationRecord } from "@/lib/organizations";
+import { fetchCourses, type CourseRecord } from "@/lib/courses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,7 @@ import { AdminPageShell } from "@/components/educert/AdminPageShell";
 export default function EngagementCreation() {
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [referenceId, setReferenceId] = useState("");
   const [status, setStatus] = useState<"DRAFT" | "CONFIRMED">("DRAFT");
@@ -35,6 +37,7 @@ export default function EngagementCreation() {
 
   const [trainingItems, setTrainingItems] = useState<EngagementItem[]>([
     {
+      course_id: undefined,
       course_name: "",
       agreed_quantity: 0,
       unit_price: 0,
@@ -45,6 +48,7 @@ export default function EngagementCreation() {
 
   useEffect(() => {
     loadOrganizations();
+    loadCourses();
     generateReferenceId();
   }, []);
 
@@ -54,6 +58,15 @@ export default function EngagementCreation() {
       setOrganizations(response);
     } catch (error) {
       console.error("Failed to load organizations:", error);
+    }
+  };
+
+  const loadCourses = async () => {
+    try {
+      const response = await fetchCourses();
+      setCourses(response);
+    } catch (error) {
+      console.error("Failed to load courses:", error);
     }
   };
 
@@ -71,6 +84,7 @@ export default function EngagementCreation() {
     setTrainingItems([
       ...trainingItems,
       {
+        course_id: undefined,
         course_name: "",
         agreed_quantity: 0,
         unit_price: 0,
@@ -89,6 +103,15 @@ export default function EngagementCreation() {
   const handleTrainingItemChange = (index: number, field: keyof EngagementItem, value: string | number) => {
     const updatedItems = [...trainingItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
+
+    // If course_name is changed, also update course_id
+    if (field === "course_name") {
+      const selectedCourse = courses.find((c) => c.title === value);
+      if (selectedCourse) {
+        updatedItems[index].course_id = selectedCourse.id;
+      }
+    }
+
     setTrainingItems(updatedItems);
   };
 
@@ -120,6 +143,7 @@ export default function EngagementCreation() {
         total_amount: calculateGrandTotal(),
         currency: formData.currency,
         items: trainingItems.map((item) => ({
+          course_id: item.course_id,
           course_name: item.course_name,
           agreed_quantity: item.agreed_quantity,
           unit_price: item.unit_price,
@@ -387,11 +411,30 @@ export default function EngagementCreation() {
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Accredited Course / Service
                     </label>
-                    <Input
-                      placeholder="Course name"
-                      value={item.course_name}
-                      onChange={(e) => handleTrainingItemChange(index, "course_name", e.target.value)}
-                    />
+                    <Select
+                      value={item.course_id?.toString() || ""}
+                      onValueChange={(value) => {
+                        const selectedCourse = courses.find((c) => c.id === parseInt(value));
+                        if (selectedCourse) {
+                          handleTrainingItemChange(index, "course_name", selectedCourse.title);
+                          handleTrainingItemChange(index, "course_id", selectedCourse.id);
+                          if (selectedCourse.price !== undefined && selectedCourse.price !== null) {
+                            handleTrainingItemChange(index, "unit_price", selectedCourse.price);
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a course" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses.map((course) => (
+                          <SelectItem key={course.id} value={course.id.toString()}>
+                            {course.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="md:col-span-2 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">

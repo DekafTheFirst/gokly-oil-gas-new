@@ -34,6 +34,7 @@ import CourseCreation from "./routes/course-creation";
 import CourseDetail from "./routes/course-creation-details";
 import OrganizationManagement from "./routes/organization-management";
 import OrganizationCreation from "./routes/organization-creation";
+import OrganizationDetails from "./routes/organization-details";
 import EngagementManagement from "./routes/engagement-management";
 import EngagementCreation from "./routes/engagement-creation";
 import EngagementDetails from "./routes/engagement-details";
@@ -76,6 +77,7 @@ const AppRoutes = () => {
         <Route path="/training/course-creation-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseDetail /></ProtectedRoute>} />
         <Route path="/training/course/:courseId" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseDetail /></ProtectedRoute>} />
         <Route path="/training/organization-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationManagement /></ProtectedRoute>} />
+        <Route path="/training/organization-management/:organizationId" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationDetails /></ProtectedRoute>} />
         <Route path="/training/organization-management/create" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
         <Route path="/training/organization-management/create-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><OrganizationCreation /></ProtectedRoute>} />
         <Route path="/training/engagement-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EngagementManagement /></ProtectedRoute>} />

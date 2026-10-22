@@ -167,7 +167,7 @@ export default function OrganizationManagement() {
                       </td>
                       <td className="text-muted-foreground">{new Date(org.created_at).toLocaleDateString()}</td>
                       <td className="text-right">
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigate(`/training/organization-management/create-details?organizationId=${org.id}`); }}>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigate(`/training/organization-management/${org.id}`); }}>
                           View
                         </Button>
                       </td>

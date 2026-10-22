@@ -1,6 +1,6 @@
 import { useState, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Info, Sparkles, CloudUpload, Scan, FileText, Badge as BadgeIcon, School, PlusCircle, Delete, Lightbulb, Building, CreditCard, CheckCircle, RefreshCw, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronRight, Info, Sparkles, CloudUpload, Scan, FileText, Badge as BadgeIcon, School, PlusCircle, Lightbulb, Building, CreditCard, CheckCircle, RefreshCw, Calendar as CalendarIcon, Delete } from "lucide-react";
 import { createEngagement, type EngagementRecord, type EngagementItem } from "@/lib/engagements";
 import { fetchOrganizations, type OrganizationRecord } from "@/lib/organizations";
 import { fetchCourses, type CourseRecord } from "@/lib/courses";
@@ -12,6 +12,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { format, parseISO } from "date-fns";
@@ -87,6 +97,7 @@ export default function EngagementCreation() {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [referenceId, setReferenceId] = useState("");
 
   const [formData, setFormData] = useState({
@@ -231,9 +242,9 @@ export default function EngagementCreation() {
         })) as EngagementItem[],
       };
 
-      await createEngagement(engagementPayload);
+      const createdEngagement = await createEngagement(engagementPayload);
       toast.success(saveAsDraft ? "Engagement saved as draft" : "Engagement created successfully");
-      navigate("/training/engagement-management");
+      navigate(`/training/engagement-management/${createdEngagement.id}`);
     } catch (error) {
       console.error("Failed to create engagement:", error);
       toast.error("Failed to create engagement");
@@ -269,7 +280,7 @@ export default function EngagementCreation() {
             <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={loading}>
               Save Draft
             </Button>
-            <Button onClick={() => handleSubmit(false)} disabled={loading}>
+            <Button onClick={() => setConfirmationOpen(true)} disabled={loading}>
               <CheckCircle className="mr-2 h-4 w-4" />
               Save & Confirm
             </Button>
@@ -295,7 +306,7 @@ export default function EngagementCreation() {
           </Badge>
         </div>
         {/* AI Contract Ingestion Section */}
-        <div className="bg-background rounded-xl p-8 shadow-sm space-y-6">
+        {/* <div className="bg-background rounded-xl p-8 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -331,7 +342,7 @@ export default function EngagementCreation() {
               </Button>
             </div>
           </div>
-        </div>
+        </div> */}
         {/* Section A: Engagement Information */}
         <div className="bg-background rounded-xl p-8 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
@@ -540,7 +551,7 @@ export default function EngagementCreation() {
                     </Select>
                   </div>
 
-                   <div className="md:col-span-2 flex flex-col gap-1">
+                   <div className="md:col-span-4 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Unit Price (₦)
                     </label>
@@ -552,7 +563,7 @@ export default function EngagementCreation() {
                     />
                   </div>
 
-                  <div className="md:col-span-2 flex flex-col gap-1">
+                  <div className="md:col-span-4 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Agreed Quantity
                     </label>
@@ -564,7 +575,7 @@ export default function EngagementCreation() {
                     />
                   </div>
                  
-                  <div className="md:col-span-2 flex flex-col gap-1">
+                  {/* <div className="md:col-span-2 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Discount / Adjust (₦)
                     </label>
@@ -572,12 +583,12 @@ export default function EngagementCreation() {
                       value={item.discount ?? ""}
                       onValueChange={(value) => handleTrainingItemChange(index, "discount", String(value))}
                     />
-                  </div>
-                  <div className="md:col-span-2 flex flex-col gap-1">
+                  </div> */}
+                  <div className="md:col-span-4 flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">
                       Calculated Total
                     </label>
-                    <div className="h-[38px] flex items-center px-3 bg-muted rounded-lg font-bold text-primary text-sm">
+                    <div className="h-[40px] flex items-center px-3 bg-muted rounded-lg font-bold text-primary text-sm">
                       {formatCurrency(calculateItemTotal(item))}
                     </div>
                   </div>
@@ -744,13 +755,37 @@ export default function EngagementCreation() {
             <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={loading}>
               Save Draft
             </Button>
-            <Button onClick={() => handleSubmit(false)} disabled={loading}>
+            <Button onClick={() => setConfirmationOpen(true)} disabled={loading}>
               <CheckCircle className="mr-2 h-4 w-4" />
               Save & Confirm
             </Button>
           </div>
         </div>
       </div>
+      <AlertDialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm this engagement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create “{formData.name || "Untitled engagement"}” with a committed value of{" "}
+              {formatCurrency(calculateGrandTotal())} and mark it as confirmed. Review the details before continuing.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Review details</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={loading}
+              onClick={(event) => {
+                event.preventDefault();
+                setConfirmationOpen(false);
+                void handleSubmit(false);
+              }}
+            >
+              Confirm & Create
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminPageShell>
   );
 }

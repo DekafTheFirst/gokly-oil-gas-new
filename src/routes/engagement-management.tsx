@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Download, Plus, Eye, Edit, ChevronLeft, ChevronRight, X, Briefcase, FileText, Clock, CheckCircle2, Wallet } from "lucide-react";
 import { fetchEngagements, fetchEngagementStats, type EngagementRecord, type EngagementStats } from "@/lib/engagements";
@@ -17,25 +17,20 @@ export default function EngagementManagement() {
   const [stats, setStats] = useState<EngagementStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("none");
   const [organizationFilter, setOrganizationFilter] = useState("none");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    loadEngagements();
-    loadStats();
-    loadOrganizations();
-  }, [currentPage, statusFilter, organizationFilter]);
-
-  const loadEngagements = async () => {
+  const loadEngagements = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetchEngagements(
         currentPage,
         10,
-        search,
+        debouncedSearch,
         statusFilter === "none" ? "" : statusFilter,
         organizationFilter === "none" ? "" : organizationFilter
       );
@@ -48,7 +43,21 @@ export default function EngagementManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearch, statusFilter, organizationFilter]);
+
+  useEffect(() => {
+    loadStats();
+    loadOrganizations();
+  }, []);
+
+  useEffect(() => {
+    loadEngagements();
+  }, [loadEngagements]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
 
   const loadStats = async () => {
     try {
@@ -186,7 +195,7 @@ export default function EngagementManagement() {
             <div className="mt-4 relative z-10">
               <div className="flex items-baseline gap-2 flex-col">
                 <span className="text-3xl font-bold">{stats.total_engagements}</span>
-                <span className="text-xs font-bold text-primary">Active SOWs</span>
+                <span className="text-xs font-bold text-primary">Engagements</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">{formatCurrency(stats.total_committed)} committed</p>
             </div>
@@ -389,46 +398,52 @@ export default function EngagementManagement() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="px-4 py-3 bg-muted flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-          <div className="text-muted-foreground">
-            Showing <span className="font-bold">{(currentPage - 1) * 10 + 1}</span> to{" "}
-            <span className="font-bold">{Math.min(currentPage * 10, total)}</span> of{" "}
-            <span className="font-bold">{total}</span> engagements
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const pageNum = totalPages <= 5 ? i + 1 : currentPage <= 3 ? i + 1 : currentPage >= totalPages - 2 ? totalPages - 4 + i : currentPage - 2 + i;
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setCurrentPage(pageNum)}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
       </div>
+      {total > 0 && !loading && (
+        <div className="admin-pagination-bar rounded-xl bg-background shadow-sm">
+          <div className="text-sm text-muted-foreground">
+            Showing <span className="font-medium text-foreground">{(currentPage - 1) * 10 + 1}</span> to{" "}
+            <span className="font-medium text-foreground">{Math.min(currentPage * 10, total)}</span> of{" "}
+            <span className="font-medium text-foreground">{total}</span> engagements
+          </div>
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, index) => {
+                  const pageNumber = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + index;
+                  if (pageNumber > totalPages) return null;
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
     </AdminPageShell>
   );

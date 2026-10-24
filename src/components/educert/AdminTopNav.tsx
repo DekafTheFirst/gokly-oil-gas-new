@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 const ADMIN_LINKS = [
   { to: "/training/admin" as const, label: "Dashboard" },
   { to: "/training/course-management" as const, label: "Courses" },
+  { to: "/training/batches" as const, label: "Batches" },
   { to: "/training/user-management" as const, label: "Users" },
   { to: "/training/certificate-management" as const, label: "Certificates" },
 ];

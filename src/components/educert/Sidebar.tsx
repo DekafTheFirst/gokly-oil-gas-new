@@ -13,6 +13,7 @@ import {
   User,
   Building2,
   Briefcase,
+  CalendarDays,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -20,11 +21,13 @@ type Item = { to: string; label: string; icon: LucideIcon };
 
 const ADMIN_ITEMS: Item[] = [
   { to: "/training/admin", label: "Dashboard", icon: ShieldCheck },
-  { to: "/training/engagement-management", label: "Engagements", icon: Briefcase },
   { to: "/training/certificate-management", label: "Certificate Management", icon: Award },
   { to: "/training/user-management", label: "User Management", icon: User },
   { to: "/training/course-management", label: "Course Management", icon: BookOpen },
+  { to: "/training/batches", label: "Training Batches", icon: CalendarDays },
   { to: "/training/organization-management", label: "Organization Management", icon: Building2 },
+    { to: "/training/engagement-management", label: "Engagements", icon: Briefcase },
+
 ];
 
 const TRAINER_ITEMS: Item[] = [

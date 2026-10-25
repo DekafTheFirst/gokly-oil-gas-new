@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { useFieldArray, useForm, type FieldPath } from "react-hook-form";
+import { useFieldArray, useForm, useWatch, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,6 +15,7 @@ import {
   Minus,
   Plus,
   Rocket,
+  RefreshCw,
   Save,
   Tag,
   Trash2,
@@ -28,6 +29,14 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format, isValid, parseISO } from "date-fns";
 import {
@@ -60,7 +69,7 @@ function normalizeDate(value?: string | null) {
   return value.slice(0, 10);
 }
 
-function moduleToSession(module: TrainingBatchCourseOption["modules"][number], location: string) {
+function moduleToSession(module: TrainingBatchCourseOption["modules"][number]) {
   return {
     course_module_id: module.id,
     title: module.name,
@@ -68,7 +77,6 @@ function moduleToSession(module: TrainingBatchCourseOption["modules"][number], l
     session_date: normalizeDate(module.scheduled_date),
     start_time: "08:30",
     end_time: "12:30",
-    location,
   };
 }
 
@@ -240,7 +248,8 @@ export default function TrainingBatchCreation() {
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState("");
   const [locationId, setLocationId] = useState(LOCATIONS[0].id);
-  const [selectedQuotaId, setSelectedQuotaId] = useState("");
+  const [selectedQuotaIds, setSelectedQuotaIds] = useState<string[]>([]);
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
   const [contextVisible, setContextVisible] = useState(true);
 
   const {
@@ -270,18 +279,18 @@ export default function TrainingBatchCreation() {
     },
   });
   const sessions = useFieldArray({ control, name: "sessions" });
-  const { replace: replaceSessions } = sessions;
   const allocations = useFieldArray({ control, name: "allocations" });
 
   const courseId = watch("course_id");
   const capacity = watch("capacity");
-  const watchedAllocations = watch("allocations");
+  const watchedAllocations = useWatch({ control, name: "allocations" });
   const selectedCourse = courses.find((course) => course.id === Number(courseId));
   const selectedLocation = LOCATIONS.find((location) => location.id === locationId) ?? LOCATIONS[0];
 
   const allocationRows = useMemo(
     () => watchedAllocations.map((allocation, index) => ({
       ...allocation,
+      seats_assigned: Number.isFinite(allocation.seats_assigned) ? allocation.seats_assigned : 0,
       index,
       id: allocations.fields[index]?.id ?? `allocation-${index}`,
       option: allocation.allocation_type === "CONTRACT"
@@ -290,11 +299,23 @@ export default function TrainingBatchCreation() {
     })),
     [watchedAllocations, allocationOptions, allocations.fields],
   );
-  const assignedSeats = allocationRows.reduce((total, allocation) => total + (Number(allocation.seats_assigned) || 0), 0);
+  const assignedSeats = useMemo(
+    () => watchedAllocations.reduce((total, allocation) => total + (Number(allocation.seats_assigned) || 0), 0),
+    [watchedAllocations],
+  );
   const unallocatedSeats = Number(capacity || 0) - assignedSeats;
   const totalCommitment = allocationOptions.reduce((total, option) => total + option.agreed_quantity, 0);
   const committedPercent = capacity ? Math.min(100, Math.round((assignedSeats / Number(capacity)) * 100)) : 0;
   const activeEngagement = allocationRows.find((allocation) => allocation.option)?.option;
+
+  useEffect(() => {
+    if (
+      errors.allocations?.message === "Allocated seats cannot exceed training batch capacity." &&
+      assignedSeats <= Number(capacity)
+    ) {
+      clearErrors("allocations");
+    }
+  }, [assignedSeats, capacity, clearErrors, errors.allocations?.message]);
 
   useEffect(() => {
     let mounted = true;
@@ -309,13 +330,6 @@ export default function TrainingBatchCreation() {
           setOptionsError("No published courses are available for scheduling.");
           return;
         }
-        const firstCourse = response.courses[0];
-        setValue("course_id", firstCourse.id);
-        setValue("name", `Q1 ${firstCourse.title.split(" (")[0]} Training Batch A`);
-        setValue("batch_code", `BTCH-${new Date().getFullYear()}-${firstCourse.code || firstCourse.id}-001`);
-        replaceSessions(firstCourse.modules.map((module) => moduleToSession(module, DEFAULT_LOCATION)));
-        const allocationResponse = await fetchTrainingBatchOptions(firstCourse.id);
-        if (mounted) setAllocationOptions(allocationResponse.allocation_options);
       } catch (error) {
         if (!mounted) return;
         const message = error instanceof Error ? error.message : "Unable to load training batch options.";
@@ -329,7 +343,7 @@ export default function TrainingBatchCreation() {
     return () => {
       mounted = false;
     };
-  }, [setValue, replaceSessions]);
+  }, []);
 
   const changeCourse = async (nextCourseId: number) => {
     const course = courses.find((item) => item.id === nextCourseId);
@@ -338,12 +352,12 @@ export default function TrainingBatchCreation() {
     setValue("name", `Q1 ${course.title.split(" (")[0]} Training Batch A`, { shouldValidate: true });
     setValue("batch_code", `BTCH-${new Date().getFullYear()}-${course.code || course.id}-001`);
     setValue("location", LOCATIONS.find((item) => item.id === locationId)?.label ?? DEFAULT_LOCATION);
-    sessions.replace(course.modules.map((module) => moduleToSession(module, LOCATIONS.find((item) => item.id === locationId)?.label ?? DEFAULT_LOCATION)));
+    sessions.replace(course.modules.map(moduleToSession));
     clearErrors();
     try {
       const response = await fetchTrainingBatchOptions(course.id);
       setAllocationOptions(response.allocation_options);
-      setSelectedQuotaId("");
+      setSelectedQuotaIds([]);
       allocations.replace([]);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load contract quotas for this course.";
@@ -355,9 +369,6 @@ export default function TrainingBatchCreation() {
     setLocationId(nextLocationId);
     const nextLocation = LOCATIONS.find((item) => item.id === nextLocationId)?.label ?? DEFAULT_LOCATION;
     setValue("location", nextLocation, { shouldValidate: true });
-    sessions.fields.forEach((_field, index) => {
-      setValue(`sessions.${index}.location`, nextLocation, { shouldValidate: true });
-    });
   };
 
   const regenerateCode = () => {
@@ -390,7 +401,11 @@ export default function TrainingBatchCreation() {
   };
 
   const handleReady = handleSubmit(async (values) => {
-    await submitBatch({ ...values, status: "UPCOMING" });
+    await submitBatch({
+      ...values,
+      status: "UPCOMING",
+      sessions: values.sessions.map((session) => ({ ...session, location: values.location })),
+    });
   });
 
   const saveDraft = async () => {
@@ -408,7 +423,7 @@ export default function TrainingBatchCreation() {
     await submitBatch({
       ...current,
       status: "DRAFT",
-      sessions: current.sessions,
+      sessions: current.sessions.map((session) => ({ ...session, location: current.location })),
       allocations: current.allocations,
     });
   };
@@ -421,26 +436,34 @@ export default function TrainingBatchCreation() {
       session_date: "",
       start_time: "08:30",
       end_time: "12:30",
-      location: getValues("location"),
     });
   };
 
-  const addContractAllocation = () => {
-    const option = allocationOptions.find((item) => item.engagement_item_id === selectedQuotaId);
-    if (!option) {
-      toast.error("Select an available contract quota first.");
-      return;
+  const addContractAllocations = () => {
+    const currentAllocations = getValues("allocations");
+    const existingItemIds = new Set(currentAllocations
+      .filter((allocation) => allocation.allocation_type === "CONTRACT")
+      .map((allocation) => allocation.engagement_item_id));
+    const optionsToAdd = allocationOptions.filter(
+      (option) => selectedQuotaIds.includes(option.engagement_item_id)
+        && option.available_seats > 0
+        && !existingItemIds.has(option.engagement_item_id),
+    );
+    if (optionsToAdd.length === 0) {
+      toast.error("Select at least one available contract quota.");
+      return false;
     }
-    if (watchedAllocations.some((item) => item.allocation_type === "CONTRACT" && item.engagement_item_id === option.engagement_item_id)) {
-      toast.error("This contract quota is already included.");
-      return;
-    }
-    allocations.append({
-      allocation_type: "CONTRACT",
-      engagement_item_id: option.engagement_item_id,
-      seats_assigned: 0,
+
+    optionsToAdd.forEach((option) => {
+      const quotaSeats = Math.min(option.agreed_quantity, option.available_seats);
+      allocations.append({
+        allocation_type: "CONTRACT",
+        engagement_item_id: option.engagement_item_id,
+        seats_assigned: quotaSeats,
+      });
     });
     clearErrors("allocations");
+    return true;
   };
 
   const addOpenEnrollment = () => {
@@ -452,11 +475,35 @@ export default function TrainingBatchCreation() {
     clearErrors("allocations");
   };
 
-  const setAllocationSeats = (index: number, seats: number) => {
-    setValue(`allocations.${index}.seats_assigned`, Math.max(0, seats), { shouldDirty: true, shouldValidate: true });
+  const adjustAllocationSeats = (index: number, change: number) => {
+    const currentSeats = Number(getValues(`allocations.${index}.seats_assigned`)) || 0;
+    const allocation = getValues("allocations")[index];
+    const option = allocation?.allocation_type === "CONTRACT"
+      ? allocationOptions.find((item) => item.engagement_item_id === allocation.engagement_item_id)
+      : undefined;
+    const nextSeats = Math.max(0, currentSeats + change);
+    const limitedSeats = option ? Math.min(nextSeats, option.available_seats) : nextSeats;
+    setValue(`allocations.${index}.seats_assigned`, limitedSeats, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   };
 
-  const getSessionError = (index: number, field: "title" | "session_date" | "start_time" | "end_time" | "location") =>
+  const setAllocationSeatInput = (index: number, value: number) => {
+    const allocation = getValues("allocations")[index];
+    const option = allocation?.allocation_type === "CONTRACT"
+      ? allocationOptions.find((item) => item.engagement_item_id === allocation.engagement_item_id)
+      : undefined;
+    const seats = Number.isFinite(value) ? Math.max(0, value) : 0;
+    setValue(`allocations.${index}.seats_assigned`, option ? Math.min(seats, option.available_seats) : seats, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  };
+
+  const getSessionError = (index: number, field: "title" | "session_date" | "start_time" | "end_time") =>
     errors.sessions?.[index]?.[field]?.message;
 
   return (
@@ -551,7 +598,7 @@ export default function TrainingBatchCreation() {
                       onValueChange={(value) => void changeCourse(Number(value))}
                     >
                       <SelectTrigger id="batch-course" className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
-                        <SelectValue placeholder={optionsLoading ? "Loading courses…" : "Select a published course"} />
+                        <SelectValue placeholder={optionsLoading ? "Loading courses…" : "Select Course Module"} />
                       </SelectTrigger>
                       <SelectContent>
                         {courses.map((course) => (
@@ -564,7 +611,7 @@ export default function TrainingBatchCreation() {
 
                   <div className="flex flex-col gap-2 md:col-span-2">
                     <FieldLabel htmlFor="batch-name">Training Batch Designation Name <span className="text-[#ba1a1a]">*</span></FieldLabel>
-                    <Input id="batch-name" {...register("name")} className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none placeholder:text-[#3f4940] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]" />
+                    <Input id="batch-name" placeholder="Enter Batch Name" {...register("name")} className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none placeholder:text-[#3f4940] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]" />
                     <FieldError>{errors.name?.message}</FieldError>
                     <span className="text-[11px] text-[#3f4940]">Public designation visible to corporate sponsors and candidate certificates.</span>
                   </div>
@@ -573,8 +620,10 @@ export default function TrainingBatchCreation() {
                     <FieldLabel htmlFor="batch-code"><span>Batch Reference ID</span><span className="font-mono text-[10px] text-[#006030]">AUTO-SYSTEM</span></FieldLabel>
                     <div className="flex items-center gap-2 rounded-lg bg-[#eff4ff] px-3 py-3 focus-within:ring-2 focus-within:ring-[#1b7a43]">
                       <Tag className="h-[18px] w-[18px] text-[#006030]" />
-                      <input id="batch-code" type="text" {...register("batch_code")} className="w-full bg-transparent font-mono text-xs font-semibold text-[#121c2a] outline-none" />
-                      <button type="button" onClick={regenerateCode} className="text-[11px] font-semibold uppercase tracking-wider text-[#3f4940] hover:text-[#006030]">Regen</button>
+                      <input id="batch-code" type="text" placeholder="Enter Batch Reference ID" {...register("batch_code")} className="w-full bg-transparent font-mono text-xs font-semibold text-[#121c2a] outline-none placeholder:font-sans placeholder:font-normal placeholder:text-[#3f4940]" />
+                      <button type="button" onClick={regenerateCode} aria-label="Refresh batch reference ID" title="Generate a new batch reference ID" className="text-[#3f4940] hover:text-[#006030]">
+                        <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </div>
                     <FieldError>{errors.batch_code?.message}</FieldError>
                   </div>
@@ -633,7 +682,7 @@ export default function TrainingBatchCreation() {
                           </div>
                           <span className="shrink-0 rounded bg-[#dee9fc] px-2 py-1 font-mono text-[10px] font-semibold uppercase text-[#3f4940]">Module</span>
                         </div>
-                        <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
                           <div className="flex flex-col gap-1.5">
                             <label htmlFor={`session-date-${index}`} className="text-[11px] font-semibold text-[#121c2a]">Session Date</label>
                             <DatePickerField
@@ -649,33 +698,33 @@ export default function TrainingBatchCreation() {
                             <FieldError>{getSessionError(index, "session_date")}</FieldError>
                           </div>
                           <div className="flex flex-col gap-1.5">
-                            <span className="text-[11px] font-semibold text-[#121c2a]">Time &amp; Shift</span>
-                            <div className="flex gap-1">
-                              <TimeSelect
-                                id={`Session ${index + 1} start time`}
-                                value={watch(`sessions.${index}.start_time`)}
-                                onChange={(value) => setValue(`sessions.${index}.start_time`, value, {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: true,
-                                })}
-                              />
-                              <TimeSelect
-                                id={`Session ${index + 1} end time`}
-                                value={watch(`sessions.${index}.end_time`)}
-                                onChange={(value) => setValue(`sessions.${index}.end_time`, value, {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: true,
-                                })}
-                              />
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <span className="text-[11px] font-semibold text-[#121c2a]">Start time</span>
+                                <TimeSelect
+                                  id={`Session ${index + 1} start time`}
+                                  value={watch(`sessions.${index}.start_time`)}
+                                  onChange={(value) => setValue(`sessions.${index}.start_time`, value, {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  })}
+                                />
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <span className="text-[11px] font-semibold text-[#121c2a]">End time</span>
+                                <TimeSelect
+                                  id={`Session ${index + 1} end time`}
+                                  value={watch(`sessions.${index}.end_time`)}
+                                  onChange={(value) => setValue(`sessions.${index}.end_time`, value, {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  })}
+                                />
+                              </div>
                             </div>
                             <FieldError>{getSessionError(index, "start_time") || getSessionError(index, "end_time")}</FieldError>
-                          </div>
-                          <div className="flex flex-col gap-1.5 sm:col-span-2">
-                            <label htmlFor={`session-venue-${index}`} className="text-[11px] font-semibold text-[#121c2a]">Assigned Venue Cell</label>
-                            <Input id={`session-venue-${index}`} {...register(`sessions.${index}.location`)} placeholder={selectedLocation.label} className="h-auto rounded-lg border-0 bg-white px-3 py-2 text-xs text-[#121c2a] shadow-none focus-visible:ring-2 focus-visible:ring-[#1b7a43]" />
-                            <FieldError>{getSessionError(index, "location")}</FieldError>
                           </div>
                         </div>
                         <button type="button" onClick={() => sessions.remove(index)} className="self-end text-[11px] font-semibold text-[#3f4940] hover:text-red-700">Remove session</button>
@@ -683,9 +732,9 @@ export default function TrainingBatchCreation() {
                     );
                   })}
                   <FieldError>{errors.sessions?.message}</FieldError>
-                  <button type="button" onClick={addSession} className="inline-flex items-center gap-2 self-start rounded-lg px-2 py-1 text-xs font-semibold text-[#006030] hover:bg-[#eff4ff]">
+                  {/* <button type="button" onClick={addSession} className="inline-flex items-center gap-2 self-start rounded-lg px-2 py-1 text-xs font-semibold text-[#006030] hover:bg-[#eff4ff]">
                     <Plus className="h-4 w-4" />Add Module Session
-                  </button>
+                  </button> */}
                 </div>
               </section>
 
@@ -719,7 +768,7 @@ export default function TrainingBatchCreation() {
               </section>
 
               <section className="flex flex-col gap-5 rounded-xl bg-white p-6 shadow-sm">
-                <div className="flex flex-col justify-between gap-4 border-b border-[#becabd]/20 pb-3 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-4 border-b border-[#becabd]/20 pb-4">
                   <div className="flex items-center gap-4">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#006030]/10 text-base font-bold text-[#006030]">05</span>
                     <div>
@@ -731,22 +780,17 @@ export default function TrainingBatchCreation() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Select value={selectedQuotaId || undefined} onValueChange={setSelectedQuotaId}>
-                      <SelectTrigger aria-label="Choose corporate quota" className="h-auto max-w-64 rounded-lg border-0 bg-white px-2 py-2 text-xs text-[#121c2a] shadow-sm focus:ring-2 focus:ring-[#1b7a43]">
-                        <SelectValue placeholder="Select a contract quota" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allocationOptions.map((option) => (
-                          <SelectItem key={option.engagement_item_id} value={option.engagement_item_id} disabled={option.available_seats <= 0}>
-                            {option.organization_name || option.engagement_name} · {option.available_seats} available
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <ActionButton type="button" onClick={addContractAllocation} className="bg-[#1b7a43] text-xs text-white shadow-sm hover:bg-[#006030]">
+                    <ActionButton
+                      type="button"
+                      onClick={() => {
+                        setSelectedQuotaIds([]);
+                        setQuotaDialogOpen(true);
+                      }}
+                      className="h-10 w-full bg-[#1b7a43] text-xs text-white shadow-sm hover:bg-[#006030] sm:w-auto"
+                    >
                       <Plus className="h-[18px] w-[18px]" />Add Corporate Allocation
                     </ActionButton>
-                    <button type="button" onClick={addOpenEnrollment} className="rounded-lg bg-[#eff4ff] px-3 py-2 text-xs font-semibold text-[#006030] hover:bg-[#dee9fc]">Add Public Seats</button>
+                    <button type="button" onClick={addOpenEnrollment} className="h-10 w-full rounded-lg bg-[#eff4ff] px-3 py-2 text-xs font-semibold text-[#006030] hover:bg-[#dee9fc] sm:w-auto">Add Public Seats</button>
                   </div>
                 </div>
 
@@ -767,6 +811,11 @@ export default function TrainingBatchCreation() {
                       <span className="rounded-full bg-[#dee9fc] px-3 py-1 text-[11px] font-semibold text-[#3f4940]">{Math.max(0, unallocatedSeats)} Unallocated</span>
                     </div>
                   </div>
+                  {assignedSeats > Number(capacity) && (
+                    <p role="alert" aria-live="assertive" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
+                      Allocated seats exceed this batch&apos;s maximum capacity of {capacity}. Fix this before saving.
+                    </p>
+                  )}
                   <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white shadow-sm">
                     {allocationRows.map((allocation, index) => (
                       <div
@@ -791,22 +840,24 @@ export default function TrainingBatchCreation() {
                   </div>
                 </div>
 
-                {errors.allocations?.message && <FieldError>{errors.allocations.message}</FieldError>}
+                {errors.allocations?.message &&
+                  errors.allocations.message !== "Allocated seats cannot exceed training batch capacity." && (
+                    <FieldError>{errors.allocations.message}</FieldError>
+                  )}
                 <div className="overflow-hidden rounded-xl border border-[#becabd]/30 bg-white shadow-sm">
                   <div className="hidden grid-cols-12 gap-3 border-b border-[#becabd]/20 bg-[#dee9fc]/60 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-[#3f4940] md:grid">
                     <div className="col-span-4">Organization &amp; Contract SOW</div>
                     <div className="col-span-2">Agreed Trainees / Contract Quota</div>
-                    <div className="col-span-2">Previously Trained / Utilized</div>
-                    <div className="col-span-1 text-center">Remaining Quota</div>
+                    <div className="col-span-3">Batch Fulfillment</div>
                     <div className="col-span-2 text-center">Assigned This Batch</div>
                     <div className="col-span-1 text-right">Action</div>
                   </div>
                   {allocationRows.map((allocation, index) => {
                     const option = allocation.option;
                     const quota = allocation.allocation_type === "OPEN_ENROLLMENT" ? null : option;
-                    const remaining = Math.max(0, (option?.available_seats ?? 0));
-                    const utilization = option?.agreed_quantity
-                      ? Math.round((option.utilized / option.agreed_quantity) * 100)
+                    const seatsRegistration = register(`allocations.${index}.seats_assigned`, { valueAsNumber: true });
+                    const fulfillment = quota?.agreed_quantity
+                      ? Math.min(100, Math.round((allocation.seats_assigned / quota.agreed_quantity) * 100))
                       : 0;
                     return (
                       <div key={allocation.id} className="grid grid-cols-1 items-center gap-3 border-b border-[#becabd]/20 px-4 py-4 transition-colors last:border-0 hover:bg-[#eff4ff] md:grid-cols-12">
@@ -826,30 +877,47 @@ export default function TrainingBatchCreation() {
                           <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-[#121c2a]"><FileText className="h-3.5 w-3.5 text-[#006030]" />{quota ? `${quota.agreed_quantity} Agreed Trainees` : "Public Seats"}</span>
                           <span className="text-[10px] leading-tight text-[#3f4940]">{quota?.engagement_name || "Open Enrollment"}</span>
                         </div>
-                        <div className="flex flex-col gap-1.5 md:col-span-2">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-[#3f4940]">{quota ? `${quota.utilized} completed` : "No prior usage"}</span>
-                            {quota && <span className="font-mono text-[10px] font-semibold text-[#121c2a]">{utilization}%</span>}
+                        <div className="flex flex-col gap-1.5 md:col-span-3">
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="text-[#3f4940] md:hidden">Batch fulfillment</span>
+                            <span className="text-[#3f4940]">
+                              {quota ? `${allocation.seats_assigned} of ${quota.agreed_quantity} agreed trainees assigned` : "Not applicable"}
+                            </span>
+                            {quota && <span className="shrink-0 font-mono text-[10px] font-semibold text-[#121c2a]">{fulfillment}%</span>}
                           </div>
-                          {quota && <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#dee9fc]"><div className="h-full bg-[#006030]" style={{ width: `${utilization}%` }} /></div>}
-                        </div>
-                        <div className="flex items-center justify-between md:col-span-1 md:flex-col md:justify-center">
-                          <span className="font-mono text-xs font-bold text-[#006030]">{quota ? `${remaining} left` : "—"}</span>
-                          <span className="text-[10px] text-[#3f4940]">{quota ? "Available" : ""}</span>
+                          {quota && (
+                            <div
+                              role="progressbar"
+                              aria-label={`${quota.organization_name || quota.engagement_name} batch fulfillment`}
+                              aria-valuemin={0}
+                              aria-valuemax={quota.agreed_quantity}
+                              aria-valuenow={allocation.seats_assigned}
+                              className="h-1.5 w-full overflow-hidden rounded-full bg-[#dee9fc]"
+                            >
+                              <div className="h-full bg-[#006030] transition-all" style={{ width: `${fulfillment}%` }} />
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center justify-between md:col-span-2 md:justify-center">
                           <span className="text-xs font-medium text-[#3f4940] md:hidden">Assigned this batch</span>
                           <div className="flex items-center overflow-hidden rounded-lg border border-[#becabd]/30 bg-white shadow-sm">
-                            <button type="button" title="Decrease seats" onClick={() => setAllocationSeats(index, Number(allocation.seats_assigned) - 1)} className="flex h-7 w-7 items-center justify-center text-xs font-bold text-[#3f4940] transition-colors hover:bg-[#dee9fc] hover:text-[#121c2a]"><Minus className="h-3 w-3" /></button>
+                            <button type="button" title="Decrease seats" aria-label={`Decrease seats for ${quota?.organization_name || "Open Public Enrollment"}`} onClick={() => adjustAllocationSeats(index, -1)} className="flex h-7 w-7 items-center justify-center text-xs font-bold text-[#3f4940] transition-colors hover:bg-[#dee9fc] hover:text-[#121c2a]"><Minus className="h-3 w-3" /></button>
                             <input
                               aria-label={`Seats assigned to ${quota?.organization_name || "Open Public Enrollment"}`}
                               type="number"
                               min={0}
                               max={quota?.available_seats}
-                              {...register(`allocations.${index}.seats_assigned`, { valueAsNumber: true })}
+                              {...seatsRegistration}
+                              onChange={(event) => {
+                                if (!Number.isFinite(event.currentTarget.valueAsNumber)) {
+                                  event.currentTarget.value = "0";
+                                }
+                                void seatsRegistration.onChange(event);
+                                setAllocationSeatInput(index, event.currentTarget.valueAsNumber);
+                              }}
                               className="h-7 w-10 bg-transparent text-center text-xs font-bold text-[#006030] outline-none"
                             />
-                            <button type="button" title="Increase seats" onClick={() => setAllocationSeats(index, Number(allocation.seats_assigned) + 1)} className="flex h-7 w-7 items-center justify-center text-xs font-bold text-[#3f4940] transition-colors hover:bg-[#dee9fc] hover:text-[#121c2a]"><Plus className="h-3 w-3" /></button>
+                            <button type="button" title="Increase seats" aria-label={`Increase seats for ${quota?.organization_name || "Open Public Enrollment"}`} onClick={() => adjustAllocationSeats(index, 1)} className="flex h-7 w-7 items-center justify-center text-xs font-bold text-[#3f4940] transition-colors hover:bg-[#dee9fc] hover:text-[#121c2a]"><Plus className="h-3 w-3" /></button>
                           </div>
                         </div>
                         <div className="flex items-center justify-between md:col-span-1 md:justify-end">
@@ -900,6 +968,82 @@ export default function TrainingBatchCreation() {
               </div>
             </div>
           </form>
+          <Dialog
+            open={quotaDialogOpen}
+            onOpenChange={(open) => {
+              setQuotaDialogOpen(open);
+              if (!open) setSelectedQuotaIds([]);
+            }}
+          >
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Choose contract quotas</DialogTitle>
+                <DialogDescription>Select one or more available quotas to add to this training batch.</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-2">
+                {allocationOptions.map((option) => {
+                  const alreadyAdded = watchedAllocations.some(
+                    (allocation) => allocation.allocation_type === "CONTRACT"
+                      && allocation.engagement_item_id === option.engagement_item_id,
+                  );
+                  const disabled = alreadyAdded || option.available_seats <= 0;
+                  const selected = selectedQuotaIds.includes(option.engagement_item_id);
+                  return (
+                    <button
+                      key={option.engagement_item_id}
+                      type="button"
+                      onClick={() => setSelectedQuotaIds((current) => (
+                        selected
+                          ? current.filter((id) => id !== option.engagement_item_id)
+                          : [...current, option.engagement_item_id]
+                      ))}
+                      disabled={disabled}
+                      aria-pressed={selected}
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        selected
+                          ? "border-[#1b7a43] bg-[#1b7a43]/10 ring-1 ring-[#1b7a43]"
+                          : "border-[#becabd]/50 bg-white hover:border-[#1b7a43]/60 hover:bg-[#eff4ff]"
+                      }`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-[#121c2a]">
+                          {option.organization_name || option.engagement_name}
+                        </span>
+                        <span className="mt-1 block text-xs text-[#3f4940]">
+                          {option.reference_id} · {option.course_name}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-xs font-semibold text-[#006030]">
+                        {alreadyAdded
+                          ? "Already added"
+                          : `${option.available_seats} available · ${option.agreed_quantity} agreed`}
+                      </span>
+                    </button>
+                  );
+                })}
+                {allocationOptions.length === 0 && (
+                  <p className="rounded-lg bg-[#eff4ff] p-4 text-sm text-[#3f4940]">
+                    No active contract quotas are available for this course. You can still add public enrollment seats.
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setQuotaDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={selectedQuotaIds.length === 0}
+                  onClick={() => {
+                    if (addContractAllocations()) setQuotaDialogOpen(false);
+                  }}
+                  className="bg-[#1b7a43] text-white hover:bg-[#006030]"
+                >
+                  Add selected quotas ({selectedQuotaIds.length})
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </AdminPageShell>

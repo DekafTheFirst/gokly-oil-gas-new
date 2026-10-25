@@ -21,7 +21,6 @@ const validBatch = {
       session_date: "2026-10-12",
       start_time: "08:30",
       end_time: "12:30",
-      location: "Port Harcourt Training Yard",
     },
   ],
   allocations: [
@@ -32,6 +31,15 @@ const validBatch = {
 describe("training batch validation", () => {
   it("accepts a complete ready batch", () => {
     expect(trainingBatchFormSchema.safeParse(validBatch).success).toBe(true);
+  });
+
+  it("does not require a per-session location", () => {
+    const result = trainingBatchFormSchema.safeParse({
+      ...validBatch,
+      sessions: [validBatch.sessions[0]],
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("rejects end times that do not follow the start time", () => {
@@ -49,16 +57,27 @@ describe("training batch validation", () => {
     }
   });
 
-  it("rejects quorum and allocations that exceed capacity", () => {
+  it("rejects quorum that exceeds capacity", () => {
     const result = trainingBatchFormSchema.safeParse({
       ...validBatch,
       min_quorum: 21,
-      allocations: [{ allocation_type: "OPEN_ENROLLMENT", seats_assigned: 21 }],
+      allocations: [{ allocation_type: "OPEN_ENROLLMENT", seats_assigned: 10 }],
     });
 
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues.map((issue) => issue.path)).toContainEqual(["min_quorum"]);
+    }
+  });
+
+  it("rejects total allocations above batch capacity", () => {
+    const result = trainingBatchFormSchema.safeParse({
+      ...validBatch,
+      allocations: [{ allocation_type: "OPEN_ENROLLMENT", seats_assigned: 21 }],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
       expect(result.error.issues.map((issue) => issue.path)).toContainEqual(["allocations"]);
     }
   });

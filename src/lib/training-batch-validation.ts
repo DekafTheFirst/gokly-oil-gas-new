@@ -18,7 +18,6 @@ const sessionSchema = z
     session_date: dateSchema,
     start_time: timeSchema,
     end_time: timeSchema,
-    location: z.string().trim().min(2, "Enter a venue for this session.").max(250),
   })
   .superRefine((session, context) => {
     const [startHour, startMinute] = session.start_time.split(":").map(Number);
@@ -137,7 +136,6 @@ export interface TrainingBatchFormValues {
     session_date: string;
     start_time: string;
     end_time: string;
-    location: string;
   }>;
   allocations: Array<
     | { allocation_type: "CONTRACT"; engagement_item_id: string; seats_assigned: number }

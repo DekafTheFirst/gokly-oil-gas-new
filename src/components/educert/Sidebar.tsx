@@ -24,9 +24,9 @@ const ADMIN_ITEMS: Item[] = [
   { to: "/training/certificate-management", label: "Certificate Management", icon: Award },
   { to: "/training/user-management", label: "User Management", icon: User },
   { to: "/training/course-management", label: "Course Management", icon: BookOpen },
-  { to: "/training/batches", label: "Training Batches", icon: CalendarDays },
   { to: "/training/organization-management", label: "Organization Management", icon: Building2 },
-    { to: "/training/engagement-management", label: "Engagements", icon: Briefcase },
+  { to: "/training/engagement-management", label: "Engagements", icon: Briefcase },
+  { to: "/training/batches", label: "Training Batches", icon: CalendarDays },
 
 ];
 

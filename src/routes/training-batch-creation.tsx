@@ -60,6 +60,7 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   getAllocationQuorumError,
+  isGoogleMeetUrl,
   trainingBatchDraftSchema,
   trainingBatchFormSchema,
   type TrainingBatchFormValues,
@@ -92,7 +93,11 @@ function normalizeDate(value?: string | null) {
   return value.slice(0, 10);
 }
 
-function moduleToSession(module: TrainingBatchCourseOption["modules"][number]) {
+function moduleToSession(
+  module: TrainingBatchCourseOption["modules"][number],
+  location: string,
+  onlineUrl: string,
+) {
   return {
     course_module_id: module.id,
     title: module.name,
@@ -100,6 +105,8 @@ function moduleToSession(module: TrainingBatchCourseOption["modules"][number]) {
     session_date: normalizeDate(module.scheduled_date),
     start_time: "08:30",
     end_time: "12:30",
+    location,
+    online_url: onlineUrl,
   };
 }
 
@@ -293,9 +300,11 @@ export default function TrainingBatchCreation() {
     reValidateMode: "onChange",
     defaultValues: {
       course_id: 0,
+      delivery_mode: "PHYSICAL",
       name: "",
       batch_code: "",
       location: DEFAULT_LOCATION,
+      online_url: "",
       capacity: 25,
       min_quorum: 10,
       notes: "",
@@ -307,6 +316,8 @@ export default function TrainingBatchCreation() {
   const allocations = useFieldArray({ control, name: "allocations" });
 
   const courseId = watch("course_id");
+  const deliveryMode = watch("delivery_mode");
+  const onlineUrl = watch("online_url") ?? "";
   const capacity = watch("capacity");
   const minQuorum = watch("min_quorum");
   const watchedAllocations = useWatch({ control, name: "allocations" });
@@ -385,11 +396,16 @@ export default function TrainingBatchCreation() {
     const course = courses.find((item) => item.id === nextCourseId);
     if (!course) return;
     const requestId = ++allocationOptionsRequest.current;
+    const courseLocation = course.delivery_mode === "ONLINE" ? "" : getValues("location") || DEFAULT_LOCATION;
+    const courseOnlineUrl = course.delivery_mode === "PHYSICAL" ? "" : getValues("online_url") || "";
+    setLocationId(LOCATIONS.find((item) => item.label === courseLocation)?.id ?? LOCATIONS[0].id);
     setValue("course_id", course.id, { shouldValidate: true });
+    setValue("delivery_mode", course.delivery_mode);
     setValue("name", `Q1 ${course.title.split(" (")[0]} Training Batch A`, { shouldValidate: true });
     setValue("batch_code", `BTCH-${new Date().getFullYear()}-${course.code || course.id}-001`);
-    setValue("location", LOCATIONS.find((item) => item.id === locationId)?.label ?? DEFAULT_LOCATION);
-    sessions.replace(course.modules.map(moduleToSession));
+    setValue("location", courseLocation);
+    setValue("online_url", courseOnlineUrl);
+    sessions.replace(course.modules.map((module) => moduleToSession(module, courseLocation, courseOnlineUrl)));
     setSelectedQuotaIds([]);
     setQuotaDialogOpen(false);
     allocations.replace([]);
@@ -411,7 +427,23 @@ export default function TrainingBatchCreation() {
   const updateLocation = (nextLocationId: string) => {
     setLocationId(nextLocationId);
     const nextLocation = LOCATIONS.find((item) => item.id === nextLocationId)?.label ?? DEFAULT_LOCATION;
-    setValue("location", nextLocation, { shouldValidate: true });
+    setValue("location", nextLocation, { shouldDirty: true });
+    clearErrors("location");
+    getValues("sessions").forEach((_session, index) => {
+      setValue(`sessions.${index}.location`, nextLocation, { shouldDirty: true });
+      clearErrors(`sessions.${index}.location`);
+    });
+  };
+
+  const updateDefaultMeetUrl = (nextUrl: string) => {
+    setValue("online_url", nextUrl, { shouldDirty: true });
+    getValues("sessions").forEach((_session, index) => {
+      setValue(`sessions.${index}.online_url`, nextUrl, { shouldDirty: true });
+    });
+    if (isGoogleMeetUrl(nextUrl)) {
+      clearErrors("online_url");
+      getValues("sessions").forEach((_session, index) => clearErrors(`sessions.${index}.online_url`));
+    }
   };
 
   const regenerateCode = () => {
@@ -452,7 +484,22 @@ export default function TrainingBatchCreation() {
     if (!isQuorumError || quorumResolved) clearErrors("allocations");
   };
 
+  const getCapacityError = (batchCapacity: number, currentAllocations: TrainingBatchFormValues["allocations"]) => {
+    const currentAssignedSeats = currentAllocations.reduce(
+      (total, allocation) => total + (Number(allocation.seats_assigned) || 0),
+      0,
+    );
+    return currentAssignedSeats > batchCapacity
+      ? `Allocated seats exceed this batch's maximum capacity of ${batchCapacity}. Fix this before saving.`
+      : null;
+  };
+
   const handleReady = async () => {
+    const capacityError = getCapacityError(Number(getValues("capacity")), getValues("allocations"));
+    if (capacityError) {
+      toast.error(capacityError);
+      return;
+    }
     const quorumError = getAllocationQuorumError(getValues("allocations"), Number(getValues("min_quorum")));
     if (quorumError) {
       setError("allocations", { type: "manual", message: quorumError });
@@ -461,9 +508,21 @@ export default function TrainingBatchCreation() {
     }
     await handleSubmit(async (values) => {
       await submitBatch({
-        ...values,
+        course_id: values.course_id,
+        name: values.name,
+        batch_code: values.batch_code,
+        location: values.delivery_mode === "ONLINE" ? null : values.location,
+        online_url: values.delivery_mode === "PHYSICAL" ? null : values.online_url ?? null,
+        capacity: values.capacity,
+        min_quorum: values.min_quorum,
+        notes: values.notes,
         status: "UPCOMING",
-        sessions: values.sessions.map((session) => ({ ...session, location: values.location })),
+        sessions: values.sessions.map((session) => ({
+          ...session,
+          location: values.delivery_mode === "ONLINE" ? null : session.location ?? values.location ?? null,
+          online_url: values.delivery_mode === "PHYSICAL" ? null : session.online_url ?? values.online_url ?? null,
+        })),
+        allocations: values.allocations,
       });
     })();
   };
@@ -471,6 +530,11 @@ export default function TrainingBatchCreation() {
   const saveDraft = async () => {
     clearErrors();
     const current = getValues();
+    const capacityError = getCapacityError(Number(current.capacity), current.allocations);
+    if (capacityError) {
+      toast.error(capacityError);
+      return;
+    }
     const quorumError = getAllocationQuorumError(current.allocations, current.min_quorum);
     if (quorumError) {
       setError("allocations", { type: "manual", message: quorumError });
@@ -487,10 +551,21 @@ export default function TrainingBatchCreation() {
       return;
     }
     await submitBatch({
-      ...current,
+      course_id: current.course_id,
+      name: current.name,
+      batch_code: current.batch_code,
       status: "DRAFT",
-      sessions: current.sessions.map((session) => ({ ...session, location: current.location })),
-      allocations: current.allocations,
+      location: current.delivery_mode === "ONLINE" ? null : current.location,
+      online_url: current.delivery_mode === "PHYSICAL" ? null : current.online_url ?? null,
+      capacity: current.capacity,
+      min_quorum: current.min_quorum,
+      notes: current.notes,
+      sessions: (current.sessions ?? []).map((session) => ({
+        ...session,
+        location: current.delivery_mode === "ONLINE" ? null : session.location ?? current.location ?? null,
+        online_url: current.delivery_mode === "PHYSICAL" ? null : session.online_url ?? current.online_url ?? null,
+      })),
+      allocations: current.allocations ?? [],
     });
   };
 
@@ -502,6 +577,8 @@ export default function TrainingBatchCreation() {
       session_date: "",
       start_time: "08:30",
       end_time: "12:30",
+      location: getValues("location") ?? "",
+      online_url: getValues("online_url") ?? "",
     });
   };
 
@@ -563,7 +640,10 @@ export default function TrainingBatchCreation() {
     return option?.available_seats ?? Number.POSITIVE_INFINITY;
   };
 
-  const getSessionError = (index: number, field: "title" | "session_date" | "start_time" | "end_time") =>
+  const getSessionError = (
+    index: number,
+    field: "title" | "session_date" | "start_time" | "end_time" | "location" | "online_url",
+  ) =>
     errors.sessions?.[index]?.[field]?.message;
 
   return (
@@ -678,7 +758,7 @@ export default function TrainingBatchCreation() {
 
                   <div className="flex flex-col gap-2 md:col-span-2">
                     <FieldLabel htmlFor="batch-name">Training Batch Designation Name <span className="text-[#ba1a1a]">*</span></FieldLabel>
-                    <Input id="batch-name" placeholder="Enter Batch Name" {...register("name")} className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none placeholder:text-[#3f4940] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]" />
+                    <Input id="batch-name" placeholder="Enter Batch Name" {...register("name")} className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none  focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]" />
                     <FieldError>{errors.name?.message}</FieldError>
                     <span className="text-[11px] text-[#3f4940]">Public designation visible to corporate sponsors and candidate certificates.</span>
                   </div>
@@ -687,7 +767,7 @@ export default function TrainingBatchCreation() {
                     <FieldLabel htmlFor="batch-code"><span>Batch Reference ID</span><span className="font-mono text-[10px] text-[#006030]">AUTO-SYSTEM</span></FieldLabel>
                     <div className="flex items-center gap-2 rounded-lg bg-[#eff4ff] px-3 py-3 focus-within:ring-2 focus-within:ring-[#1b7a43]">
                       <Tag className="h-[18px] w-[18px] text-[#006030]" />
-                      <input id="batch-code" type="text" placeholder="Enter Batch Reference ID" {...register("batch_code")} className="w-full bg-transparent font-mono text-xs font-semibold text-[#121c2a] outline-none placeholder:font-sans placeholder:font-normal placeholder:text-[#3f4940]" />
+                      <input id="batch-code" type="text" placeholder="Enter Batch Reference ID" {...register("batch_code")} className="w-full bg-transparent font-mono text-xs font-semibold text-[#121c2a] outline-none placeholder:font-sans placeholder:font-normal " />
                       <button type="button" onClick={regenerateCode} aria-label="Refresh batch reference ID" title="Generate a new batch reference ID" className="text-[#3f4940] hover:text-[#006030]">
                         <RefreshCw className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -706,20 +786,42 @@ export default function TrainingBatchCreation() {
                     <span className="text-[11px] text-[#3f4940]">Modality defined at course specification level and locked for standardized certification compliance.</span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <FieldLabel htmlFor="batch-location"><span>Batch Primary Base / Shore Terminal <span className="text-[#ba1a1a]">*</span></span><span className="text-[11px] font-normal text-[#3f4940]">Applies default logistics to all modules</span></FieldLabel>
-                  <Select value={locationId} onValueChange={updateLocation}>
-                    <SelectTrigger id="batch-location" className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
-                      <SelectValue placeholder="Select a training base" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LOCATIONS.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>{location.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldError>{errors.location?.message}</FieldError>
-                </div>
+                {deliveryMode !== "ONLINE" && (
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel htmlFor="batch-location">
+                      <span>Batch Primary Base / Shore Terminal <span className="text-[#ba1a1a]">*</span></span>
+                      <span className="text-[11px] font-normal text-[#3f4940]">Applies as the default venue for all modules</span>
+                    </FieldLabel>
+                    <Select value={locationId} onValueChange={updateLocation}>
+                      <SelectTrigger id="batch-location" className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
+                        <SelectValue placeholder="Select a training base" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LOCATIONS.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>{location.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError>{errors.location?.message}</FieldError>
+                  </div>
+                )}
+                {deliveryMode !== "PHYSICAL" && (
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel htmlFor="batch-meet-url">
+                      <span>Default Google Meet Link <span className="text-[#ba1a1a]">*</span></span>
+                      <span className="text-[11px] font-normal text-[#3f4940]">Applies to all modules; edit a module link below if it differs</span>
+                    </FieldLabel>
+                    <Input
+                      id="batch-meet-url"
+                      type="url"
+                      value={onlineUrl}
+                      onChange={(event) => updateDefaultMeetUrl(event.target.value)}
+                      placeholder="Eg. https://meet.google.com/abc-defg-hij"
+                      className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none  focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]"
+                    />
+                    <FieldError>{errors.online_url?.message}</FieldError>
+                  </div>
+                )}
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#3f4940]">Course Modules Timeline &amp; Cell Assignment ({sessions.fields.length} Modules)</span>
@@ -793,6 +895,46 @@ export default function TrainingBatchCreation() {
                             </div>
                             <FieldError>{getSessionError(index, "start_time") || getSessionError(index, "end_time")}</FieldError>
                           </div>
+                          {deliveryMode !== "ONLINE" && (
+                            <div className="flex flex-col gap-1.5">
+                              <label htmlFor={`session-location-${index}`} className="text-[11px] font-semibold text-[#121c2a]">
+                                Module Venue <span className="text-[#ba1a1a]">*</span>
+                              </label>
+                              <Select
+                                value={watch(`sessions.${index}.location`) || undefined}
+                                onValueChange={(value) => setValue(`sessions.${index}.location`, value, {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                })}
+                              >
+                                <SelectTrigger id={`session-location-${index}`} className="h-auto rounded-lg border-0 bg-white px-3 py-2 text-xs text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
+                                  <SelectValue placeholder="Select module venue" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {LOCATIONS.map((location) => (
+                                    <SelectItem key={location.id} value={location.label}>{location.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FieldError>{getSessionError(index, "location")}</FieldError>
+                            </div>
+                          )}
+                          {deliveryMode !== "PHYSICAL" && (
+                            <div className="flex flex-col gap-1.5">
+                              <label htmlFor={`session-meet-url-${index}`} className="text-[11px] font-semibold text-[#121c2a]">
+                                Module Google Meet Link <span className="text-[#ba1a1a]">*</span>
+                              </label>
+                              <Input
+                                id={`session-meet-url-${index}`}
+                                type="url"
+                                {...register(`sessions.${index}.online_url`)}
+                                placeholder="https://meet.google.com/abc-defg-hij"
+                                className="h-auto rounded-lg border-0 bg-white px-3 py-2 text-xs text-[#121c2a] shadow-none focus-visible:ring-2 focus-visible:ring-[#1b7a43]"
+                              />
+                              <FieldError>{getSessionError(index, "online_url")}</FieldError>
+                            </div>
+                          )}
                         </div>
                         {/* <button type="button" onClick={() => sessions.remove(index)} className="self-end text-[11px] font-semibold text-[#3f4940] hover:text-red-700">Remove session</button> */}
                       </article>
@@ -1018,21 +1160,23 @@ export default function TrainingBatchCreation() {
             </div>
 
             <aside className="flex flex-col gap-6 lg:col-span-4">
-              <section className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm">
-                <div className="relative h-44 w-full">
-                  <img src={yardImage} alt="Oil and gas engineers working at an industrial drilling rig" className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#27313f]/80 via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3 text-white">
-                    <span className="rounded bg-[#006030] px-2 py-1 text-[10px] font-bold uppercase tracking-wider">Yard Inspection Verified</span>
-                    <h3 className="mt-2 text-sm font-bold text-white" style={{ fontFamily: "'Work Sans', sans-serif" }}>{selectedLocation.id === "ph-yard" ? "Port Harcourt High-Pressure Bay 4" : selectedLocation.label.split(" / ")[0]}</h3>
+              {deliveryMode !== "ONLINE" && (
+                <section className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm">
+                  <div className="relative h-44 w-full">
+                    <img src={yardImage} alt="Oil and gas engineers working at an industrial drilling rig" className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#27313f]/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <span className="rounded bg-[#006030] px-2 py-1 text-[10px] font-bold uppercase tracking-wider">Yard Inspection Verified</span>
+                      <h3 className="mt-2 text-sm font-bold text-white" style={{ fontFamily: "'Work Sans', sans-serif" }}>{selectedLocation.id === "ph-yard" ? "Port Harcourt High-Pressure Bay 4" : selectedLocation.label.split(" / ")[0]}</h3>
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-col gap-3 p-6">
-                  <div className="flex items-center justify-between gap-2 text-xs"><span className="text-[#3f4940]">Facility Rating</span><span className="flex items-center gap-1.5 font-semibold text-[#121c2a]"><BadgeCheck className="h-4 w-4 text-[#6c4d00]" />IWCF Class A Certified</span></div>
-                  <div className="flex items-center justify-between gap-2 text-xs"><span className="text-[#3f4940]">Simulator Type</span><span className="text-right font-semibold text-[#121c2a]">DrillSIM 5000 Cyber Chair</span></div>
-                  <div className="flex items-center justify-between gap-2 text-xs"><span className="text-[#3f4940]">Assessor Ratio</span><span className="text-right font-semibold text-[#121c2a]">1 : 8 (Safety Mandate Compliant)</span></div>
-                </div>
-              </section>
+                  <div className="flex flex-col gap-3 p-6">
+                    <div className="flex items-center justify-between gap-2 text-xs"><span className="text-[#3f4940]">Facility Rating</span><span className="flex items-center gap-1.5 font-semibold text-[#121c2a]"><BadgeCheck className="h-4 w-4 text-[#6c4d00]" />IWCF Class A Certified</span></div>
+                    <div className="flex items-center justify-between gap-2 text-xs"><span className="text-[#3f4940]">Simulator Type</span><span className="text-right font-semibold text-[#121c2a]">DrillSIM 5000 Cyber Chair</span></div>
+                    <div className="flex items-center justify-between gap-2 text-xs"><span className="text-[#3f4940]">Assessor Ratio</span><span className="text-right font-semibold text-[#121c2a]">1 : 8 (Safety Mandate Compliant)</span></div>
+                  </div>
+                </section>
+              )}
               <section className="flex flex-col gap-2 rounded-xl bg-[#dee9fc]/60 p-6">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#006030]"><Gavel className="h-4 w-4" />NUPRC &amp; IWCF Audit Standard</div>
                 <p className="text-xs leading-relaxed text-[#3f4940]">All candidates must have verifiable NOGIC JQS candidate registration numbers submitted at least 48 hours prior to start date for certification filing.</p>

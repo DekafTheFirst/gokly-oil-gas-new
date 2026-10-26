@@ -5,13 +5,14 @@ export type TrainingBatchStatus = "DRAFT" | "UPCOMING" | "ACTIVE" | "COMPLETED" 
 
 export interface TrainingBatchSession {
   id?: string;
-  course_module_id: number;
+  course_module_id: number | null;
   title: string;
   description?: string;
   session_date: string;
   start_time: string;
   end_time: string;
-  location: string;
+  location: string | null;
+  online_url?: string | null;
 }
 
 export interface TrainingBatchAllocation {
@@ -24,7 +25,8 @@ export interface TrainingBatchPayload {
   course_id: number;
   name: string;
   batch_code?: string;
-  location?: string;
+  location?: string | null;
+  online_url?: string | null;
   capacity?: number;
   min_quorum?: number;
   notes?: string;

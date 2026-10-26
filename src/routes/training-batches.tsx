@@ -59,6 +59,22 @@ function formatDateRange(batch: Pick<TrainingBatchListItem, "start_date" | "end_
   return `${formatDate(batch.start_date)} – ${formatDate(batch.end_date)}`;
 }
 
+function safeMeetUrl(value?: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && url.hostname === "meet.google.com"
+      && !url.port
+      && !url.username
+      && !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function exportSchedule(batches: TrainingBatchListItem[]) {
   const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
   const rows = [
@@ -320,7 +336,7 @@ export default function TrainingBatches() {
                         <p className="mt-1 text-xs text-muted-foreground">Trainer</p>
                       </td>
                       <td className="min-w-40">
-                        <p className="flex items-center gap-1.5 font-medium"><MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />{batch.location || "Not assigned"}</p>
+                        <p className="flex items-center gap-1.5 font-medium"><MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />{batch.location || (batch.delivery_mode === "ONLINE" ? "Online" : "Not assigned")}</p>
                         <p className="mt-1 text-xs text-muted-foreground">{batch.delivery_mode}</p>
                       </td>
                       <td><Badge variant="outline" className={STATUS_STYLES[batch.status]}>{STATUS_LABELS[batch.status]}</Badge></td>
@@ -377,7 +393,7 @@ export default function TrainingBatches() {
                 <div className="grid gap-3 rounded-lg bg-muted/50 p-4 text-sm sm:grid-cols-2">
                   <p><span className="font-semibold">Status:</span> {STATUS_LABELS[selectedBatch.status]}</p>
                   <p><span className="font-semibold">Dates:</span> {formatDateRange(selectedBatch)}</p>
-                  <p><span className="font-semibold">Location:</span> {selectedBatch.location || "Not assigned"}</p>
+                  <p><span className="font-semibold">Location:</span> {selectedBatch.location || (selectedBatch.delivery_mode === "ONLINE" ? "Online" : "Not assigned")}</p>
                   <p><span className="font-semibold">Capacity:</span> {selectedBatch.capacity ?? "Not set"}</p>
                   <p><span className="font-semibold">Minimum quorum:</span> {selectedBatch.min_quorum ?? "Not set"}</p>
                   <p><span className="font-semibold">Delivery:</span> {selectedBatch.delivery_mode}</p>
@@ -386,14 +402,28 @@ export default function TrainingBatches() {
                   <h3 className="mb-2 text-sm font-semibold">Sessions ({selectedBatch.sessions.length})</h3>
                   {selectedBatch.sessions.length ? (
                     <ul className="space-y-2">
-                      {selectedBatch.sessions.map((session) => (
-                        <li key={session.id ?? `${session.session_date}-${session.title}`} className="rounded-lg border border-border p-3 text-sm">
-                          <p className="font-medium">{session.title}</p>
-                          <p className="mt-1 text-muted-foreground">
-                            {formatDate(session.session_date)} · {session.start_time}–{session.end_time} · {session.location}
-                          </p>
-                        </li>
-                      ))}
+                      {selectedBatch.sessions.map((session) => {
+                        const meetUrl = safeMeetUrl(session.online_url);
+                        return (
+                          <li key={session.id ?? `${session.session_date}-${session.title}`} className="rounded-lg border border-border p-3 text-sm">
+                            <p className="font-medium">{session.title}</p>
+                            <p className="mt-1 text-muted-foreground">
+                              {formatDate(session.session_date)} · {session.start_time}–{session.end_time}
+                              {session.location ? ` · ${session.location}` : selectedBatch.delivery_mode === "ONLINE" ? " · Online" : ""}
+                            </p>
+                            {meetUrl && (
+                              <a
+                                href={meetUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex text-sm font-medium text-primary underline underline-offset-4"
+                              >
+                                Join Google Meet
+                              </a>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : <p className="text-sm text-muted-foreground">No sessions added.</p>}
                 </section>

@@ -10,6 +10,23 @@ const dateSchema = z
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Enter a valid time.");
 
+export function isGoogleMeetUrl(value: string) {
+  if (!value.trim() || value.trim().length > 500) return false;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:"
+      && url.hostname === "meet.google.com"
+      && !url.port
+      && !url.username
+      && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+const googleMeetUrlSchema = z.string().trim().max(500, "Google Meet link must be 500 characters or fewer.")
+  .refine((value) => !value || isGoogleMeetUrl(value), "Enter a valid Google Meet link.");
+
 const sessionSchema = z
   .object({
     course_module_id: z.number().int().positive().nullable(),
@@ -18,6 +35,8 @@ const sessionSchema = z
     session_date: dateSchema,
     start_time: timeSchema,
     end_time: timeSchema,
+    location: z.string().trim().max(250).optional(),
+    online_url: googleMeetUrlSchema.optional(),
   })
   .superRefine((session, context) => {
     const [startHour, startMinute] = session.start_time.split(":").map(Number);
@@ -51,9 +70,11 @@ const allocationSchema = z.discriminatedUnion("allocation_type", [
 
 const baseSchema = z.object({
   course_id: z.number().int().positive("Select a published course."),
+  delivery_mode: z.enum(["PHYSICAL", "ONLINE", "HYBRID"]),
   name: z.string().trim().min(3, "Training batch name must be at least 3 characters.").max(150),
   batch_code: z.string().trim().min(3, "Batch reference must be at least 3 characters.").max(80),
-  location: z.string().trim().min(2, "Select a training base.").max(250),
+  location: z.string().trim().max(250).optional(),
+  online_url: googleMeetUrlSchema.optional(),
   capacity: z.number().int().min(1, "Capacity must be at least 1.").max(1000),
   min_quorum: z.number().int().min(1, "Minimum quorum must be at least 1."),
   notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer."),
@@ -77,6 +98,38 @@ export const trainingBatchFormSchema = baseSchema
         message: "Add at least one session before marking the training batch ready.",
       });
     }
+    const needsLocation = batch.delivery_mode !== "ONLINE";
+    const needsMeetLink = batch.delivery_mode !== "PHYSICAL";
+    if (needsLocation && !batch.location) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["location"],
+        message: "Select a training base.",
+      });
+    }
+    if (needsMeetLink && !batch.online_url) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["online_url"],
+        message: "Enter a Google Meet link.",
+      });
+    }
+    batch.sessions.forEach((session, index) => {
+      if (needsLocation && !session.location?.trim()) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["sessions", index, "location"],
+          message: "Select a training base for this module.",
+        });
+      }
+      if (needsMeetLink && !session.online_url) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["sessions", index, "online_url"],
+          message: "Enter a Google Meet link for this module.",
+        });
+      }
+    });
     const allocated = batch.allocations.reduce((sum, allocation) => sum + allocation.seats_assigned, 0);
     if (allocated > batch.capacity) {
       context.addIssue({
@@ -111,6 +164,13 @@ export const trainingBatchDraftSchema = baseSchema
     allocations: z.array(allocationSchema).optional(),
   })
   .superRefine((batch, context) => {
+    if (batch.delivery_mode !== "ONLINE" && !batch.location) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["location"],
+        message: "Select a training base.",
+      });
+    }
     if (batch.min_quorum > batch.capacity) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -137,9 +197,11 @@ export const trainingBatchDraftSchema = baseSchema
 
 export interface TrainingBatchFormValues {
   course_id: number;
+  delivery_mode: "PHYSICAL" | "ONLINE" | "HYBRID";
   name: string;
   batch_code: string;
-  location: string;
+  location?: string;
+  online_url?: string;
   capacity: number;
   min_quorum: number;
   notes: string;
@@ -150,6 +212,8 @@ export interface TrainingBatchFormValues {
     session_date: string;
     start_time: string;
     end_time: string;
+    location?: string;
+    online_url?: string;
   }>;
   allocations: Array<
     | { allocation_type: "CONTRACT"; engagement_item_id: string; seats_assigned: number }

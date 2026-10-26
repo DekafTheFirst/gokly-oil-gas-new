@@ -63,7 +63,7 @@ function SummaryCard({
   icon: typeof FileText;
 }) {
   return (
-    <div className="flex min-h-32 flex-col justify-between rounded-xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className="flex min-h-32 flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
         <Icon className="h-4 w-4 shrink-0 text-emerald-700" />
@@ -144,11 +144,11 @@ export default function EngagementDetails() {
         </Button>
 
         {loading ? (
-          <div className="rounded-xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
             Loading engagement details...
           </div>
         ) : !engagement ? (
-          <section className="rounded-xl bg-white p-10 text-center shadow-sm">
+          <section className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
             <h1 className="text-xl font-semibold text-slate-900">Engagement not found</h1>
             <p className="mt-2 text-sm text-slate-500">
               The engagement may have been removed or you may not have access to it.
@@ -156,7 +156,7 @@ export default function EngagementDetails() {
           </section>
         ) : (
           <>
-            <div className="flex flex-col justify-between gap-5 rounded-xl bg-white p-6 shadow-sm md:flex-row md:items-center">
+            <div className="flex flex-col justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   <span>Commercial Operations</span>
@@ -232,7 +232,7 @@ export default function EngagementDetails() {
 
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
               <div className="flex flex-col gap-6 lg:col-span-8">
-                <section className="flex flex-col gap-5 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+                <section className="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                     <div className="flex items-center gap-2">
                       <FileCheck2 className="h-5 w-5 text-emerald-700" />
@@ -307,7 +307,7 @@ export default function EngagementDetails() {
                   )}
                 </section>
 
-                <section className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+                <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
@@ -329,15 +329,15 @@ export default function EngagementDetails() {
                       {items.map((item, index) => (
                         <article
                           key={item.id || `${item.course_id}-${index}`}
-                          className="rounded-xl bg-slate-50 p-4 transition-colors hover:bg-slate-100"
+                          className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-100"
                         >
                           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                             <div className="flex min-w-0 items-start gap-3">
-                              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-emerald-800">
+                              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-emerald-800">
                                 <FileText className="h-5 w-5" />
                               </div>
                               <div className="min-w-0">
-                                <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700">
+                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700">
                                   Training item {index + 1}
                                 </span>
                                 <h3 className="mt-1 break-words text-sm font-bold text-slate-900">
@@ -363,17 +363,17 @@ export default function EngagementDetails() {
                             </div>
                           </div>
                           <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 sm:grid-cols-3">
-                            <div className="rounded bg-white p-2 text-center">
+                            <div className="rounded-md border border-slate-200 bg-white p-2 text-center">
                               <span className="block text-[10px] uppercase text-slate-500">Agreed</span>
                               <span className="text-sm font-bold text-slate-900">{item.agreed_quantity}</span>
                             </div>
-                            <div className="rounded bg-white p-2 text-center">
+                            <div className="rounded-md border border-slate-200 bg-white p-2 text-center">
                               <span className="block text-[10px] uppercase text-slate-500">Unit price</span>
                               <span className="text-sm font-bold text-slate-900">
                                 {formatCurrency(item.unit_price, engagement.currency)}
                               </span>
                             </div>
-                            <div className="col-span-2 rounded bg-white p-2 text-center sm:col-span-1">
+                            <div className="col-span-2 rounded-md border border-slate-200 bg-white p-2 text-center sm:col-span-1">
                               <span className="block text-[10px] uppercase text-slate-500">Item total</span>
                               <span className="text-sm font-bold text-emerald-800">
                                 {formatCurrency(
@@ -398,7 +398,7 @@ export default function EngagementDetails() {
                   </div>
                 </section>
 
-                <section className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+                <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
                       Cohorts &amp; execution
@@ -416,7 +416,7 @@ export default function EngagementDetails() {
               </div>
 
               <aside className="flex flex-col gap-6 lg:col-span-4">
-                <section className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+                <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <Banknote className="h-5 w-5 text-amber-700" />
@@ -451,7 +451,7 @@ export default function EngagementDetails() {
                   </div>
                 </section>
 
-                <section className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+                <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-emerald-700" />

@@ -312,7 +312,14 @@ export default function TrainingBatches() {
                   return (
                     <tr key={batch.id}>
                       <td className="max-w-[270px]">
-                        <span className="font-mono text-xs font-semibold text-primary">{batch.batch_code}</span>
+                        <button
+                          type="button"
+                          onClick={() => void openBatchDetails(batch.id)}
+                          className="text-left font-mono text-xs font-semibold text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label={`View details for batch ${batch.batch_code}`}
+                        >
+                          {batch.batch_code}
+                        </button>
                         <p className="mt-1 font-semibold text-foreground">{batch.course_title}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{batch.name} · {batch.session_count} sessions</p>
                       </td>

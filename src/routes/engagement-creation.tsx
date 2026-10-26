@@ -257,7 +257,7 @@ export default function EngagementCreation() {
 
   return (
     <AdminPageShell withSidebar>
-      <div className="max-w-7xl mx-auto w-full px-6 py-8 pb-32 space-y-10">
+      <div className="max-w-8xl mx-auto w-full px-12 py-8 pb-32 space-y-10">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
@@ -344,7 +344,7 @@ export default function EngagementCreation() {
           </div>
         </div> */}
         {/* Section A: Engagement Information */}
-        <div className="bg-background rounded-xl p-8 shadow-sm space-y-6">
+        <div className="bg-background rounded-xl border border-border p-8 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-primary">
@@ -472,7 +472,7 @@ export default function EngagementCreation() {
           </div>
         </div>
         {/* Section B: Training Items */}
-        <div className="bg-background rounded-xl p-8 shadow-sm space-y-6">
+        <div className="bg-background rounded-xl border border-border p-8 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-primary">
@@ -492,7 +492,7 @@ export default function EngagementCreation() {
           </div>
           <div className="space-y-4">
             {trainingItems.map((item, index) => (
-              <div key={index} className="bg-muted/60 rounded-xl p-5 space-y-4 shadow-sm">
+              <div key={index} className="bg-muted/60 rounded-xl border border-border p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between pb-2">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
@@ -627,7 +627,7 @@ export default function EngagementCreation() {
           </div>
         </div>
         {/* Section C: Delivery Planning */}
-        <div className="bg-background rounded-xl p-8 shadow-sm space-y-6">
+        <div className="bg-background rounded-xl border border-border p-8 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-primary">
@@ -656,7 +656,7 @@ export default function EngagementCreation() {
           </div>
         </div>
         {/* Section D: Commercial Terms */}
-        <div className="bg-background rounded-xl p-8 shadow-sm space-y-6">
+        <div className="bg-background rounded-xl border border-border p-8 shadow-sm space-y-6">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-primary">
               <Building className="h-4 w-4" />

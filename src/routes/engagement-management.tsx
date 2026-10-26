@@ -159,7 +159,7 @@ export default function EngagementManagement() {
 
   return (
     <AdminPageShell withSidebar>
-      <div className="w-full max-w-[1280px] mx-auto px-6 py-6 space-y-6">
+      <div className="w-full mx-auto px-10 py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4">
         <div className="space-y-2">
@@ -188,7 +188,7 @@ export default function EngagementManagement() {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
+          <div className="p-4 rounded-xl border border-border bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
             <div className="absolute top-2 right-2 p-1.5 rounded-md bg-blue-500/20 opacity-90">
               <Briefcase className="h-3 w-3 text-blue-500" />
             </div>
@@ -201,7 +201,7 @@ export default function EngagementManagement() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
+          <div className="p-4 rounded-xl border border-border bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
             <div className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-400/20 opacity-90">
               <FileText className="h-3 w-3 text-gray-400" />
             </div>
@@ -214,7 +214,7 @@ export default function EngagementManagement() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
+          <div className="p-4 rounded-xl border border-border bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
             <div className="absolute top-2 right-2 p-1.5 rounded-md bg-green-500/20 opacity-90">
               <Clock className="h-3 w-3 text-green-500" />
             </div>
@@ -227,7 +227,7 @@ export default function EngagementManagement() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
+          <div className="p-4 rounded-xl border border-border bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
             <div className="absolute top-2 right-2 p-1.5 rounded-md bg-emerald-500/20 opacity-90">
               <CheckCircle2 className="h-3 w-3 text-emerald-500" />
             </div>
@@ -240,7 +240,7 @@ export default function EngagementManagement() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
+          <div className="p-4 rounded-xl border border-border bg-background shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-shadow">
             <div className="absolute top-2 right-2 p-1.5 rounded-md bg-orange-500/20 opacity-90">
               <Wallet className="h-3 w-3 text-orange-500" />
             </div>
@@ -255,7 +255,7 @@ export default function EngagementManagement() {
       )}
 
       {/* Filters */}
-      <div className="p-3 bg-background rounded-xl shadow-sm space-y-3">
+      <div className="p-3 bg-background rounded-xl border border-border shadow-sm space-y-3">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           <div className="relative flex-1 min-w-[280px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -303,10 +303,10 @@ export default function EngagementManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-background rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wider">
+            <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
               <tr>
                 <th className="py-3 px-4 font-semibold">Engagement & Ref</th>
                 <th className="py-3 px-4 font-semibold">Organization</th>
@@ -319,7 +319,7 @@ export default function EngagementManagement() {
                 <th className="py-3 px-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y text-sm">
+            <tbody className="divide-y divide-border text-sm">
               {loading ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-muted-foreground">

@@ -180,7 +180,7 @@ function DatePickerField({
           className="h-auto w-full justify-start rounded-lg border-0 bg-white px-3 py-2 text-left text-xs font-normal text-[#121c2a] shadow-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]"
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-[#3f4940]" />
-          {selectedDate ? format(selectedDate, "PPP") : <span className="text-[#3f4940]">Select a date</span>}
+          {selectedDate ? format(selectedDate, "PPP") : <span className="text-muted-foreground/70">Select a date</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">
@@ -682,7 +682,7 @@ export default function TrainingBatchCreation() {
           </div>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-12 p-6">
+        <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-12 p-6">
           {optionsError && (
             <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               {optionsError}
@@ -793,7 +793,7 @@ export default function TrainingBatchCreation() {
                       <span className="text-[11px] font-normal text-[#3f4940]">Applies as the default venue for all modules</span>
                     </FieldLabel>
                     <Select value={locationId} onValueChange={updateLocation}>
-                      <SelectTrigger id="batch-location" className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
+                      <SelectTrigger id="batch-location" className="h-auto rounded-lg border-0 text-[#3f4940] bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
                         <SelectValue placeholder="Select a training base" />
                       </SelectTrigger>
                       <SelectContent>

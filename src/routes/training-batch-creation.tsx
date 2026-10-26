@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useFieldArray, useForm, useWatch, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
@@ -37,6 +37,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { format, isValid, parseISO } from "date-fns";
 import {
@@ -49,6 +59,7 @@ import {
 } from "@/lib/training-batches";
 import { ApiError } from "@/lib/api";
 import {
+  getAllocationQuorumError,
   trainingBatchDraftSchema,
   trainingBatchFormSchema,
   type TrainingBatchFormValues,
@@ -63,6 +74,18 @@ const LOCATIONS = [
 ];
 
 const DEFAULT_LOCATION = LOCATIONS[0].label;
+const ALLOCATION_COLORS = [
+  "#2563eb",
+  "#7c3aed",
+  "#db2777",
+  "#ea580c",
+  "#16a34a",
+  "#0891b2",
+  "#4f46e5",
+  "#ca8a04",
+  "#0f766e",
+  "#9333ea",
+];
 
 function normalizeDate(value?: string | null) {
   if (!value) return "";
@@ -250,7 +273,9 @@ export default function TrainingBatchCreation() {
   const [locationId, setLocationId] = useState(LOCATIONS[0].id);
   const [selectedQuotaIds, setSelectedQuotaIds] = useState<string[]>([]);
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
+  const [pendingCourseId, setPendingCourseId] = useState<number | null>(null);
   const [contextVisible, setContextVisible] = useState(true);
+  const allocationOptionsRequest = useRef(0);
 
   const {
     register,
@@ -283,6 +308,7 @@ export default function TrainingBatchCreation() {
 
   const courseId = watch("course_id");
   const capacity = watch("capacity");
+  const minQuorum = watch("min_quorum");
   const watchedAllocations = useWatch({ control, name: "allocations" });
   const selectedCourse = courses.find((course) => course.id === Number(courseId));
   const selectedLocation = LOCATIONS.find((location) => location.id === locationId) ?? LOCATIONS[0];
@@ -318,6 +344,16 @@ export default function TrainingBatchCreation() {
   }, [assignedSeats, capacity, clearErrors, errors.allocations?.message]);
 
   useEffect(() => {
+    const errorMessage = errors.allocations?.message;
+    if (
+      errorMessage?.startsWith("Assigned seats (") &&
+      assignedSeats >= Number(minQuorum)
+    ) {
+      clearErrors("allocations");
+    }
+  }, [assignedSeats, minQuorum, clearErrors, errors.allocations?.message]);
+
+  useEffect(() => {
     let mounted = true;
     const loadOptions = async () => {
       setOptionsLoading(true);
@@ -348,18 +384,25 @@ export default function TrainingBatchCreation() {
   const changeCourse = async (nextCourseId: number) => {
     const course = courses.find((item) => item.id === nextCourseId);
     if (!course) return;
+    const requestId = ++allocationOptionsRequest.current;
     setValue("course_id", course.id, { shouldValidate: true });
     setValue("name", `Q1 ${course.title.split(" (")[0]} Training Batch A`, { shouldValidate: true });
     setValue("batch_code", `BTCH-${new Date().getFullYear()}-${course.code || course.id}-001`);
     setValue("location", LOCATIONS.find((item) => item.id === locationId)?.label ?? DEFAULT_LOCATION);
     sessions.replace(course.modules.map(moduleToSession));
+    setSelectedQuotaIds([]);
+    setQuotaDialogOpen(false);
+    allocations.replace([]);
+    setValue("allocations", [], { shouldDirty: true, shouldValidate: true });
+    setAllocationOptions([]);
     clearErrors();
     try {
       const response = await fetchTrainingBatchOptions(course.id);
-      setAllocationOptions(response.allocation_options);
-      setSelectedQuotaIds([]);
-      allocations.replace([]);
+      if (requestId === allocationOptionsRequest.current) {
+        setAllocationOptions(response.allocation_options);
+      }
     } catch (error) {
+      if (requestId !== allocationOptionsRequest.current) return;
       const message = error instanceof Error ? error.message : "Unable to load contract quotas for this course.";
       toast.error(message);
     }
@@ -400,17 +443,40 @@ export default function TrainingBatchCreation() {
     }
   };
 
-  const handleReady = handleSubmit(async (values) => {
-    await submitBatch({
-      ...values,
-      status: "UPCOMING",
-      sessions: values.sessions.map((session) => ({ ...session, location: values.location })),
-    });
-  });
+  const clearAllocationErrorsIfResolved = () => {
+    const isQuorumError = errors.allocations?.message?.startsWith("Assigned seats (");
+    const quorumResolved = getAllocationQuorumError(
+      getValues("allocations"),
+      Number(getValues("min_quorum")),
+    ) === null;
+    if (!isQuorumError || quorumResolved) clearErrors("allocations");
+  };
+
+  const handleReady = async () => {
+    const quorumError = getAllocationQuorumError(getValues("allocations"), Number(getValues("min_quorum")));
+    if (quorumError) {
+      setError("allocations", { type: "manual", message: quorumError });
+      toast.error(quorumError);
+      return;
+    }
+    await handleSubmit(async (values) => {
+      await submitBatch({
+        ...values,
+        status: "UPCOMING",
+        sessions: values.sessions.map((session) => ({ ...session, location: values.location })),
+      });
+    })();
+  };
 
   const saveDraft = async () => {
     clearErrors();
     const current = getValues();
+    const quorumError = getAllocationQuorumError(current.allocations, current.min_quorum);
+    if (quorumError) {
+      setError("allocations", { type: "manual", message: quorumError });
+      toast.error(quorumError);
+      return;
+    }
     const parsed = trainingBatchDraftSchema.safeParse(current);
     if (!parsed.success) {
       parsed.error.issues.forEach((issue) => {
@@ -462,17 +528,17 @@ export default function TrainingBatchCreation() {
         seats_assigned: quotaSeats,
       });
     });
-    clearErrors("allocations");
+    clearAllocationErrorsIfResolved();
     return true;
   };
 
   const addOpenEnrollment = () => {
-    if (watchedAllocations.some((item) => item.allocation_type === "OPEN_ENROLLMENT")) {
+    if (getValues("allocations").some((item) => item.allocation_type === "OPEN_ENROLLMENT")) {
       toast.error("Open enrollment can only be added once.");
       return;
     }
     allocations.append({ allocation_type: "OPEN_ENROLLMENT", seats_assigned: 0 });
-    clearErrors("allocations");
+    clearAllocationErrorsIfResolved();
   };
 
   const adjustAllocationSeats = (index: number, change: number) => {
@@ -486,21 +552,15 @@ export default function TrainingBatchCreation() {
     setValue(`allocations.${index}.seats_assigned`, limitedSeats, {
       shouldDirty: true,
       shouldTouch: true,
-      shouldValidate: true,
     });
   };
 
-  const setAllocationSeatInput = (index: number, value: number) => {
+  const getAllocationSeatLimit = (index: number) => {
     const allocation = getValues("allocations")[index];
     const option = allocation?.allocation_type === "CONTRACT"
       ? allocationOptions.find((item) => item.engagement_item_id === allocation.engagement_item_id)
       : undefined;
-    const seats = Number.isFinite(value) ? Math.max(0, value) : 0;
-    setValue(`allocations.${index}.seats_assigned`, option ? Math.min(seats, option.available_seats) : seats, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    });
+    return option?.available_seats ?? Number.POSITIVE_INFINITY;
   };
 
   const getSessionError = (index: number, field: "title" | "session_date" | "start_time" | "end_time") =>
@@ -595,7 +655,14 @@ export default function TrainingBatchCreation() {
                     <Select
                       value={courseId ? String(courseId) : undefined}
                       disabled={optionsLoading || courses.length === 0}
-                      onValueChange={(value) => void changeCourse(Number(value))}
+                      onValueChange={(value) => {
+                        const nextCourseId = Number(value);
+                        if (getValues("allocations").length > 0) {
+                          setPendingCourseId(nextCourseId);
+                          return;
+                        }
+                        void changeCourse(nextCourseId);
+                      }}
                     >
                       <SelectTrigger id="batch-course" className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
                         <SelectValue placeholder={optionsLoading ? "Loading courses…" : "Select Course Module"} />
@@ -727,7 +794,7 @@ export default function TrainingBatchCreation() {
                             <FieldError>{getSessionError(index, "start_time") || getSessionError(index, "end_time")}</FieldError>
                           </div>
                         </div>
-                        <button type="button" onClick={() => sessions.remove(index)} className="self-end text-[11px] font-semibold text-[#3f4940] hover:text-red-700">Remove session</button>
+                        {/* <button type="button" onClick={() => sessions.remove(index)} className="self-end text-[11px] font-semibold text-[#3f4940] hover:text-red-700">Remove session</button> */}
                       </article>
                     );
                   })}
@@ -758,7 +825,7 @@ export default function TrainingBatchCreation() {
                     <FieldError>{errors.min_quorum?.message}</FieldError>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="flex flex-col gap-2">
                     <FieldLabel htmlFor="batch-notes">Operational Notes</FieldLabel>
                     <textarea id="batch-notes" {...register("notes")} maxLength={2000} placeholder="Add HSE, yard, or mobilization notes..." className="min-h-24 w-full rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] outline-none focus:bg-white focus:ring-2 focus:ring-[#1b7a43]" />
@@ -817,23 +884,36 @@ export default function TrainingBatchCreation() {
                     </p>
                   )}
                   <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white shadow-sm">
-                    {allocationRows.map((allocation, index) => (
-                      <div
-                        key={allocation.id}
-                        title={`${allocation.option?.organization_name || "Open Public Enrollment"}: ${allocation.seats_assigned} seats`}
-                        className={`h-full transition-all ${allocation.allocation_type === "OPEN_ENROLLMENT" ? "bg-[#fcbc22]" : index === 0 ? "bg-[#1b7a43]" : "bg-[#2f6947]"}`}
-                        style={{ width: `${capacity ? (Number(allocation.seats_assigned) / Number(capacity)) * 100 : 0}%` }}
-                      />
-                    ))}
+                    {allocationRows.map((allocation, index) => {
+                      const color = allocation.allocation_type === "OPEN_ENROLLMENT"
+                        ? "#fcbc22"
+                        : ALLOCATION_COLORS[index % ALLOCATION_COLORS.length];
+                      return (
+                        <div
+                          key={allocation.id}
+                          title={`${allocation.option?.organization_name || "Open Public Enrollment"}: ${allocation.seats_assigned} seats`}
+                          className="h-full transition-all"
+                          style={{
+                            width: `${capacity ? (Number(allocation.seats_assigned) / Number(capacity)) * 100 : 0}%`,
+                            backgroundColor: color,
+                          }}
+                        />
+                      );
+                    })}
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#becabd]/20 pt-2 text-[11px] text-[#3f4940]">
                     <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                      {allocationRows.map((allocation, index) => (
-                        <span key={allocation.id} className="inline-flex items-center gap-1.5 font-medium text-[#121c2a]">
-                          <span className={`h-2 w-2 rounded-full ${allocation.allocation_type === "OPEN_ENROLLMENT" ? "bg-[#fcbc22]" : index === 0 ? "bg-[#1b7a43]" : "bg-[#2f6947]"}`} />
-                          {allocation.option?.organization_name || "Open Public Enrollment"} ({allocation.seats_assigned} seats · {capacity ? Math.round((Number(allocation.seats_assigned) / Number(capacity)) * 100) : 0}% batch)
-                        </span>
-                      ))}
+                      {allocationRows.map((allocation, index) => {
+                        const color = allocation.allocation_type === "OPEN_ENROLLMENT"
+                          ? "#fcbc22"
+                          : ALLOCATION_COLORS[index % ALLOCATION_COLORS.length];
+                        return (
+                          <span key={allocation.id} className="inline-flex items-center gap-1.5 font-medium text-[#121c2a]">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                            {allocation.option?.organization_name || "Open Public Enrollment"} ({allocation.seats_assigned} seats · {capacity ? Math.round((Number(allocation.seats_assigned) / Number(capacity)) * 100) : 0}% batch)
+                          </span>
+                        );
+                      })}
                       {allocationRows.length === 0 && <span>No seat allocations added.</span>}
                     </div>
                     <span className="inline-flex items-center gap-1.5 font-bold text-[#006030]"><CircleCheck className="h-3.5 w-3.5" />Ready for Roster Mapping</span>
@@ -909,11 +989,14 @@ export default function TrainingBatchCreation() {
                               max={quota?.available_seats}
                               {...seatsRegistration}
                               onChange={(event) => {
-                                if (!Number.isFinite(event.currentTarget.valueAsNumber)) {
-                                  event.currentTarget.value = "0";
-                                }
-                                void seatsRegistration.onChange(event);
-                                setAllocationSeatInput(index, event.currentTarget.valueAsNumber);
+                                const enteredSeats = event.currentTarget.valueAsNumber;
+                                const normalizedSeats = Number.isFinite(enteredSeats)
+                                  ? Math.max(0, Math.min(enteredSeats, getAllocationSeatLimit(index)))
+                                  : 0;
+                                event.currentTarget.value = String(normalizedSeats);
+                                setValue(`allocations.${index}.seats_assigned`, normalizedSeats, {
+                                  shouldDirty: true,
+                                });
                               }}
                               className="h-7 w-10 bg-transparent text-center text-xs font-bold text-[#006030] outline-none"
                             />
@@ -1044,6 +1127,33 @@ export default function TrainingBatchCreation() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          <AlertDialog
+            open={pendingCourseId !== null}
+            onOpenChange={(open) => {
+              if (!open) setPendingCourseId(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Change course and clear allocations?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This batch has contract or public enrollment allocations. Changing the course will remove all of them. Do you want to continue?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setPendingCourseId(null)}>Keep current course</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (pendingCourseId !== null) void changeCourse(pendingCourseId);
+                    setPendingCourseId(null);
+                  }}
+                  className="bg-red-700 text-white hover:bg-red-800"
+                >
+                  Change course and clear allocations
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </AdminPageShell>

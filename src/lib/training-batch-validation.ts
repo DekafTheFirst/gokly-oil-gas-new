@@ -95,6 +95,13 @@ export const trainingBatchFormSchema = baseSchema
         message: "A contract quota can only be assigned once.",
       });
     }
+    if (batch.allocations.filter((allocation) => allocation.allocation_type === "OPEN_ENROLLMENT").length > 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["allocations"],
+        message: "Open enrollment can only be added once.",
+      });
+    }
   });
 
 export const trainingBatchDraftSchema = baseSchema
@@ -119,6 +126,13 @@ export const trainingBatchDraftSchema = baseSchema
         message: "Allocated seats cannot exceed training batch capacity.",
       });
     }
+    if ((batch.allocations ?? []).filter((allocation) => allocation.allocation_type === "OPEN_ENROLLMENT").length > 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["allocations"],
+        message: "Open enrollment can only be added once.",
+      });
+    }
   });
 
 export interface TrainingBatchFormValues {
@@ -141,4 +155,17 @@ export interface TrainingBatchFormValues {
     | { allocation_type: "CONTRACT"; engagement_item_id: string; seats_assigned: number }
     | { allocation_type: "OPEN_ENROLLMENT"; seats_assigned: number }
   >;
+}
+
+export function getAllocationQuorumError(
+  allocations: TrainingBatchFormValues["allocations"],
+  minQuorum: number,
+) {
+  const assigned = allocations.reduce((sum, allocation) => {
+    const seats = Number(allocation.seats_assigned);
+    return sum + (Number.isFinite(seats) ? seats : 0);
+  }, 0);
+  return assigned < minQuorum
+    ? `Assigned seats (${assigned}) are below the minimum quorum of ${minQuorum}.`
+    : null;
 }

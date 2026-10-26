@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getAllocationQuorumError,
   trainingBatchDraftSchema,
   trainingBatchFormSchema,
 } from "@/lib/training-batch-validation";
@@ -90,5 +91,34 @@ describe("training batch validation", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("rejects duplicate open enrollment allocations for ready batches and drafts", () => {
+    const duplicateAllocations = [
+      { allocation_type: "OPEN_ENROLLMENT" as const, seats_assigned: 2 },
+      { allocation_type: "OPEN_ENROLLMENT" as const, seats_assigned: 3 },
+    ];
+
+    expect(trainingBatchFormSchema.safeParse({
+      ...validBatch,
+      allocations: duplicateAllocations,
+    }).success).toBe(false);
+    expect(trainingBatchDraftSchema.safeParse({
+      ...validBatch,
+      allocations: duplicateAllocations,
+    }).success).toBe(false);
+  });
+
+  it("reports when assigned seats are below minimum quorum", () => {
+    expect(getAllocationQuorumError([
+      { allocation_type: "OPEN_ENROLLMENT", seats_assigned: 4 },
+      { allocation_type: "CONTRACT", engagement_item_id: "109156be-c4fb-41ea-b1b4-efe1671c5836", seats_assigned: 3 },
+    ], 10)).toBe("Assigned seats (7) are below the minimum quorum of 10.");
+  });
+
+  it("does not report a quorum error when assigned seats meet the threshold", () => {
+    expect(getAllocationQuorumError([
+      { allocation_type: "OPEN_ENROLLMENT", seats_assigned: 10 },
+    ], 10)).toBeNull();
   });
 });

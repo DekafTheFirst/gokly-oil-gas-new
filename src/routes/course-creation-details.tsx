@@ -334,6 +334,8 @@ type FormData = {
   prerequisite_description: string;
   individual_enrollment_enabled: boolean;
   certificate_enabled: boolean;
+  price: number;
+  currency: string;
   // Certificate step (Step 5) — credential automation + template binding.
   // `certificate_enabled` gates issuance; the design fields below drive the
   // live preview + ID syntax builder (frontend-only until backend columns land).
@@ -1076,6 +1078,8 @@ export default function CourseCreation() {
             prerequisite_description: course.prerequisite_description || "",
             individual_enrollment_enabled: course.individual_enrollment_enabled ?? true,
             certificate_enabled: course.certificate_enabled ?? true,
+            price: Number(course.price) || 0,
+            currency: course.currency || "NGN",
             certificate_external: course.certificate_external || false,
             certificate_authority: course.certificate_authority || "",
             certificate_license_id: course.certificate_license_id || "",
@@ -1144,6 +1148,8 @@ export default function CourseCreation() {
     prerequisite_description: "",
     individual_enrollment_enabled: true,
     certificate_enabled: true,
+    price: 0,
+    currency: "NGN",
     // Certificate step (Step 5) design defaults — mirrors the reference
     // certificate canvas (title, Gold Foil template, auto issuance, 2-year
     // validity, hyphen / YY / 3-digit ID syntax). The ID prefix starts empty
@@ -1938,7 +1944,7 @@ export default function CourseCreation() {
                   <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Short Description</span>
                   <p className="font-medium text-slate-900">{formData.short_description}</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Duration</span>
                     <span className="font-medium text-slate-900">{totalModuleHours} HOURS</span>
@@ -1950,6 +1956,17 @@ export default function CourseCreation() {
                   <div>
                     <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Status</span>
                     <span className="font-medium text-slate-900">{formData.status}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Price</span>
+                    <span className="font-medium text-slate-900">
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: formData.currency || "NGN",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      }).format(formData.price)}
+                    </span>
                   </div>
                 </div>
                 {formData.thumbnail_url && (
@@ -4312,7 +4329,7 @@ export default function CourseCreation() {
                       <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Short Description</span>
                       <p className="font-medium text-slate-900">{formData.short_description}</p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Duration</span>
                         <span className="font-medium text-slate-900">{totalModuleHours} HOURS</span>
@@ -4320,6 +4337,17 @@ export default function CourseCreation() {
                       <div>
                         <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Delivery Mode</span>
                         <span className="font-medium text-slate-900">{formData.delivery_mode}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block text-xs uppercase tracking-wide mb-1">Course Price</span>
+                        <span className="font-medium text-slate-900">
+                          {new Intl.NumberFormat("en-NG", {
+                            style: "currency",
+                            currency: formData.currency || "NGN",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2,
+                          }).format(formData.price)}
+                        </span>
                       </div>
                     </div>
                     <div>

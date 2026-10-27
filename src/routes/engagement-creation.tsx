@@ -528,9 +528,7 @@ export default function EngagementCreation() {
                                     ...currentItem,
                                     course_id: selectedCourse.id,
                                     course_name: selectedCourse.title,
-                                    ...(selectedCourse.price !== undefined && selectedCourse.price !== null
-                                      ? { unit_price: selectedCourse.price }
-                                      : {}),
+                                    unit_price: Number(selectedCourse.price) || 0,
                                   }
                                 : currentItem,
                             ),

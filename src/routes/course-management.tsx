@@ -28,6 +28,21 @@ import { fetchAdminCourses, type CourseRecord, type CoursePagination } from "@/l
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
+function formatCoursePrice(price?: number, currency?: string | null) {
+  const supportedCurrencies = ["NGN", "USD", "EUR", "GBP"];
+  const normalizedCurrency = currency?.trim().toUpperCase();
+  const safeCurrency = normalizedCurrency && supportedCurrencies.includes(normalizedCurrency)
+    ? normalizedCurrency
+    : "NGN";
+
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: safeCurrency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(price) || 0);
+}
+
 export default function CourseManagement() {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<CourseRecord[]>([]);
@@ -135,6 +150,7 @@ export default function CourseManagement() {
                     <th>Title</th>
                     <th>Code</th>
                     <th>Category</th>
+                    <th>Price</th>
                     <th>Status</th>
                     <th>Created</th>
                     <th className="text-right">Actions</th>
@@ -146,6 +162,7 @@ export default function CourseManagement() {
                       <td className="font-medium text-foreground">{course.title}</td>
                       <td className="text-muted-foreground">{course.code || "—"}</td>
                       <td className="text-muted-foreground">{course.category}</td>
+                      <td className="font-medium text-foreground">{formatCoursePrice(course.price, course.currency)}</td>
                       <td>
                         {course.status ? <Badge variant={course.status === "PUBLISHED" ? "default" : "secondary"}>{course.status}</Badge> : <span className="text-muted-foreground">—</span>}
                       </td>

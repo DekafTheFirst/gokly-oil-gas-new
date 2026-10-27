@@ -1,7 +1,13 @@
 import { useState, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
+import { useFieldArray, useForm, type FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronRight, Info, Sparkles, CloudUpload, Scan, FileText, Badge as BadgeIcon, School, PlusCircle, Lightbulb, Building, CreditCard, CheckCircle, RefreshCw, Calendar as CalendarIcon, Delete } from "lucide-react";
 import { createEngagement, type EngagementRecord, type EngagementItem } from "@/lib/engagements";
+import {
+  engagementCreationSchema,
+  type EngagementCreationFormValues,
+} from "@/lib/engagement-creation-validation";
 import { fetchOrganizations, type OrganizationRecord } from "@/lib/organizations";
 import { fetchCourses, type CourseRecord } from "@/lib/courses";
 import { Button } from "@/components/ui/button";
@@ -100,31 +106,46 @@ export default function EngagementCreation() {
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [referenceId, setReferenceId] = useState("");
 
-  const [formData, setFormData] = useState({
-    name: "",
-    organization_id: "",
-    primary_contact: "",
-    description: "",
-    agreement_execution_date: "",
-    expected_delivery_start: "",
-    expected_completion: "",
-    payment_terms: "Net 30 Days",
-    currency: "NGN",
-    invoice_triggers: "Milestone Based",
-    payment_due_window: "14 days post-invoice receipt",
-    statutory_notes: "",
+  const {
+    control,
+    register,
+    setValue,
+    handleSubmit: validateAndSubmit,
+    formState: { errors },
+    watch,
+  } = useForm<EngagementCreationFormValues>({
+    resolver: zodResolver(engagementCreationSchema),
+    defaultValues: {
+      name: "",
+      organization_id: "",
+      primary_contact: "",
+      description: "",
+      agreement_execution_date: "",
+      expected_delivery_start: "",
+      expected_completion: "",
+      payment_terms: "Net 30 Days",
+      currency: "NGN",
+      invoice_triggers: "Milestone Based",
+      payment_due_window: "14 days post-invoice receipt",
+      statutory_notes: "",
+      items: [
+        {
+          course_id: undefined,
+          course_name: "",
+          agreed_quantity: 0,
+          unit_price: 0,
+          discount: "0",
+          curriculum_notes: "",
+        },
+      ],
+    },
   });
-
-  const [trainingItems, setTrainingItems] = useState<EngagementItem[]>([
-    {
-      course_id: undefined,
-      course_name: "",
-      agreed_quantity: 0,
-      unit_price: 0,
-      discount: "0",
-      curriculum_notes: "",
-    } as EngagementItem,
-  ]);
+  const { fields: trainingItemFields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
+  const formData = watch();
+  const trainingItems = formData.items;
 
   useEffect(() => {
     loadOrganizations();
@@ -156,57 +177,28 @@ export default function EngagementCreation() {
     setReferenceId(`ENG-${year}-SNEP-${random}`);
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
   const handleAddTrainingItem = () => {
-    setTrainingItems([
-      ...trainingItems,
-      {
-        course_id: undefined,
-        course_name: "",
-        agreed_quantity: 0,
-        unit_price: 0,
-        discount: "0",
-        curriculum_notes: "",
-      } as EngagementItem,
-    ]);
+    append({
+      course_id: undefined,
+      course_name: "",
+      agreed_quantity: 0,
+      unit_price: 0,
+      discount: "0",
+      curriculum_notes: "",
+    });
   };
 
   const handleRemoveTrainingItem = (index: number) => {
-    if (trainingItems.length > 1) {
-      setTrainingItems(trainingItems.filter((_, i) => i !== index));
-    }
+    if (trainingItems.length > 1) remove(index);
   };
 
-  const handleTrainingItemChange = (index: number, field: keyof EngagementItem, value: string | number) => {
-    const updatedItems = [...trainingItems];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-
-    // If course_name is changed, also update course_id
-    if (field === "course_name") {
-      const selectedCourse = courses.find((c) => c.title === value);
-      if (selectedCourse) {
-        updatedItems[index].course_id = selectedCourse.id;
-      }
-    }
-
-    setTrainingItems(updatedItems);
-  };
-
-  const calculateItemTotal = (item: EngagementItem) => {
+  const calculateItemTotal = (item: EngagementCreationFormValues["items"][number]) => {
     return item.agreed_quantity * item.unit_price;
   };
 
   const calculateGrandTotal = () => {
     return trainingItems.reduce((sum, item) => sum + calculateItemTotal(item), 0);
   };
-
-  const invalidDeliveryDates =
-    formData.expected_delivery_start &&
-    formData.expected_completion &&
-    formData.expected_completion < formData.expected_delivery_start;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-NG", {
@@ -217,22 +209,35 @@ export default function EngagementCreation() {
     }).format(amount);
   };
 
-  const handleSubmit = async (saveAsDraft: boolean = false) => {
-    if (invalidDeliveryDates) {
-      toast.error("Expected completion cannot be before the delivery start date");
-      return;
-    }
+  const handleInvalidSubmit = (formErrors: FieldErrors<EngagementCreationFormValues>) => {
+    const messages: string[] = [];
+    const collectMessages = (value: unknown) => {
+      if (!value || typeof value !== "object") return;
+      if ("message" in value && typeof value.message === "string") {
+        messages.push(value.message);
+        return;
+      }
+      Object.values(value).forEach(collectMessages);
+    };
+    Object.values(formErrors).forEach(collectMessages);
+    toast.error("Fix the highlighted fields before saving the engagement.", {
+      description: `${messages.length} issue${messages.length === 1 ? "" : "s"}: ${messages
+        .slice(0, 3)
+        .join(" • ")}${messages.length > 3 ? " • …" : ""}`,
+    });
+  };
 
+  const submitEngagement = async (values: EngagementCreationFormValues, saveAsDraft: boolean) => {
+    if (loading) return;
     try {
       setLoading(true);
 
       const engagementPayload: Partial<EngagementRecord> = {
-        ...formData,
+        ...values,
         reference_id: referenceId,
         status: saveAsDraft ? "DRAFT" : "CONFIRMED",
-        total_amount: calculateGrandTotal(),
-        currency: formData.currency,
-        items: trainingItems.map((item) => ({
+        total_amount: values.items.reduce((sum, item) => sum + calculateItemTotal(item), 0),
+        items: values.items.map((item) => ({
           course_id: item.course_id,
           course_name: item.course_name,
           agreed_quantity: item.agreed_quantity,
@@ -277,10 +282,17 @@ export default function EngagementCreation() {
             <Button variant="outline" onClick={() => navigate("/training/engagement-management")}>
               Cancel
             </Button>
-            <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={loading}>
+            <Button
+              variant="secondary"
+              onClick={validateAndSubmit((values) => submitEngagement(values, true), handleInvalidSubmit)}
+              disabled={loading}
+            >
               Save Draft
             </Button>
-            <Button onClick={() => setConfirmationOpen(true)} disabled={loading}>
+            <Button
+              onClick={validateAndSubmit(() => setConfirmationOpen(true), handleInvalidSubmit)}
+              disabled={loading}
+            >
               <CheckCircle className="mr-2 h-4 w-4" />
               Save & Confirm
             </Button>
@@ -366,8 +378,10 @@ export default function EngagementCreation() {
               <Input
                 placeholder="e.g. 2025 Deepwater Well Control Cohort"
                 value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
+                aria-invalid={Boolean(errors.name)}
+                {...register("name")}
               />
+              {errors.name && <p className="text-sm text-destructive" role="alert">{errors.name.message}</p>}
             </div>
             <div className="md:col-span-4 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide flex items-center justify-between">
@@ -398,14 +412,11 @@ export default function EngagementCreation() {
                 value={formData.organization_id}
                 onValueChange={(value) => {
                   const selectedOrganization = organizations.find((org) => org.id === value);
-                  setFormData((current) => ({
-                    ...current,
-                    organization_id: value,
-                    primary_contact: selectedOrganization?.primary_contact || "",
-                  }));
+                  setValue("organization_id", value, { shouldDirty: true, shouldValidate: true });
+                  setValue("primary_contact", selectedOrganization?.primary_contact || "", { shouldDirty: true });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-invalid={Boolean(errors.organization_id)}>
                   <SelectValue placeholder="Select organization" />
                 </SelectTrigger>
                 <SelectContent>
@@ -416,6 +427,7 @@ export default function EngagementCreation() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.organization_id && <p className="text-sm text-destructive" role="alert">{errors.organization_id.message}</p>}
             </div>
             <div className="md:col-span-6 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide">Primary Technical Liaison</label>
@@ -437,21 +449,23 @@ export default function EngagementCreation() {
                 rows={3}
                 placeholder="Provide background context on batch prerequisites, operational site assignments, and training standards..."
                 value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
+                {...register("description")}
               />
             </div>
             <div className="md:col-span-4">
               <DatePickerField
                 label="Agreement Execution Date"
                 value={formData.agreement_execution_date}
-                onChange={(value) => handleInputChange("agreement_execution_date", value)}
+                onChange={(value) => setValue("agreement_execution_date", value, { shouldDirty: true })}
               />
             </div>
             <div className="md:col-span-4">
               <DatePickerField
                 label="Expected Delivery Start"
                 value={formData.expected_delivery_start}
-                onChange={(value) => handleInputChange("expected_delivery_start", value)}
+                onChange={(value) => {
+                  setValue("expected_delivery_start", value, { shouldDirty: true, shouldValidate: true });
+                }}
               />
             </div>
             <div className="md:col-span-4">
@@ -460,11 +474,11 @@ export default function EngagementCreation() {
                   label="Expected Completion"
                   value={formData.expected_completion}
                   minDate={formData.expected_delivery_start ? parseISO(formData.expected_delivery_start) : undefined}
-                  onChange={(value) => handleInputChange("expected_completion", value)}
+                  onChange={(value) => setValue("expected_completion", value, { shouldDirty: true, shouldValidate: true })}
                 />
-                {invalidDeliveryDates && (
+                {errors.expected_completion && (
                   <p className="text-sm text-destructive" role="alert">
-                    Completion cannot be before the delivery start date.
+                    {errors.expected_completion.message}
                   </p>
                 )}
               </div>
@@ -485,14 +499,14 @@ export default function EngagementCreation() {
                 </p>
               </div>
             </div>
-            <Button variant="secondary" onClick={handleAddTrainingItem}>
+            <Button type="button" variant="secondary" onClick={handleAddTrainingItem}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Training Item
             </Button>
           </div>
           <div className="space-y-4">
             {trainingItems.map((item, index) => (
-              <div key={index} className="bg-muted/60 rounded-xl border border-border p-5 space-y-4 shadow-sm">
+              <div key={trainingItemFields[index].id} className="bg-muted/60 rounded-xl border border-border p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between pb-2">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
@@ -503,6 +517,7 @@ export default function EngagementCreation() {
                     </span>
                   </div>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     onClick={() => handleRemoveTrainingItem(index)}
@@ -521,22 +536,19 @@ export default function EngagementCreation() {
                       onValueChange={(value) => {
                         const selectedCourse = courses.find((c) => c.id === Number(value));
                         if (selectedCourse) {
-                          setTrainingItems((currentItems) =>
-                            currentItems.map((currentItem, itemIndex) =>
-                              itemIndex === index
-                                ? {
-                                    ...currentItem,
-                                    course_id: selectedCourse.id,
-                                    course_name: selectedCourse.title,
-                                    unit_price: Number(selectedCourse.price) || 0,
-                                  }
-                                : currentItem,
-                            ),
-                          );
+                          setValue(`items.${index}.course_id`, selectedCourse.id, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(`items.${index}.course_name`, selectedCourse.title, { shouldDirty: true });
+                          setValue(`items.${index}.unit_price`, Number(selectedCourse.price) || 0, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
                         }
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger aria-invalid={Boolean(errors.items?.[index]?.course_id)}>
                         <SelectValue placeholder="Select a course" />
                       </SelectTrigger>
                       <SelectContent>
@@ -547,6 +559,11 @@ export default function EngagementCreation() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {errors.items?.[index]?.course_id && (
+                      <p className="text-sm text-destructive" role="alert">
+                        {errors.items[index]?.course_id?.message}
+                      </p>
+                    )}
                   </div>
 
                    <div className="md:col-span-4 flex flex-col gap-1">
@@ -569,8 +586,19 @@ export default function EngagementCreation() {
                       min={0}
                       allowDecimal={false}
                       value={item.agreed_quantity}
-                      onValueChange={(value) => handleTrainingItemChange(index, "agreed_quantity", Number(value))}
+                      aria-invalid={Boolean(errors.items?.[index]?.agreed_quantity)}
+                      onValueChange={(value) =>
+                        setValue(`items.${index}.agreed_quantity`, Number(value), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
                     />
+                    {errors.items?.[index]?.agreed_quantity && (
+                      <p className="text-sm text-destructive" role="alert">
+                        {errors.items[index]?.agreed_quantity?.message}
+                      </p>
+                    )}
                   </div>
                  
                   {/* <div className="md:col-span-2 flex flex-col gap-1">
@@ -597,7 +625,7 @@ export default function EngagementCreation() {
                     <Input
                       placeholder="Provide note..."
                       value={item.curriculum_notes}
-                      onChange={(e) => handleTrainingItemChange(index, "curriculum_notes", e.target.value)}
+                      {...register(`items.${index}.curriculum_notes`)}
                     />
                   </div>
                 </div>
@@ -669,7 +697,10 @@ export default function EngagementCreation() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2">
             <div className="md:col-span-3 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide">Payment Terms</label>
-              <Select value={formData.payment_terms} onValueChange={(value) => handleInputChange("payment_terms", value)}>
+              <Select
+                value={formData.payment_terms}
+                onValueChange={(value) => setValue("payment_terms", value, { shouldDirty: true, shouldValidate: true })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -683,7 +714,7 @@ export default function EngagementCreation() {
             </div>
             <div className="md:col-span-3 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide">Billing Currency</label>
-              <Select disabled={true} value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)}>
+              <Select disabled={true} value={formData.currency} onValueChange={(value) => setValue("currency", value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -695,7 +726,10 @@ export default function EngagementCreation() {
             </div>
             <div className="md:col-span-3 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide">Invoice Triggers</label>
-              <Select value={formData.invoice_triggers} onValueChange={(value) => handleInputChange("invoice_triggers", value)}>
+              <Select
+                value={formData.invoice_triggers}
+                onValueChange={(value) => setValue("invoice_triggers", value, { shouldDirty: true, shouldValidate: true })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -710,7 +744,7 @@ export default function EngagementCreation() {
               <label className="text-xs font-semibold uppercase tracking-wide">Payment Due Window</label>
               <Input
                 value={formData.payment_due_window}
-                onChange={(e) => handleInputChange("payment_due_window", e.target.value)}
+                {...register("payment_due_window")}
               />
             </div>
             <div className="md:col-span-12 flex flex-col gap-1.5">
@@ -721,7 +755,7 @@ export default function EngagementCreation() {
                 rows={3}
                 placeholder="Provide notes regarding 5% WHT deductions, 1% NCDMB fund remittance, or SAP Ariba purchase order line matching..."
                 value={formData.statutory_notes}
-                onChange={(e) => handleInputChange("statutory_notes", e.target.value)}
+                {...register("statutory_notes")}
               />
             </div>
           </div>
@@ -750,10 +784,17 @@ export default function EngagementCreation() {
             <Button variant="outline" onClick={() => navigate("/training/engagement-management")}>
               Cancel
             </Button>
-            <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={loading}>
+            <Button
+              variant="secondary"
+              onClick={validateAndSubmit((values) => submitEngagement(values, true), handleInvalidSubmit)}
+              disabled={loading}
+            >
               Save Draft
             </Button>
-            <Button onClick={() => setConfirmationOpen(true)} disabled={loading}>
+            <Button
+              onClick={validateAndSubmit(() => setConfirmationOpen(true), handleInvalidSubmit)}
+              disabled={loading}
+            >
               <CheckCircle className="mr-2 h-4 w-4" />
               Save & Confirm
             </Button>
@@ -776,7 +817,7 @@ export default function EngagementCreation() {
               onClick={(event) => {
                 event.preventDefault();
                 setConfirmationOpen(false);
-                void handleSubmit(false);
+                void validateAndSubmit((values) => submitEngagement(values, false), handleInvalidSubmit)();
               }}
             >
               Confirm & Create

@@ -1243,7 +1243,7 @@ export default function TrainingBatchCreation() {
                       <span className="shrink-0 text-xs font-semibold text-[#006030]">
                         {alreadyAdded
                           ? "Already added"
-                          : `${option.available_seats} available · ${option.agreed_quantity} agreed`}
+                          : ` ${option.agreed_quantity} Agreed · ${option.available_seats} Unallocated`}
                       </span>
                     </button>
                   );

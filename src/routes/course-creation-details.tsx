@@ -1625,6 +1625,7 @@ export default function CourseCreation() {
     setFieldErrors(errors);
     if (messages.length === 0) {
       setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       expandModulesWithErrors(errors);
       toast.error("Some required fields are still empty or invalid on this step.", {

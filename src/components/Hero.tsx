@@ -5,13 +5,14 @@ import { ArrowRight, Shield, Zap, Globe, ScanLine, Check } from "lucide-react";
 
 const heroImages = [
   {
-    src: new URL("../assets/gokly-images/training-2.jpeg", import.meta.url).href,
-    alt: "Oil and gas training session",
-  },
-  {
     src: new URL("../assets/gokly-images/grad-2.jpeg", import.meta.url).href,
     alt: "Oil and gas training graduates",
   },
+  {
+    src: new URL("../assets/gokly-images/training-2.jpeg", import.meta.url).href,
+    alt: "Oil and gas training session",
+  },
+  
   {
     src: new URL("../assets/gokly-images/training.jpeg", import.meta.url).href,
     alt: "Oil and gas training",

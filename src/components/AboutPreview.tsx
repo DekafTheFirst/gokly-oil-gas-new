@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import teamImg from "@/assets/team-engineers.jpg";
+import teamImg from "@/assets/gokly-images/training-2.jpeg";
 import { CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 

@@ -1,23 +1,39 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
-import trainingImg from "@/assets/gokly-images/training-2.jpeg";
-import facilityImg from "@/assets/gokly-images/pipefittiing-4.jpeg";
+import trainingImg from "@/assets/gokly-images/training.jpeg";
+import trainingImg2 from "@/assets/gokly-images/training-2.jpeg";
+import trainingImg3 from "@/assets/gokly-images/certificate-2.jpeg";
+import trainingImg4 from "@/assets/gokly-images/grace-certificate.jpeg";
+import facilityImg from "@/assets/services/management.png";
 import consultingImg from "@/assets/services/consulting.png";
 import safetyImg from "@/assets/services/safety.png";
 import drillingImg from "@/assets/services/drilling.jpg";
 import constructionImg from "@/assets/services/construction.jpg";
 import procurementImg from "@/assets/services/procurement.jpg";
-import environmentalImg from "@/assets/gokly-images/environmental-studies-4.jpeg";
+import environmentalImg from "@/assets/gokly-images/environmental.jpg";
+import environmentalImg2 from "@/assets/gokly-images/environmental-studies-2.jpeg";
+import environmentalImg4 from "@/assets/gokly-images/environmental-studies-4.jpeg";
 import pipelineImg from "@/assets/services/pipeline.jpg";
 import coursepipelineImg from "@/assets/course-pipeline.jpg";
 import offshoreImg from "@/assets/services/offshore.jpg";
 import wasteImg from "@/assets/services/waste.jpg";
 import inspectionImg from "@/assets/gokly-images/inspection.jpeg";
-import fabricationImg from "@/assets/services/fabrication.jpg";
+import inspectionImg2 from "@/assets/gokly-images/digital-calibration.jpg";
+import inspectionImg3 from "@/assets/gokly-images/calibration-2.jpg";
+import inspectionImg4 from "@/assets/gokly-images/calibration-3.jpg";
+import inspectionImg5 from "@/assets/gokly-images/1.jpg";
+import inspectionImg6 from "@/assets/gokly-images/2.jpg";
+import serviceInspectionImg from "@/assets/services/inspection.jpg";
+import fabricationImg from "@/assets/gokly-images/pipefittiing-4.jpeg";
+import fabricationImg2 from "@/assets/gokly-images/fabrication-2.jpeg";
+import fabricationImg3 from "@/assets/gokly-images/fabrication-3.jpeg";
+import fabricationImg4 from "@/assets/gokly-images/fabrication.jpeg";
 import tankImg from "@/assets/services/tank.jpg";
 import auditImg from "@/assets/services/audit.jpg";
 import gasPipelineImg from "@/assets/services/project.jpg";
+import trainingGalleryImg from "@/assets/services/training.jpg";
+import capacityDevelopmentImg from "@/assets/gokly-images/capacity-dev-2.jpeg";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +49,7 @@ import {
 const services = [
   {
     image: facilityImg,
+    images: [facilityImg,  ],
     title: "FACILITY MANAGEMENT AND MAINTENANCE",
     desc: "Comprehensive facility management and maintenance services to ensure safe and efficient operation of industrial facilities.",
     details: `Comprehensive facility management and maintenance services to ensure safe and efficient operation of industrial facilities.
@@ -49,6 +66,7 @@ const services = [
   },
   {
     image: gasPipelineImg,
+    images: [gasPipelineImg, pipelineImg],
     title: "ENGINEERING, PROCUREMENT, CONSTRUCTION, AND INSTALLATION (EPCI)",
     desc: "Integrated EPCI solutions for oil and gas, energy, and infrastructure projects.",
     details: `Integrated EPCI solutions for oil and gas, energy, and infrastructure projects.
@@ -63,6 +81,7 @@ const services = [
   },
   {
     image: environmentalImg,
+    images: [environmentalImg, environmentalImg2, environmentalImg4],
     title: "ENVIRONMENTAL STUDIES",
     desc: "Professional environmental and social impact assessment and compliance services.",
     details: `Professional environmental and social impact assessment and compliance services.
@@ -79,6 +98,7 @@ const services = [
   },
   {
     image: safetyImg,
+    images: [safetyImg, ],
     title: "HEALTH, SAFETY, SECURITY AND ENVIRONMENTAL (HSSE) STUDIES",
     desc: "Comprehensive health, safety, and security assessment and management services.",
     details: `Comprehensive health, safety, and security assessment and management services.
@@ -96,6 +116,7 @@ const services = [
   },
   {
     image: inspectionImg,
+    images: [inspectionImg, inspectionImg2, inspectionImg3, inspectionImg4, inspectionImg5, inspectionImg6],
     title: "INSPECTION, TESTING, AND INTEGRITY SERVICES",
     desc: "Professional inspection and integrity management services for industrial assets.",
     details: `Professional inspection and integrity management services for industrial assets.
@@ -115,6 +136,7 @@ const services = [
   },
   {
     image: fabricationImg,
+    images: [fabricationImg, fabricationImg2, fabricationImg3, fabricationImg4],
     title: "FABRICATION",
     desc: "High-quality fabrication services for oil and gas, marine, construction, and industrial sectors.",
     details: `High-quality fabrication services for oil and gas, marine, construction, and industrial sectors.
@@ -134,6 +156,7 @@ const services = [
   },
   {
     image: coursepipelineImg,
+    images: [coursepipelineImg, drillingImg, gasPipelineImg],
     title: "OIL AND GAS CONSULTING AND TECHNICAL ADVISORY",
     desc: "Strategic consulting and technical advisory services for operational excellence and project success.",
     details: `Strategic consulting and technical advisory services for operational excellence and project success.
@@ -151,6 +174,7 @@ const services = [
   },
   {
     image: trainingImg,
+    images: [trainingImg, trainingImg2, trainingImg3, trainingImg4, capacityDevelopmentImg],
     title: "TRAINING AND CAPACITY DEVELOPMENT",
     desc: "Industry-focused training programs to enhance technical competence and regulatory compliance.",
     details: `Industry-focused training programs to enhance technical competence and regulatory compliance.
@@ -164,6 +188,7 @@ const services = [
   },
   {
     image: consultingImg,
+    images: [consultingImg, procurementImg, auditImg],
     title: "REGULATORY COMPLIANCE AND NIGERIAN CONTENT ADVISORY",
     desc: "Expert guidance on Nigerian regulatory frameworks and content development compliance.",
     details: `Expert guidance on Nigerian regulatory frameworks and content development compliance.
@@ -186,20 +211,37 @@ interface ServicesSectionProps {
 
 const ServicesSection = ({ limit, showTitle = true, initialService }: ServicesSectionProps) => {
   const [selectedService, setSelectedService] = useState<typeof services[number] | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const displayedServices = limit ? services.slice(0, limit) : services;
+  const serviceImages = selectedService?.images ?? [];
+  const displayedImage = selectedImage ?? serviceImages[0];
 
   useEffect(() => {
     if (!initialService) return;
     const match = services.find((service) => service.title === initialService);
     if (match) {
       setSelectedService(match);
+      setSelectedImage(match.images[0] ?? match.image);
       setIsModalOpen(true);
     }
   }, [initialService]);
 
+  useEffect(() => {
+    if (!isModalOpen || serviceImages.length < 2) return;
+
+    const intervalId = window.setInterval(() => {
+      const currentIndex = serviceImages.indexOf(displayedImage);
+      const nextIndex = (currentIndex + 1) % serviceImages.length;
+      setSelectedImage(serviceImages[nextIndex]);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [displayedImage, isModalOpen, serviceImages]);
+
   const openServiceModal = (service: typeof services[number]) => {
     setSelectedService(service);
+    setSelectedImage(service.images[0] ?? service.image);
     setIsModalOpen(true);
   };
 
@@ -334,9 +376,12 @@ const ServicesSection = ({ limit, showTitle = true, initialService }: ServicesSe
         </div>
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => {
+      <Dialog open={isModalOpen} className="" onOpenChange={(open) => {
         setIsModalOpen(open);
-        if (!open) setSelectedService(null);
+        if (!open) {
+          setSelectedService(null);
+          setSelectedImage(null);
+        }
       }}>
         <DialogContent className="max-w-3xl">
             <DialogHeader>
@@ -344,9 +389,31 @@ const ServicesSection = ({ limit, showTitle = true, initialService }: ServicesSe
               {/* <DialogDescription>{selectedService?.desc}</DialogDescription> */}
             </DialogHeader>
             <div className="mt-4 space-y-6">
-              {selectedService?.image && (
-                <div className="w-full h-48 overflow-hidden rounded-md">
-                  <img src={selectedService.image} alt={selectedService.title} className="w-full h-full object-cover" />
+              {selectedService && displayedImage && (
+                <div className="space-y-3">
+                  <div className=" sm:h-[380px] max-h-[500px] overflow-hidden rounded-md">
+                    <img
+                      src={displayedImage}
+                      alt={selectedService.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div role="group" aria-label="Select service image" className="flex gap-3 overflow-x-auto pb-1">
+                    {serviceImages.map((image, index) => (
+                      <button
+                        key={`${image}-${index}`}
+                        type="button"
+                        aria-label={`Show image ${index + 1} of ${serviceImages.length}`}
+                        aria-pressed={displayedImage === image}
+                        onClick={() => setSelectedImage(image)}
+                        className={`h-16 w-24 flex-shrink-0 overflow-hidden rounded-md border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          displayedImage === image ? "border-primary" : "border-transparent"
+                        }`}
+                      >
+                        <img src={image} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 

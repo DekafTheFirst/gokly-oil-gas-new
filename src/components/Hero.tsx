@@ -9,12 +9,12 @@ const heroImages = [
     alt: "Oil and gas training graduates",
   },
   {
-    src: new URL("../assets/gokly-images/training-2.jpeg", import.meta.url).href,
+    src: new URL("../assets/gokly-images/training.jpeg", import.meta.url).href,
     alt: "Oil and gas training session",
   },
   
   {
-    src: new URL("../assets/gokly-images/training.jpeg", import.meta.url).href,
+    src: new URL("../assets/gokly-images/grad.jpeg", import.meta.url).href,
     alt: "Oil and gas training",
   },
 ];

@@ -36,6 +36,8 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
+          # Run rsync with strict timeout and heartbeat rules
           rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa" \
+            --timeout=120 \
+            -e "ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -o ServerAliveCountMax=10 -i ~/.ssh/id_rsa" \
             dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/educert

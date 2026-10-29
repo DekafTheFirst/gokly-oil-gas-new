@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Target, Eye } from "lucide-react";
-import teamImg from "@/assets/team-engineers.jpg";
+import teamImg from "@/assets/gokly-images/grad-2.jpeg";
 import engineerImg from "@/assets/engineer-pipeline.jpg";
 import drillingImg from "@/assets/drilling-engineers.jpg";
-import expertiseImg from "@/assets/about/expertise.jpg";
+import expertiseImg from "@/assets/gokly-images/training.jpeg";
 import nationwideImg from "@/assets/about/nationwide.jpg";
 import fullCycleImg from "@/assets/about/full.jpg";
 import integrityImg from "@/assets/about/integrity.jpg";

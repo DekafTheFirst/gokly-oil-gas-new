@@ -1,19 +1,19 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
-import trainingImg from "@/assets/services/training.jpg";
-import facilityImg from "@/assets/services/management.png";
+import trainingImg from "@/assets/gokly-images/training-2.jpeg";
+import facilityImg from "@/assets/gokly-images/pipefittiing-4.jpeg";
 import consultingImg from "@/assets/services/consulting.png";
 import safetyImg from "@/assets/services/safety.png";
 import drillingImg from "@/assets/services/drilling.jpg";
 import constructionImg from "@/assets/services/construction.jpg";
 import procurementImg from "@/assets/services/procurement.jpg";
-import environmentalImg from "@/assets/services/environmental.jpg";
+import environmentalImg from "@/assets/gokly-images/environmental-studies-4.jpeg";
 import pipelineImg from "@/assets/services/pipeline.jpg";
 import coursepipelineImg from "@/assets/course-pipeline.jpg";
 import offshoreImg from "@/assets/services/offshore.jpg";
 import wasteImg from "@/assets/services/waste.jpg";
-import inspectionImg from "@/assets/services/inspection.jpg";
+import inspectionImg from "@/assets/gokly-images/inspection.jpeg";
 import fabricationImg from "@/assets/services/fabrication.jpg";
 import tankImg from "@/assets/services/tank.jpg";
 import auditImg from "@/assets/services/audit.jpg";

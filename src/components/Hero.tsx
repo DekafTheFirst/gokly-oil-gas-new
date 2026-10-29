@@ -1,18 +1,50 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Shield, Zap, Globe, ScanLine, Check } from "lucide-react";
-import heroImage from "@/assets/hero-oil-rig.jpg";
+
+const heroImages = [
+  {
+    src: new URL("../assets/gokly-images/training-2.jpeg", import.meta.url).href,
+    alt: "Oil and gas training session",
+  },
+  {
+    src: new URL("../assets/gokly-images/grad-2.jpeg", import.meta.url).href,
+    alt: "Oil and gas training graduates",
+  },
+  {
+    src: new URL("../assets/gokly-images/training.jpeg", import.meta.url).href,
+    alt: "Oil and gas training",
+  },
+];
 
 const Hero = () => {
+  const [activeImage, setActiveImage] = useState(0);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setActiveImage((currentImage) => (currentImage + 1) % heroImages.length);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
-        <img
-          src={heroImage}
-          alt="Oil and gas engineers at refinery"
-          className="w-full h-full object-cover"
-        />
+        <AnimatePresence mode="sync">
+          <motion.img
+            key={activeImage}
+            src={heroImages[activeImage].src}
+            alt={heroImages[activeImage].alt}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1 }}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </AnimatePresence>
         <div className="absolute inset-0 bg-hero-overlay" />
       </div>
 

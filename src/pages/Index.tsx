@@ -13,7 +13,7 @@ const Index = () => {
     <main>
       <Hero />
       <AboutPreview />
-      <ServicesSection limit={8} />
+      <ServicesSection />
 
       {/* CTA to see all services */}
       

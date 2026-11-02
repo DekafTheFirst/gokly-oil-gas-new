@@ -265,3 +265,20 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(145 63% 32% / 0.5);
 }
+
+.service-image-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(145 63% 32% / 0.3) transparent;
+}
+
+.service-image-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.service-image-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.service-image-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+}

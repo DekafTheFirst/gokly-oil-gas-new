@@ -384,22 +384,22 @@ const ServicesSection = ({ limit, showTitle = true, initialService }: ServicesSe
           setSelectedImage(null);
         }
       }}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-2rem)] min-w-0 max-w-3xl flex-col overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:max-h-[calc(100dvh-3rem)] sm:p-6">
             <DialogHeader>
-              <DialogTitle>{selectedService?.title}</DialogTitle>
+              <DialogTitle className="min-w-0 break-words text-base sm:text-lg">{selectedService?.title}</DialogTitle>
               {/* <DialogDescription>{selectedService?.desc}</DialogDescription> */}
             </DialogHeader>
-            <div className="mt-4 space-y-6">
+            <div className="w-full min-w-0 space-y-4 sm:space-y-6">
               {selectedService && displayedImage && (
-                <div className="space-y-3">
-                  <div className=" sm:h-[380px] max-h-[500px] overflow-hidden rounded-md">
+                <div className="w-full min-w-0 space-y-3">
+                  <div className="aspect-[4/3] max-h-[42dvh] overflow-hidden rounded-md bg-muted sm:aspect-video sm:max-h-[50dvh]">
                     <img
                       src={displayedImage}
                       alt={selectedService.title}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   </div>
-                  <div role="group" aria-label="Select service image" className="flex gap-3 overflow-x-auto pb-1">
+                  <div role="group" aria-label="Select service image" className="service-image-scrollbar flex w-full min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-2 sm:gap-3">
                     {serviceImages.map((image, index) => (
                       <button
                         key={`${image}-${index}`}
@@ -407,18 +407,18 @@ const ServicesSection = ({ limit, showTitle = true, initialService }: ServicesSe
                         aria-label={`Show image ${index + 1} of ${serviceImages.length}`}
                         aria-pressed={displayedImage === image}
                         onClick={() => setSelectedImage(image)}
-                        className={`h-16 w-24 flex-shrink-0 overflow-hidden rounded-md border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`h-14 w-20 flex-shrink-0 snap-start overflow-hidden rounded-md border-2 bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-16 sm:w-24 ${
                           displayedImage === image ? "border-primary" : "border-transparent"
                         }`}
                       >
-                        <img src={image} alt="" className="h-full w-full object-cover" />
+                        <img src={image} alt="" className="h-full w-full object-contain" />
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="max-h-[50vh] overflow-y-auto space-y-4">
+              <div className="max-h-[32dvh] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain space-y-4 sm:max-h-[40dvh]">
                 {renderDetails(selectedService?.details)}
               </div>
             </div>

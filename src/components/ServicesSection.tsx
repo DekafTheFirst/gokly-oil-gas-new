@@ -20,6 +20,7 @@ import offshoreImg from "@/assets/services/offshore.jpg";
 import wasteImg from "@/assets/services/waste.jpg";
 import inspectionImg from "@/assets/gokly-images/inspection.jpeg";
 import inspectionImg2 from "@/assets/gokly-images/digital-calibration.jpg";
+import inspectionImg7 from "@/assets/gokly-images/calibration.jpg";
 import inspectionImg3 from "@/assets/gokly-images/calibration-2.jpg";
 import inspectionImg4 from "@/assets/gokly-images/calibration-3.jpg";
 import inspectionImg5 from "@/assets/gokly-images/1.jpg";
@@ -115,8 +116,8 @@ const services = [
 `,
   },
   {
-    image: inspectionImg,
-    images: [inspectionImg, inspectionImg2, inspectionImg3, inspectionImg4, inspectionImg5, inspectionImg6],
+    image: inspectionImg7,
+    images: [inspectionImg7, inspectionImg, inspectionImg2, inspectionImg3, inspectionImg4, inspectionImg5, inspectionImg6],
     title: "INSPECTION, TESTING, AND INTEGRITY SERVICES",
     desc: "Professional inspection and integrity management services for industrial assets.",
     details: `Professional inspection and integrity management services for industrial assets.
@@ -135,7 +136,7 @@ const services = [
 `,
   },
   {
-    image: fabricationImg,
+    image: fabricationImg4,
     images: [fabricationImg, fabricationImg2, fabricationImg3, fabricationImg4],
     title: "FABRICATION",
     desc: "High-quality fabrication services for oil and gas, marine, construction, and industrial sectors.",

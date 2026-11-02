@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { MapPin, Phone, Mail, Clock, Send, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import emailjs from '@emailjs/browser';
-import heroImg from "@/assets/hero-oil-rig.jpg";
+import heroImg from "@/assets/gokly-images/grad-2.jpeg";
 
 const contactInfo = [
   { icon: MapPin, label: "Address", value: "Okobabian Plaza by Okaka New Road, Isaac Boro Expressway, Yenagoa, Bayelsa State, Nigeria", href: undefined },

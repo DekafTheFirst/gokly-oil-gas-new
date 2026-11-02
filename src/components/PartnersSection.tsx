@@ -9,12 +9,12 @@ import nuprcLogo from "@/assets/partners/nuprc.jpeg";
 
 const partners = [
   { name: "Shell", logo: shellLogo },
-  { name: "Nigeria National Petroleum Company (NNPC Limited)", logo: nnpcLogo },
-  { name: "Nigeria Content Development and Monitoring Board (NCDMB)", logo: ncdmbLogo },
+  { name: "Nigerian National Petroleum Company (NNPC Limited)", logo: nnpcLogo },
+  { name: "Nigerian Content Development and Monitoring Board (NCDMB)", logo: ncdmbLogo },
   { name: "Shafa", logo: Shafa},
  
-  { name: "Nigeria Midstream and Downstream Petroleum Regulatory Authorithy (NMDPRA)", logo: nmdpraLogo },
-  { name: "Nigeria Upstream Petroleum Regulatory Commission (NUPRC)", logo: nuprcLogo },
+  { name: "Nigerian Midstream and Downstream Petroleum Regulatory Authorithy (NMDPRA)", logo: nmdpraLogo },
+  { name: "Nigerian Upstream Petroleum Regulatory Commission (NUPRC)", logo: nuprcLogo },
 ];
 
 const PartnersSection = () => {

@@ -9,6 +9,7 @@ const contactInfo = [
   { icon: MapPin, label: "Address", value: "Okobabian Plaza by Okaka New Road, Isaac Boro Expressway, Yenagoa, Bayelsa State, Nigeria", href: undefined },
   { icon: Phone, label: "Phone", value: "+234(0)9014770978", href: "tel:+234(0)9014770978" },
   { icon: Mail, label: "Email", value: "goklyoilandgasdesk@gmail.com", href: "mailto:goklyoilandgasdesk@gmail.com" },
+  { icon: Mail, label: "Support Email", value: "support@goklyoilandgas.com", href: "mailto:support@goklyoilandgas.com" },
   { icon: Clock, label: "Working Hours", value: "Mon - Fri: 8:00 AM - 5:00 PM (WAT)", href: undefined },
 ];
 

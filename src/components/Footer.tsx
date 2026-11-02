@@ -82,6 +82,10 @@ const Footer = () => {
                 <Mail size={18} className="text-gokly-gold flex-shrink-0" />
                 <a href="mailto:goklyoilandgasdesk@gmail.com" className="text-sm opacity-70 hover:opacity-100 font-body transition-opacity">goklyoilandgasdesk@gmail.com</a>
               </div>
+              <div className="flex items-center gap-3">
+                <Mail size={18} className="text-gokly-gold flex-shrink-0" />
+                <a href="mailto:support@goklyoilandgas.com" className="text-sm opacity-70 hover:opacity-100 font-body transition-opacity">support@goklyoilandgas.com</a>
+              </div>
             </div>
 
             {/* Social */}

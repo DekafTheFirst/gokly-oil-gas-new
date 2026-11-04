@@ -8,6 +8,7 @@ const ADMIN_LINKS = [
   { to: "/training/course-management" as const, label: "Courses" },
   { to: "/training/batches" as const, label: "Batches" },
   { to: "/training/user-management" as const, label: "Users" },
+  { to: "/training/trainees" as const, label: "Trainees" },
   { to: "/training/certificate-management" as const, label: "Certificates" },
 ];
 

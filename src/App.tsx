@@ -40,6 +40,8 @@ import EngagementCreation from "./routes/engagement-creation";
 import EngagementDetails from "./routes/engagement-details";
 import TrainingBatches from "./routes/training-batches";
 import TrainingBatchCreation from "./routes/training-batch-creation";
+import Trainees from "./routes/trainees";
+import TraineeCreation from "./routes/trainee-creation";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +76,8 @@ const AppRoutes = () => {
         <Route path="/training/admin" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingAdmin /></ProtectedRoute>} />
         <Route path="/training/certificate-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBulkCertificateIssuance /></ProtectedRoute>} />
         <Route path="/training/user-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><UserManagement /></ProtectedRoute>} />
+        <Route path="/training/trainees/create" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TraineeCreation /></ProtectedRoute>} />
+        <Route path="/training/trainees" element={<ProtectedRoute allowedRoles={["ADMIN"]}><Trainees /></ProtectedRoute>} />
         <Route path="/training/course-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseManagement /></ProtectedRoute>} />
         <Route path="/training/course-creation" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseCreation /></ProtectedRoute>} />
         <Route path="/training/course-creation-details" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseDetail /></ProtectedRoute>} />

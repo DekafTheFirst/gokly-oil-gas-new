@@ -39,6 +39,14 @@ export interface UserResponse {
   users: UserRecord[];
   pagination: UserPagination;
   counts: UserRoleCounts;
+  trainee_stats?: TraineeStats;
+}
+
+export interface TraineeStats {
+  total: number;
+  active: number;
+  inactive: number;
+  new_this_month: number;
 }
 
 export interface UserPayload {
@@ -52,6 +60,17 @@ export interface UserPayload {
   address?: string;
   city?: string;
   country?: string;
+  gender?: "Male" | "Female" | "Other";
+  date_of_birth?: string;
+  nationality?: string;
+  state?: string;
+  nin?: string;
+  nogic_candidate_number?: string;
+  ogisp_passport_id?: string;
+  emergency_contact?: string;
+  occupation?: string;
+  corporate_staff_id?: string;
+  organization_id?: string;
 }
 
 export interface UserUpdatePayload {
@@ -73,6 +92,7 @@ export const fetchAllUsers = async (
   limit: number = 10,
   search: string = "",
   role: string = "all",
+  status: "all" | "active" | "inactive" = "all",
 ): Promise<UserResponse> => {
   const token = getAuthToken();
   const params = new URLSearchParams({
@@ -80,6 +100,7 @@ export const fetchAllUsers = async (
     limit: limit.toString(),
     search,
     role,
+    status,
   });
   const data = await apiFetch(`/users/admin/all?${params}`, {
     headers: { Authorization: `Bearer ${token}` },

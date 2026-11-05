@@ -9,6 +9,8 @@ import {
   Building2,
   Calendar as CalendarIcon,
   ChevronRight,
+  Eye,
+  EyeOff,
   Fingerprint,
   Mail,
   Phone,
@@ -25,16 +27,29 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { format, isValid, parseISO, startOfDay, subYears } from "date-fns";
 import { createUser, type UserPayload } from "@/lib/users";
 import { fetchOrganizations, type OrganizationRecord } from "@/lib/organizations";
 import { traineeCreationSchema, type TraineeCreationFormValues } from "@/lib/trainee-creation-validation";
+import { fetchLocationCities, fetchLocationCountries, fetchLocationStates } from "@/lib/location-api";
 
 const fieldClassName =
   "h-10 w-full rounded-lg border-0 bg-[#eff4ff] px-3 text-sm text-[#121c2a] outline-none transition-colors placeholder:text-[#6f7a6f] focus-visible:bg-[#dee9fc] focus-visible:ring-2 focus-visible:ring-[#006030]/20";
 const selectTriggerClassName =
   "h-10 w-full rounded-lg border-0 bg-[#eff4ff] px-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#006030]/20";
 const SELF_FUNDED_VALUE = "__self_funded__";
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, month) => ({
+  value: String(month),
+  label: format(new Date(2024, month, 1), "MMMM"),
+}));
 
 function FormField({
   label,
@@ -117,6 +132,77 @@ function SelectField({
   );
 }
 
+function LocationSelect({
+  id,
+  value,
+  options,
+  placeholder,
+  searchPlaceholder,
+  loading = false,
+  disabled = false,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  options: string[];
+  placeholder: string;
+  searchPlaceholder: string;
+  loading?: boolean;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={`${selectTriggerClassName} justify-between text-left font-normal`}
+        >
+          <span className={value ? "truncate" : "truncate text-[#6f7a6f]"}>
+            {value || placeholder}
+          </span>
+          <ChevronRight className="ml-2 h-4 w-4 shrink-0 rotate-90 text-[#6f7a6f]" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            {loading ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">Loading options…</div>
+            ) : (
+              <>
+                <CommandEmpty>No matching locations.</CommandEmpty>
+                <CommandGroup>
+                  {options.map((option) => (
+                    <CommandItem
+                      key={option}
+                      value={option}
+                      onSelect={() => {
+                        onChange(option);
+                        setOpen(false);
+                      }}
+                    >
+                      {option}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function DatePickerField({
   id,
   label,
@@ -132,9 +218,22 @@ function DatePickerField({
   const parsedDate = value ? parseISO(value) : undefined;
   const selectedDate = parsedDate && isValid(parsedDate) ? parsedDate : undefined;
   const latestEligibleDate = startOfDay(subYears(new Date(), 16));
+  const [displayedMonth, setDisplayedMonth] = useState(selectedDate ?? latestEligibleDate);
+  const currentYear = displayedMonth.getFullYear();
+  const latestYear = latestEligibleDate.getFullYear();
+  const yearOptions = Array.from({ length: latestYear - 1900 + 1 }, (_, index) => {
+    const year = latestYear - index;
+    return { value: String(year), label: String(year) };
+  });
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) setDisplayedMonth(selectedDate ?? latestEligibleDate);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           id={id}
@@ -148,10 +247,47 @@ function DatePickerField({
           {selectedDate ? format(selectedDate, "PPP") : <span className="text-[#6f7a6f]">Select a date</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] overflow-hidden p-0">
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <Select
+            value={String(displayedMonth.getMonth())}
+            onValueChange={(month) =>
+              setDisplayedMonth(new Date(currentYear, Number(month), 1))
+            }
+          >
+            <SelectTrigger aria-label="Select month" className="h-9 flex-1 bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTH_OPTIONS.map((month) => (
+                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={String(currentYear)}
+            onValueChange={(year) =>
+              setDisplayedMonth(new Date(Number(year), displayedMonth.getMonth(), 1))
+            }
+          >
+            <SelectTrigger aria-label="Select year" className="h-9 w-24 bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {yearOptions.map((year) => (
+                <SelectItem key={year.value} value={year.value}>{year.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Calendar
           mode="single"
           selected={selectedDate}
+          month={displayedMonth}
+          onMonthChange={setDisplayedMonth}
+          fromDate={new Date(1900, 0, 1)}
+          toDate={latestEligibleDate}
+          classNames={{ caption: "hidden", nav: "hidden" }}
           onSelect={(date) => {
             if (!date) return;
             onChange(format(date, "yyyy-MM-dd"));
@@ -183,8 +319,21 @@ function DatePickerField({
 
 export default function TraineeCreation() {
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [loadingOrganizations, setLoadingOrganizations] = useState(true);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [states, setStates] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(true);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [countriesError, setCountriesError] = useState("");
+  const [statesError, setStatesError] = useState("");
+  const [citiesError, setCitiesError] = useState("");
+  const [retryCountries, setRetryCountries] = useState(0);
+  const [retryStates, setRetryStates] = useState(0);
+  const [retryCities, setRetryCities] = useState(0);
   const {
     register,
     control,
@@ -227,6 +376,74 @@ export default function TraineeCreation() {
   const gender = useWatch({ control, name: "gender" }) ?? "";
   const nationality = useWatch({ control, name: "nationality" }) ?? "";
   const dateOfBirth = useWatch({ control, name: "date_of_birth" }) ?? "";
+  const city = useWatch({ control, name: "city" }) ?? "";
+  const country = useWatch({ control, name: "country" }) ?? "";
+  const state = useWatch({ control, name: "state" }) ?? "";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadingCountries(true);
+    setCountriesError("");
+    fetchLocationCountries(controller.signal)
+      .then((items) => setCountries(items.map((item) => item.name).sort((a, b) => a.localeCompare(b))))
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : "The country list is unavailable.";
+        setCountriesError(message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingCountries(false);
+      });
+    return () => controller.abort();
+  }, [retryCountries]);
+
+  useEffect(() => {
+    if (!country) {
+      setStates([]);
+      setLoadingStates(false);
+      setStatesError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    setStates([]);
+    setLoadingStates(true);
+    setStatesError("");
+    fetchLocationStates(country, controller.signal)
+      .then((items) => setStates(items.sort((a, b) => a.localeCompare(b))))
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setStatesError(error instanceof Error ? error.message : "The state/province list is unavailable.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingStates(false);
+      });
+    return () => controller.abort();
+  }, [country, retryStates]);
+
+  useEffect(() => {
+    if (!country || loadingStates || (states.length > 0 && !state && !statesError)) {
+      setCities([]);
+      setLoadingCities(false);
+      setCitiesError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    setCities([]);
+    setLoadingCities(true);
+    setCitiesError("");
+    fetchLocationCities(country, state || undefined, controller.signal)
+      .then((items) => setCities(items.sort((a, b) => a.localeCompare(b))))
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setCitiesError(error instanceof Error ? error.message : "The city list is unavailable.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingCities(false);
+      });
+    return () => controller.abort();
+  }, [country, loadingStates, state, states, statesError, retryCities]);
 
   useEffect(() => {
     let cancelled = false;
@@ -349,7 +566,6 @@ export default function TraineeCreation() {
                       options={[
                         { value: "Male", label: "Male" },
                         { value: "Female", label: "Female" },
-                        { value: "Other", label: "Other" },
                       ]}
                     />
                   </FormField>
@@ -406,18 +622,97 @@ export default function TraineeCreation() {
                   <Input id="input-address" {...register("address")} autoComplete="street-address" placeholder="Plot 14 Trans-Amadi Industrial Layout, Phase 2" className={fieldClassName} />
                 </FormField>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <FormField label="City" htmlFor="input-city">
-                    <Input id="input-city" {...register("city")} autoComplete="address-level2" className={fieldClassName} />
+                  <FormField label="Country" htmlFor="input-country">
+                    <LocationSelect
+                      id="input-country"
+                      value={country}
+                      options={countries}
+                      placeholder="Select country"
+                      searchPlaceholder="Search countries..."
+                      loading={loadingCountries}
+                      disabled={loadingCountries || Boolean(countriesError)}
+                      onChange={(value) => {
+                        setValue("country", value, { shouldDirty: true, shouldValidate: true });
+                        setValue("state", "", { shouldDirty: true, shouldValidate: true });
+                        setValue("city", "", { shouldDirty: true, shouldValidate: true });
+                      }}
+                    />
+                    {countriesError && (
+                      <div className="flex items-center justify-between gap-2 text-xs text-red-700">
+                        <span>{countriesError}</span>
+                        <Button type="button" variant="link" className="h-auto p-0 text-red-700" onClick={() => setRetryCountries((value) => value + 1)}>
+                          Retry
+                        </Button>
+                      </div>
+                    )}
                   </FormField>
                   <FormField label="State / Province" htmlFor="input-state">
-                    <Input id="input-state" {...register("state")} autoComplete="address-level1" className={fieldClassName} />
+                    <LocationSelect
+                      id="input-state"
+                      value={state}
+                      options={states}
+                      placeholder={country ? "Select state or province" : "Select country first"}
+                      searchPlaceholder="Search states or provinces..."
+                      loading={loadingStates}
+                      disabled={!country || loadingStates || Boolean(statesError)}
+                      onChange={(value) => {
+                        setValue("state", value, { shouldDirty: true, shouldValidate: true });
+                        setValue("city", "", { shouldDirty: true, shouldValidate: true });
+                      }}
+                    />
+                    {statesError && (
+                      <div className="flex items-center justify-between gap-2 text-xs text-red-700">
+                        <span>{statesError}</span>
+                        <Button type="button" variant="link" className="h-auto p-0 text-red-700" onClick={() => setRetryStates((value) => value + 1)}>
+                          Retry
+                        </Button>
+                      </div>
+                    )}
                   </FormField>
-                  <FormField label="Country" htmlFor="input-country">
-                    <Input id="input-country" {...register("country")} autoComplete="country-name" className={fieldClassName} />
+                  <FormField label="City" htmlFor="input-city">
+                    <LocationSelect
+                      id="input-city"
+                      value={city}
+                      options={cities}
+                      placeholder="Select city"
+                      searchPlaceholder="Search cities..."
+                      loading={loadingCities}
+                      disabled={!country || loadingCities || Boolean(citiesError) || (states.length > 0 && !state && !statesError)}
+                      onChange={(value) => {
+                        setValue("city", value, { shouldDirty: true, shouldValidate: true });
+                      }}
+                    />
+                    {citiesError && (
+                      <div className="flex items-center justify-between gap-2 text-xs text-red-700">
+                        <span>{citiesError}</span>
+                        <Button type="button" variant="link" className="h-auto p-0 text-red-700" onClick={() => setRetryCities((value) => value + 1)}>
+                          Retry
+                        </Button>
+                      </div>
+                    )}
                   </FormField>
                 </div>
                 <FormField label="Initial Portal Password" htmlFor="input-password" required error={errors.password?.message}>
-                  <Input id="input-password" {...register("password")} type="password" autoComplete="new-password" minLength={8} required className={fieldClassName} />
+                  <div className="relative">
+                    <Input
+                      id="input-password"
+                      {...register("password")}
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                      className={`${fieldClassName} pr-11`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6f7a6f] transition-colors hover:text-[#121c2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006030]/40"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </FormField>
               </FormSection>
 

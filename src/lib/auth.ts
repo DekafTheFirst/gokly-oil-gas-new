@@ -14,16 +14,27 @@ export const clearAuthToken = () => {
   window.localStorage.removeItem(TOKEN_KEY);
 };
 
-export const register = async ({ first_name, middle_name, last_name, email, password, role }) => {
-  const payload = await apiFetch("/auth/register", {
+export const register = async ({ first_name, middle_name, last_name, email, password }) => {
+  return apiFetch("/auth/register", {
     method: "POST",
-    body: { first_name, middle_name, last_name, email, password, role },
+    body: { first_name, middle_name, last_name, email, password },
   });
-  if (payload.token) {
-    setAuthToken(payload.token);
-  }
-  return payload;
 };
+
+export const registerPublicTrainee = async (values) => apiFetch("/auth/register", {
+  method: "POST",
+  body: values,
+});
+
+export const verifyEmail = async (token: string) => apiFetch("/auth/verify-email", {
+  method: "POST",
+  body: { token },
+});
+
+export const resendVerificationEmail = async (email: string) => apiFetch("/auth/resend-verification", {
+  method: "POST",
+  body: { email },
+});
 
 export const login = async ({ email, password }) => {
   const payload = await apiFetch("/auth/login", {

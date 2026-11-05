@@ -2,11 +2,20 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localho
 
 export class ApiError extends Error {
   errors: Array<{ field?: string; message?: string }>;
+  code?: string;
+  retryVerification: boolean;
 
-  constructor(message: string, errors: Array<{ field?: string; message?: string }> = []) {
+  constructor(
+    message: string,
+    errors: Array<{ field?: string; message?: string }> = [],
+    code?: string,
+    retryVerification = false,
+  ) {
     super(message);
     this.name = "ApiError";
     this.errors = errors;
+    this.code = code;
+    this.retryVerification = retryVerification;
   }
 }
 
@@ -27,7 +36,12 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
 
   if (!response.ok) {
     const error = data?.error || response.statusText || "Request failed.";
-    throw new ApiError(error, Array.isArray(data?.errors) ? data.errors : []);
+    throw new ApiError(
+      error,
+      Array.isArray(data?.errors) ? data.errors : [],
+      data?.code,
+      data?.retryVerification === true,
+    );
   }
 
   return data;

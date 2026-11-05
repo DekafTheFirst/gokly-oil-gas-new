@@ -21,6 +21,7 @@ const validTrainee: TraineeCreationFormValues = {
   ogisp_passport_id: "",
   emergency_contact: "",
   occupation: "",
+  other_occupation: "",
   corporate_staff_id: "",
   organization_id: "__self_funded__",
 };
@@ -64,5 +65,17 @@ describe("trainee creation validation", () => {
   it("allows a trainee who has turned 16", () => {
     const eligibleDate = format(subYears(new Date(), 16), "yyyy-MM-dd");
     expect(traineeCreationSchema.safeParse({ ...validTrainee, date_of_birth: eligibleDate }).success).toBe(true);
+  });
+
+  it("requires a custom job title when Other is selected", () => {
+    expect(traineeCreationSchema.safeParse({
+      ...validTrainee,
+      occupation: "Other",
+    }).success).toBe(false);
+    expect(traineeCreationSchema.safeParse({
+      ...validTrainee,
+      occupation: "Other",
+      other_occupation: "Senior Well Intervention Specialist",
+    }).success).toBe(true);
   });
 });

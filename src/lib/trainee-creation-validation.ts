@@ -1,6 +1,23 @@
 import { isValid, parseISO, startOfDay, subYears } from "date-fns";
 import { z } from "zod";
 
+export const OTHER_JOB_TITLE = "Other";
+export const TRAINEE_JOB_TITLES = [
+  "Engineer",
+  "Technician",
+  "Drilling Engineer",
+  "Well Intervention Specialist",
+  "Mechanical Engineer",
+  "Electrical Engineer",
+  "Instrumentation and Control Engineer",
+  "Process Engineer",
+  "HSE Officer",
+  "Operations Supervisor",
+  "Maintenance Technician",
+  "Project Manager",
+  OTHER_JOB_TITLE,
+] as const;
+
 export const traineeCreationSchema = z
   .object({
     first_name: z.string().trim().min(1, "Enter the trainee's first name."),
@@ -24,11 +41,20 @@ export const traineeCreationSchema = z
     nogic_candidate_number: z.string(),
     ogisp_passport_id: z.string(),
     emergency_contact: z.string(),
-    occupation: z.string(),
+    occupation: z.enum(["", ...TRAINEE_JOB_TITLES]),
+    other_occupation: z.string(),
     corporate_staff_id: z.string(),
     organization_id: z.string(),
   })
   .superRefine((values, ctx) => {
+    if (values.occupation === OTHER_JOB_TITLE && !values.other_occupation.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["other_occupation"],
+        message: "Enter the trainee's job title.",
+      });
+    }
+
     if (!values.date_of_birth) return;
 
     const dateOfBirth = parseISO(values.date_of_birth);

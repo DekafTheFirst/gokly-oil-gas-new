@@ -27,19 +27,25 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import LocationSelect from "@/components/LocationSelect";
 import { format, isValid, parseISO, startOfDay, subYears } from "date-fns";
 import { createUser, type UserPayload } from "@/lib/users";
 import { fetchOrganizations, type OrganizationRecord } from "@/lib/organizations";
-import { traineeCreationSchema, type TraineeCreationFormValues } from "@/lib/trainee-creation-validation";
-import { fetchLocationCities, fetchLocationCountries, fetchLocationStates } from "@/lib/location-api";
+import {
+  OTHER_JOB_TITLE,
+  TRAINEE_JOB_TITLES,
+  traineeCreationSchema,
+  type TraineeCreationFormValues,
+} from "@/lib/trainee-creation-validation";
+import {
+  fetchLocationCities,
+  fetchLocationCountries,
+  fetchLocationStates,
+  getLocationStateLabel,
+  type LocationCity,
+  type LocationCountry,
+  type LocationState,
+} from "@/lib/location-api";
 
 const fieldClassName =
   "h-10 w-full rounded-lg border-0 bg-[#eff4ff] px-3 text-sm text-[#121c2a] outline-none transition-colors placeholder:text-[#6f7a6f] focus-visible:bg-[#dee9fc] focus-visible:ring-2 focus-visible:ring-[#006030]/20";
@@ -56,16 +62,18 @@ function FormField({
   htmlFor,
   required = false,
   error,
+  className,
   children,
 }: {
   label: string;
   htmlFor: string;
   required?: boolean;
   error?: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div className={`flex min-w-0 flex-col gap-1.5 ${className ?? ""}`}>
       <Label htmlFor={htmlFor} className="text-xs font-semibold text-[#3f4940]">
         {label} {required && <span className="text-[#ba1a1a]">*</span>}
       </Label>
@@ -129,77 +137,6 @@ function SelectField({
         ))}
       </SelectContent>
     </Select>
-  );
-}
-
-function LocationSelect({
-  id,
-  value,
-  options,
-  placeholder,
-  searchPlaceholder,
-  loading = false,
-  disabled = false,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  options: string[];
-  placeholder: string;
-  searchPlaceholder: string;
-  loading?: boolean;
-  disabled?: boolean;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={`${selectTriggerClassName} justify-between text-left font-normal`}
-        >
-          <span className={value ? "truncate" : "truncate text-[#6f7a6f]"}>
-            {value || placeholder}
-          </span>
-          <ChevronRight className="ml-2 h-4 w-4 shrink-0 rotate-90 text-[#6f7a6f]" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            {loading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">Loading options…</div>
-            ) : (
-              <>
-                <CommandEmpty>No matching locations.</CommandEmpty>
-                <CommandGroup>
-                  {options.map((option) => (
-                    <CommandItem
-                      key={option}
-                      value={option}
-                      onSelect={() => {
-                        onChange(option);
-                        setOpen(false);
-                      }}
-                    >
-                      {option}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
   );
 }
 
@@ -322,9 +259,9 @@ export default function TraineeCreation() {
   const [showPassword, setShowPassword] = useState(false);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [loadingOrganizations, setLoadingOrganizations] = useState(true);
-  const [countries, setCountries] = useState<string[]>([]);
-  const [states, setStates] = useState<string[]>([]);
-  const [cities, setCities] = useState<string[]>([]);
+  const [countries, setCountries] = useState<LocationCountry[]>([]);
+  const [states, setStates] = useState<LocationState[]>([]);
+  const [cities, setCities] = useState<LocationCity[]>([]);
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
@@ -342,7 +279,7 @@ export default function TraineeCreation() {
     formState: { errors, isSubmitting },
   } = useForm<TraineeCreationFormValues>({
     resolver: zodResolver(traineeCreationSchema),
-    mode: "onBlur",
+    mode: "onTouched",
     reValidateMode: "onChange",
     defaultValues: {
       first_name: "",
@@ -353,7 +290,7 @@ export default function TraineeCreation() {
       phone: "",
       address: "",
       city: "",
-      country: "Nigeria",
+      country: "NG",
       state: "",
       gender: "",
       date_of_birth: "",
@@ -363,6 +300,7 @@ export default function TraineeCreation() {
       ogisp_passport_id: "",
       emergency_contact: "",
       occupation: "",
+      other_occupation: "",
       corporate_staff_id: "",
       organization_id: SELF_FUNDED_VALUE,
     },
@@ -370,6 +308,8 @@ export default function TraineeCreation() {
   const firstName = useWatch({ control, name: "first_name" }) ?? "";
   const lastName = useWatch({ control, name: "last_name" }) ?? "";
   const jobTitle = useWatch({ control, name: "occupation" }) ?? "";
+  const otherJobTitle = useWatch({ control, name: "other_occupation" }) ?? "";
+  const previewJobTitle = jobTitle === OTHER_JOB_TITLE ? otherJobTitle : jobTitle;
   const nogicNumber = useWatch({ control, name: "nogic_candidate_number" }) ?? "";
   const staffId = useWatch({ control, name: "corporate_staff_id" }) ?? "";
   const organizationId = useWatch({ control, name: "organization_id" }) ?? SELF_FUNDED_VALUE;
@@ -379,13 +319,15 @@ export default function TraineeCreation() {
   const city = useWatch({ control, name: "city" }) ?? "";
   const country = useWatch({ control, name: "country" }) ?? "";
   const state = useWatch({ control, name: "state" }) ?? "";
+  const selectedCountry = countries.find((item) => item.iso2 === country);
+  const selectedState = states.find((item) => item.iso2 === state);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoadingCountries(true);
     setCountriesError("");
     fetchLocationCountries(controller.signal)
-      .then((items) => setCountries(items.map((item) => item.name).sort((a, b) => a.localeCompare(b))))
+      .then((items) => setCountries(items.sort((a, b) => a.name.localeCompare(b.name))))
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         const message = error instanceof Error ? error.message : "The country list is unavailable.";
@@ -410,7 +352,13 @@ export default function TraineeCreation() {
     setLoadingStates(true);
     setStatesError("");
     fetchLocationStates(country, controller.signal)
-      .then((items) => setStates(items.sort((a, b) => a.localeCompare(b))))
+      .then((items) => {
+        if (items.length === 0) {
+          setStatesError("No states or provinces were returned. Retry if this seems unexpected.");
+          return;
+        }
+        setStates(items.sort((a, b) => a.name.localeCompare(b.name)));
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setStatesError(error instanceof Error ? error.message : "The state/province list is unavailable.");
@@ -433,8 +381,15 @@ export default function TraineeCreation() {
     setCities([]);
     setLoadingCities(true);
     setCitiesError("");
-    fetchLocationCities(country, state || undefined, controller.signal)
-      .then((items) => setCities(items.sort((a, b) => a.localeCompare(b))))
+    fetchLocationCities(country, state || null, controller.signal)
+      .then((items) => {
+        if (items.length === 0) {
+          setCitiesError("No cities were returned for this location. Retry if this seems unexpected.");
+          return;
+        }
+        const distinctCities = new Map(items.map((city) => [city.name, city]));
+        setCities([...distinctCities.values()].sort((a, b) => a.name.localeCompare(b.name)));
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setCitiesError(error instanceof Error ? error.message : "The city list is unavailable.");
@@ -482,8 +437,10 @@ export default function TraineeCreation() {
       phone: values.phone.trim(),
       address: values.address.trim() || undefined,
       city: values.city.trim() || undefined,
-      country: values.country.trim() || undefined,
-      state: values.state.trim() || undefined,
+      country: selectedCountry?.name || undefined,
+      state: (selectedCountry && selectedState
+        ? getLocationStateLabel(selectedCountry.iso2, selectedState)
+        : undefined),
       gender: (gender || undefined) as UserPayload["gender"],
       date_of_birth: dateOfBirth || undefined,
       nationality: nationality || undefined,
@@ -491,7 +448,9 @@ export default function TraineeCreation() {
       nogic_candidate_number: values.nogic_candidate_number.trim() || undefined,
       ogisp_passport_id: values.ogisp_passport_id.trim() || undefined,
       emergency_contact: values.emergency_contact.trim() || undefined,
-      occupation: values.occupation.trim() || undefined,
+      occupation: (values.occupation === OTHER_JOB_TITLE
+        ? values.other_occupation.trim()
+        : values.occupation.trim()) || undefined,
       corporate_staff_id: values.corporate_staff_id.trim() || undefined,
       organization_id: values.organization_id === SELF_FUNDED_VALUE ? undefined : values.organization_id,
     };
@@ -626,7 +585,7 @@ export default function TraineeCreation() {
                     <LocationSelect
                       id="input-country"
                       value={country}
-                      options={countries}
+                      options={countries.map((item) => ({ value: item.iso2, label: item.name }))}
                       placeholder="Select country"
                       searchPlaceholder="Search countries..."
                       loading={loadingCountries}
@@ -650,7 +609,10 @@ export default function TraineeCreation() {
                     <LocationSelect
                       id="input-state"
                       value={state}
-                      options={states}
+                      options={states.map((item) => ({
+                        value: item.iso2,
+                        label: getLocationStateLabel(country, item),
+                      }))}
                       placeholder={country ? "Select state or province" : "Select country first"}
                       searchPlaceholder="Search states or provinces..."
                       loading={loadingStates}
@@ -673,7 +635,7 @@ export default function TraineeCreation() {
                     <LocationSelect
                       id="input-city"
                       value={city}
-                      options={cities}
+                      options={cities.map((item) => ({ value: item.name, label: item.name }))}
                       placeholder="Select city"
                       searchPlaceholder="Search cities..."
                       loading={loadingCities}
@@ -692,6 +654,18 @@ export default function TraineeCreation() {
                     )}
                   </FormField>
                 </div>
+                <p className="text-[11px] text-[#6f7a6f]">
+                  Location data by{" "}
+                  <a
+                    href="https://github.com/dr5hn/countries-states-cities-database"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-2 hover:text-[#006030]"
+                  >
+                    Countries States Cities Database
+                  </a>{" "}
+                  (ODbL 1.0).
+                </p>
                 <FormField label="Initial Portal Password" htmlFor="input-password" required error={errors.password?.message}>
                   <div className="relative">
                     <Input
@@ -771,8 +745,44 @@ export default function TraineeCreation() {
                     />
                     {loadingOrganizations && <span className="text-[11px] text-[#6f7a6f]">Loading organizations…</span>}
                   </FormField>
-                  <FormField label="Job Title / Technical Designation" htmlFor="input-role">
-                    <Input id="input-role" {...register("occupation")} placeholder="e.g. Senior Well Intervention Specialist" className={fieldClassName} />
+                  <FormField
+                    label="Job Title / Technical Designation"
+                    htmlFor="input-role"
+                    className={jobTitle === OTHER_JOB_TITLE ? "md:col-span-2" : ""}
+                  >
+                    <div className={`grid min-w-0 gap-4 ${jobTitle === OTHER_JOB_TITLE ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+                      <SelectField
+                        id="input-role"
+                        value={jobTitle}
+                        onChange={(value) => {
+                          setValue("occupation", value as TraineeCreationFormValues["occupation"], {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          if (value !== OTHER_JOB_TITLE) {
+                            setValue("other_occupation", "", { shouldDirty: true, shouldValidate: true });
+                          }
+                        }}
+                        placeholder="Select job title"
+                        options={TRAINEE_JOB_TITLES.map((title) => ({ value: title, label: title }))}
+                      />
+                      {jobTitle === OTHER_JOB_TITLE && (
+                        <div className="flex min-w-0 flex-col gap-1.5">
+                          <Label htmlFor="input-role-other" className="text-xs font-semibold text-[#3f4940]">
+                            Specify job title
+                          </Label>
+                          <Input
+                            id="input-role-other"
+                            {...register("other_occupation")}
+                            placeholder="Enter job title"
+                            className={fieldClassName}
+                          />
+                          {errors.other_occupation?.message && (
+                            <p role="alert" className="text-xs font-medium text-red-700">{errors.other_occupation.message}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </FormField>
                 </div>
                 <FormField label="Corporate Staff / Employee ID (Optional)" htmlFor="input-staff-id">
@@ -810,8 +820,12 @@ export default function TraineeCreation() {
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-[#3f4940]">Trainee ID</span>
                         <span className="shrink-0 text-[10px] font-bold text-[#006030]">ASSIGNED ON SAVE</span>
                       </div>
-                      <h3 className="truncate text-[15px] font-bold leading-tight text-[#121c2a]">{`${firstName.trim() || "Tari"} ${lastName.trim() || "Briggs"}`}</h3>
-                      <p className="truncate text-[11px] leading-snug text-[#3f4940]">{jobTitle.trim() || "Well Specialist"}</p>
+                      <h3 className="min-h-[19px] truncate text-[15px] font-bold leading-tight text-[#121c2a]">
+                        {[firstName.trim(), lastName.trim()].filter(Boolean).join(" ")}
+                      </h3>
+                      {previewJobTitle.trim() && (
+                        <p className="truncate text-[11px] leading-snug text-[#3f4940]">{previewJobTitle.trim()}</p>
+                      )}
                       <div className="mt-1 flex min-w-0 flex-col border-t border-[#dee9fc]/70 pt-1">
                         <span className="text-[9px] font-semibold uppercase tracking-wider text-[#3f4940]/70">Organization</span>
                         <span className="truncate text-[11px] font-semibold leading-tight text-[#121c2a]">{organizationName}</span>
@@ -821,11 +835,11 @@ export default function TraineeCreation() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="flex min-w-0 flex-col gap-0.5 rounded-lg bg-white p-2 shadow-sm">
                       <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-[#3f4940]">NOGIC JQS</span>
-                      <span className="truncate text-[11px] font-semibold text-[#006030]">{nogicNumber.trim() || "Not provided"}</span>
+                      <span className="min-h-[14px] truncate text-[11px] font-semibold text-[#006030]">{nogicNumber.trim()}</span>
                     </div>
                     <div className="flex min-w-0 flex-col gap-0.5 rounded-lg bg-white p-2 shadow-sm">
                       <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-[#3f4940]">Staff ID</span>
-                      <span className="truncate text-[11px] font-semibold text-[#121c2a]">{staffId.trim() || "Not provided"}</span>
+                      <span className="min-h-[14px] truncate text-[11px] font-semibold text-[#121c2a]">{staffId.trim()}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-2 shadow-sm">
@@ -834,14 +848,6 @@ export default function TraineeCreation() {
                       <span className="text-[10px] font-medium">Verification Pending</span>
                     </div>
                     <span className="text-[10px] font-semibold text-[#8a6400]">Clearance Pending</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 rounded-lg bg-white p-2 shadow-sm">
-                    <div aria-hidden="true" className="flex h-5 w-full items-stretch justify-center gap-0.5 opacity-70">
-                      {[1, 2, 1, 3, 1, 2, 4, 1, 2, 3, 1, 4, 2, 1].map((width, index) => (
-                        <span key={index} className="bg-[#121c2a]" style={{ width: `${width * 2}px` }} />
-                      ))}
-                    </div>
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#3f4940]">ID GENERATED ON REGISTRATION</span>
                   </div>
                 </div>
               </section>

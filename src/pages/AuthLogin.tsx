@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { Lock, Mail, ArrowRight, Sparkles, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
+import { resendVerificationEmail } from "@/lib/auth";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email."),
@@ -20,6 +22,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const AuthLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [emailUnverified, setEmailUnverified] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -27,9 +31,11 @@ const AuthLogin = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    watch,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
+  const email = watch("email", "");
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
@@ -44,9 +50,28 @@ const AuthLogin = () => {
         navigate("/training/trainee-dashboard");
       }
     } catch (error) {
+      if (error instanceof ApiError && error.code === "EMAIL_NOT_VERIFIED") {
+        setEmailUnverified(true);
+        toast.error("Confirm your email before signing in.");
+        return;
+      }
       toast.error("Unable to log in", {
         description: error instanceof Error ? error.message : "Invalid credentials"
       });
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResending(true);
+    try {
+      const result = await resendVerificationEmail(email);
+      toast.success(result.message);
+    } catch (error) {
+      toast.error("Unable to resend the confirmation email", {
+        description: error instanceof Error ? error.message : "Please try again later.",
+      });
+    } finally {
+      setResending(false);
     }
   };
 
@@ -79,13 +104,26 @@ const AuthLogin = () => {
                     type="email"
                     placeholder="you@example.com"
                     className="pl-10 h-11 border-gray-200 focus:border-green-500 focus:ring-green-500/20"
-                    {...register("email")}
+                    {...register("email", { onChange: () => setEmailUnverified(false) })}
                   />
                 </div>
                 {errors.email && (
                   <p className="text-sm text-red-500 flex items-center gap-1">
                     {errors.email.message}
                   </p>
+                )}
+                {emailUnverified && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    <p>This account still needs email confirmation.</p>
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resending || !email}
+                      className="mt-2 font-semibold text-[#1f7544] underline disabled:opacity-50"
+                    >
+                      {resending ? "Sending..." : "Resend confirmation email"}
+                    </button>
+                  </div>
                 )}
               </div>
 

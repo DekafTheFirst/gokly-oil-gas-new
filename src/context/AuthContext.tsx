@@ -33,7 +33,6 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (values) => {
     const payload = await authService.register(values);
-    setUser(payload.user);
     setError(null);
     return payload;
   };

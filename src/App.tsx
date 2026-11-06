@@ -49,7 +49,9 @@ const TRAINEE_ROLES = ["TRAINEE", "STUDENT"];
 
 const AppRoutes = () => {
   const location = useLocation();
+  const isEmailVerificationPage = location.pathname === "/auth/verify-email";
   const showNavbar = !location.pathname.startsWith("/training");
+  const showFooter = showNavbar && !isEmailVerificationPage;
 
   return (
     <>
@@ -96,7 +98,7 @@ const AppRoutes = () => {
         <Route path="/public-verification" element={<PublicVerification />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {showNavbar && <Footer />}
+      {showFooter && <Footer />}
       <ChatBot />
     </>
   );

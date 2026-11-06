@@ -16,7 +16,8 @@ import {
   HelpCircle,
   LockKeyhole,
   Mail,
-  QrCode,
+  MapPin,
+  Phone,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -675,50 +676,55 @@ const TraineeRegister = () => {
                 <Award className="h-6 w-6 text-[#f4c85a]" />
               </div>
               <div className="p-5">
-                <div className="rounded-xl border border-[#e1e8e2] bg-[#fbfdfb] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e9f2eb] text-[#2b7547]">
+                <div className="rounded-xl border border-[#dfe7ef] bg-[#f4f7fc] p-4 sm:p-5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e9f2eb] text-[#2b7547]">
                       <UserRound className="h-6 w-6" />
                     </div>
-                    <span className="rounded-full bg-[#fff4d8] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#7c5e14]">
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-sm font-bold ${fullName ? "text-[#1b2b40]" : "text-[#a0aaba]"}`}>
+                        {fullName || "— — —"}
+                      </p>
+                      <p className={`mt-1 truncate text-xs ${values.email ? "text-[#68778a]" : "text-[#a0aaba]"}`}>
+                        {values.email || "— — —"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[#fff4d8] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#7c5e14]">
                       Pending
                     </span>
                   </div>
-                  <p className="mt-4 min-h-6 break-words font-heading text-lg font-extrabold text-[#1b2b40]">
-                    {fullName}
-                  </p>
-                  <p className="mt-1 min-h-5 break-all text-xs text-[#68778a]">
-                    {values.email}
-                  </p>
-                  <div className="my-4 h-px bg-[#e6ebe7]" />
-                  <div className="space-y-3 text-xs">
-                    {/* <div className="flex items-center justify-between gap-2">
-                      <span className="text-[#7a8797]">Trainee ID</span>
-                      <span className="font-bold text-[#344359]">Assigned after confirmation</span>
-                    </div> */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[#7a8797]">Location</span>
-                      <span className="text-right font-semibold text-[#344359]">
-                        {[values.city, selectedState && getLocationStateLabel(countryCode, selectedState), selectedCountry?.name]
-                          .filter(Boolean)
-                          .join(", ")}
+
+                  <div className="my-4 h-px bg-[#dfe6ef]" />
+
+                  <div className="space-y-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#65806e]">
+                        <Phone className="h-4 w-4" aria-hidden="true" />
                       </span>
+                      <div className="min-w-0 flex-1 py-0.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#7a8797]">Phone number</p>
+                        <p className={`mt-1 break-all text-xs font-semibold ${values.phone ? "text-[#344359]" : "text-[#a0aaba]"}`}>
+                          {values.phone ? `+234 ${values.phone}` : "— — —"}
+                        </p>
+                      </div>
                     </div>
-                    {/* <div className="flex items-center justify-between gap-2">
-                      <span className="text-[#7a8797]">Accreditation</span>
-                      <span className="font-semibold text-[#344359]">Review after registration</span>
-                    </div> */}
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#65806e]">
+                        <MapPin className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1 py-0.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#7a8797]">Location</p>
+                        <p className={`mt-1 break-words text-xs font-semibold leading-5 ${values.city || selectedState || selectedCountry ? "text-[#344359]" : "text-[#a0aaba]"}`}>
+                          {[values.city, selectedState && getLocationStateLabel(countryCode, selectedState), selectedCountry?.name]
+                            .filter(Boolean)
+                            .join(", ") || "— — —"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  {/* <div className="mt-4 flex items-center justify-between rounded-lg bg-white p-3">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8390a0]">Badge status</p>
-                      <p className="mt-1 text-[11px] font-semibold text-[#344359]">Active after email confirmation</p>
-                    </div>
-                    <QrCode className="h-9 w-9 text-[#8390a0]" />
-                  </div> */}
                 </div>
                 <p className="mt-3 text-center text-[11px] leading-5 text-[#7b8797]">
-                  Your badge preview is private and will be activated after your email is confirmed.
+                  This preview updates as you enter your account details.
                 </p>
               </div>
             </section>

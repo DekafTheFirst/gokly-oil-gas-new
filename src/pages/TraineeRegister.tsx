@@ -8,6 +8,7 @@ import {
   Award,
   BadgeCheck,
   Building2,
+  Calendar as CalendarIcon,
   Check,
   Eye,
   EyeOff,
@@ -25,7 +26,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
 import LocationSelect from "@/components/LocationSelect";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -34,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { format, isValid, parseISO, startOfDay, subYears } from "date-fns";
 import { registerPublicTrainee, resendVerificationEmail } from "@/lib/auth";
 import {
   fetchLocationCountries,
@@ -54,6 +58,11 @@ const fieldClassName =
 
 const ErrorText = ({ children }: { children?: string }) =>
   children ? <p className="mt-1 text-xs font-medium text-red-600" role="alert">{children}</p> : null;
+
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, month) => ({
+  value: String(month),
+  label: format(new Date(2024, month, 1), "MMMM"),
+}));
 
 const Field = ({
   label,
@@ -76,6 +85,113 @@ const Field = ({
     <ErrorText>{error}</ErrorText>
   </div>
 );
+
+const DateOfBirthPicker = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const parsedDate = value ? parseISO(value) : undefined;
+  const selectedDate = parsedDate && isValid(parsedDate) ? parsedDate : undefined;
+  const latestEligibleDate = startOfDay(subYears(new Date(), 16));
+  const [displayedMonth, setDisplayedMonth] = useState(selectedDate ?? latestEligibleDate);
+  const latestYear = latestEligibleDate.getFullYear();
+  const yearOptions = Array.from({ length: latestYear - 1899 }, (_, index) => {
+    const year = latestYear - index;
+    return { value: String(year), label: String(year) };
+  });
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) setDisplayedMonth(selectedDate ?? latestEligibleDate);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          id="date_of_birth"
+          type="button"
+          variant="outline"
+          aria-label="Date of birth"
+          aria-haspopup="dialog"
+          className={`${fieldClassName} justify-start text-left font-normal hover:bg-[#f0f4fc]`}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-[#65738a]" />
+          {selectedDate
+            ? format(selectedDate, "PPP")
+            : <span className="text-[#77849a]">Select a date</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] overflow-hidden p-0">
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <Select
+            value={String(displayedMonth.getMonth())}
+            onValueChange={(month) => setDisplayedMonth(new Date(displayedMonth.getFullYear(), Number(month), 1))}
+          >
+            <SelectTrigger aria-label="Select month" className="h-9 flex-1 bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTH_OPTIONS.map((month) => (
+                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={String(displayedMonth.getFullYear())}
+            onValueChange={(year) => setDisplayedMonth(new Date(Number(year), displayedMonth.getMonth(), 1))}
+          >
+            <SelectTrigger aria-label="Select year" className="h-9 w-24 bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {yearOptions.map((year) => (
+                <SelectItem key={year.value} value={year.value}>{year.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          month={displayedMonth}
+          onMonthChange={setDisplayedMonth}
+          fromDate={new Date(1900, 0, 1)}
+          toDate={latestEligibleDate}
+          classNames={{ caption: "hidden", nav: "hidden" }}
+          onSelect={(date) => {
+            if (!date) return;
+            onChange(format(date, "yyyy-MM-dd"));
+            setOpen(false);
+          }}
+          disabled={(date) => date > latestEligibleDate}
+          initialFocus
+        />
+        {value && (
+          <div className="border-t p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              Clear date
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const SectionHeading = ({
   number,
@@ -112,7 +228,6 @@ const TraineeRegister = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registrationState, setRegistrationState] = useState<"form" | "sent" | "delivery-failed">("form");
   const [pendingEmail, setPendingEmail] = useState("");
-  const [submissionError, setSubmissionError] = useState("");
   const [resending, setResending] = useState(false);
 
   const {
@@ -253,11 +368,10 @@ const TraineeRegister = () => {
   const strength = passwordRequirements.filter((requirement) => requirement.valid).length;
 
   const onSubmit = async (formValues: PublicTraineeRegistrationValues) => {
-    setSubmissionError("");
     const country = countries.find((option) => option.iso2 === formValues.country);
     const state = states.find((option) => option.iso2 === formValues.state);
     if (!country || !state) {
-      setSubmissionError("Select a country and state from the available lists.");
+      toast.error("Select a country and state from the available lists.");
       return;
     }
 
@@ -273,12 +387,23 @@ const TraineeRegister = () => {
       });
       setPendingEmail(result.email || formValues.email);
       setRegistrationState("sent");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       if (error instanceof ApiError && error.retryVerification) {
         setPendingEmail(formValues.email);
         setRegistrationState("delivery-failed");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (error instanceof ApiError && error.errors.length > 0) {
+        const messages = [...new Set(error.errors
+          .map(({ message }) => message?.trim())
+          .filter((message): message is string => Boolean(message)))];
+        toast.error(error.message, {
+          ...(messages.length > 0 && messages.join(" ") !== error.message
+            ? { description: messages.join(" ") }
+            : {}),
+        });
       } else {
-        setSubmissionError(error instanceof Error ? error.message : "Unable to submit your registration.");
+        toast.error(error instanceof Error ? error.message : "Unable to submit your registration.");
       }
     }
   };
@@ -402,12 +527,6 @@ const TraineeRegister = () => {
                   </span>
                 </div>
 
-                {submissionError && (
-                  <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-                    {submissionError}
-                  </div>
-                )}
-
                 <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
                   <section>
                     <SectionHeading number="01" title="Account credentials" description="Your email is used for sign-in and account confirmation." />
@@ -477,12 +596,14 @@ const TraineeRegister = () => {
                           <SelectContent>
                             <SelectItem value="Female">Female</SelectItem>
                             <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
                           </SelectContent>
                         </Select>
                       </Field>
                       <Field label="Date of birth *" htmlFor="date_of_birth" error={errors.date_of_birth?.message}>
-                        <Input id="date_of_birth" type="date" autoComplete="bday" className={fieldClassName} {...register("date_of_birth")} />
+                        <DateOfBirthPicker
+                          value={values.date_of_birth}
+                          onChange={(date) => setValue("date_of_birth", date, { shouldValidate: true })}
+                        />
                       </Field>
                       <Field label="Nationality *" htmlFor="nationality" error={errors.nationality?.message}>
                         <Input id="nationality" autoComplete="country-name" placeholder="e.g. Nigerian" className={fieldClassName} {...register("nationality")} />

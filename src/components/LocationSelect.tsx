@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -26,7 +26,7 @@ type LocationSelectProps = {
 };
 
 const defaultClassName =
-  "h-10 w-full rounded-lg border-0 bg-[#eff4ff] px-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#006030]/20";
+  "h-11 w-full rounded-lg border border-[#dce4f2] bg-[#f0f4fc] px-3 text-sm text-[#17253a] shadow-none placeholder:text-[#77849a] hover:bg-[#f0f4fc] focus-visible:border-[#237c4b] focus-visible:ring-2 focus-visible:ring-[#237c4b]/20 disabled:cursor-not-allowed disabled:opacity-60";
 
 const LocationSelect = ({
   id,
@@ -56,7 +56,7 @@ const LocationSelect = ({
           <span className={value ? "truncate" : "truncate text-[#6f7a6f]"}>
             {options.find((option) => option.value === value)?.label || value || placeholder}
           </span>
-          <ChevronRight className="ml-2 h-4 w-4 shrink-0 rotate-90 text-[#6f7a6f]" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-[#65738a]" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">

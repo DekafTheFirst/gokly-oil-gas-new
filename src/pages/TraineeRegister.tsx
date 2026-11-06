@@ -67,8 +67,8 @@ const Field = ({
   optional?: boolean;
   children: ReactNode;
 }) => (
-  <div className="min-w-0 space-y-1.5">
-    <Label htmlFor={htmlFor} className="text-sm font-semibold text-[#25334a]">
+  <div className="flex min-w-0 flex-col items-stretch gap-1.5">
+    <Label htmlFor={htmlFor} className="block w-fit text-sm font-semibold text-[#25334a]">
       {label}{optional && <span className="ml-1 font-normal text-[#7b8799]">(optional)</span>}
     </Label>
     {children}
@@ -510,27 +510,6 @@ const TraineeRegister = () => {
                       <Field label="Residential address *" htmlFor="address" error={errors.address?.message}>
                         <Input id="address" autoComplete="street-address" placeholder="Street address" className={fieldClassName} {...register("address")} />
                       </Field>
-                      <Field label="City *" htmlFor="city" error={errors.city?.message}>
-                        <LocationSelect
-                          id="city"
-                          value={values.city}
-                          options={cities.map((city) => ({ value: city.name, label: city.name }))}
-                          placeholder="Select city"
-                          searchPlaceholder="Search cities..."
-                          loading={citiesLoading}
-                          disabled={!countryCode || citiesLoading || Boolean(citiesError) || (states.length > 0 && !values.state && !statesError)}
-                          className={fieldClassName}
-                          onChange={(value) => setValue("city", value, { shouldValidate: true })}
-                        />
-                        {citiesError && (
-                          <div className="flex items-center justify-between gap-2 text-xs text-red-700">
-                            <span>{citiesError}</span>
-                            <button type="button" className="font-bold underline" onClick={() => setCityRetry((retry) => retry + 1)}>
-                              Retry
-                            </button>
-                          </div>
-                        )}
-                      </Field>
                       <Field label="Country *" htmlFor="country" error={errors.country?.message}>
                         <LocationSelect
                           id="country"
@@ -570,6 +549,26 @@ const TraineeRegister = () => {
                             clearErrors("city");
                           }}
                         />
+                      </Field>
+                      <Field label="City *" htmlFor="city" error={errors.city?.message}>
+                        <LocationSelect
+                          id="city"
+                          value={values.city}
+                          options={cities.map((city) => ({ value: city.name, label: city.name }))}
+                          placeholder="Select city"
+                          searchPlaceholder="Search cities..."
+                          loading={citiesLoading}
+                          disabled={!countryCode || citiesLoading || Boolean(citiesError) || (states.length > 0 && !values.state && !statesError)}
+                          onChange={(value) => setValue("city", value, { shouldValidate: true })}
+                        />
+                        {citiesError && (
+                          <div className="flex items-center justify-between gap-2 text-xs text-red-700">
+                            <span>{citiesError}</span>
+                            <button type="button" className="font-bold underline" onClick={() => setCityRetry((retry) => retry + 1)}>
+                              Retry
+                            </button>
+                          </div>
+                        )}
                       </Field>
                     </div>
                     <p className="mt-3 text-[11px] text-[#6b778b]">
@@ -671,7 +670,7 @@ const TraineeRegister = () => {
               <div className="flex items-center justify-between bg-[#1f7544] px-5 py-4 text-white">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/75">Live preview</p>
-                  <h2 className="mt-0.5 font-heading text-lg font-bold">Trainee accreditation badge</h2>
+                  <h2 className="mt-0.5 font-heading text-lg font-bold">Account preview</h2>
                 </div>
                 <Award className="h-6 w-6 text-[#f4c85a]" />
               </div>
@@ -693,10 +692,10 @@ const TraineeRegister = () => {
                   </p>
                   <div className="my-4 h-px bg-[#e6ebe7]" />
                   <div className="space-y-3 text-xs">
-                    <div className="flex items-center justify-between gap-2">
+                    {/* <div className="flex items-center justify-between gap-2">
                       <span className="text-[#7a8797]">Trainee ID</span>
                       <span className="font-bold text-[#344359]">Assigned after confirmation</span>
-                    </div>
+                    </div> */}
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[#7a8797]">Location</span>
                       <span className="text-right font-semibold text-[#344359]">
@@ -705,18 +704,18 @@ const TraineeRegister = () => {
                           .join(", ")}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
+                    {/* <div className="flex items-center justify-between gap-2">
                       <span className="text-[#7a8797]">Accreditation</span>
                       <span className="font-semibold text-[#344359]">Review after registration</span>
-                    </div>
+                    </div> */}
                   </div>
-                  <div className="mt-4 flex items-center justify-between rounded-lg bg-white p-3">
+                  {/* <div className="mt-4 flex items-center justify-between rounded-lg bg-white p-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8390a0]">Digital verification</p>
-                      <p className="mt-1 text-[11px] font-semibold text-[#344359]">Available after confirmation</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8390a0]">Badge status</p>
+                      <p className="mt-1 text-[11px] font-semibold text-[#344359]">Active after email confirmation</p>
                     </div>
                     <QrCode className="h-9 w-9 text-[#8390a0]" />
-                  </div>
+                  </div> */}
                 </div>
                 <p className="mt-3 text-center text-[11px] leading-5 text-[#7b8797]">
                   Your badge preview is private and will be activated after your email is confirmed.

@@ -50,7 +50,8 @@ const TRAINEE_ROLES = ["TRAINEE", "STUDENT"];
 const AppRoutes = () => {
   const location = useLocation();
   const isEmailVerificationPage = location.pathname === "/auth/verify-email";
-  const showNavbar = !location.pathname.startsWith("/training");
+  const usesTrainingShell = location.pathname.startsWith("/training") || location.pathname === "/profile";
+  const showNavbar = !usesTrainingShell;
   const showFooter = showNavbar && !isEmailVerificationPage;
 
   return (

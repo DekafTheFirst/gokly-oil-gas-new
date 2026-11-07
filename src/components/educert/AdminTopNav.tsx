@@ -82,9 +82,18 @@ export function AdminTopNav({
           <button className="hidden grid h-10 w-10 place-items-center rounded-full text-muted-foreground hover:bg-muted sm:grid" aria-label="Help">
             <HelpCircle className="h-5 w-5" />
           </button>
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-primary-deep font-display text-sm font-bold text-primary-foreground">
+          <NavLink
+            to="/profile"
+            aria-label="My profile"
+            title="My profile"
+            className={({ isActive }) =>
+              `grid h-10 w-10 place-items-center rounded-full bg-primary-deep font-display text-sm font-bold text-primary-foreground transition hover:ring-2 hover:ring-primary hover:ring-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                isActive ? "ring-2 ring-primary ring-offset-2" : ""
+              }`
+            }
+          >
             {initials}
-          </div>
+          </NavLink>
         </div>
       </div>
     </header>

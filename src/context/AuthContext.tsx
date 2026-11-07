@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as authService from "@/lib/auth";
 
 const AuthContext = createContext(null);
@@ -8,11 +8,17 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const refreshProfile = useCallback(async () => {
+    const payload = await authService.fetchProfile();
+    setUser(payload.user);
+    setError(null);
+    return payload;
+  }, []);
+
   useEffect(() => {
     const initialize = async () => {
       try {
-        const { user: profile } = await authService.fetchProfile();
-        setUser(profile);
+        await refreshProfile();
       } catch (_error) {
         authService.clearAuthToken();
         setUser(null);
@@ -22,7 +28,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     initialize();
-  }, []);
+  }, [refreshProfile]);
 
   const login = async (values) => {
     const payload = await authService.login(values);
@@ -56,8 +62,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const value = useMemo(
-    () => ({ user, loading, error, login, register, logout, changePassword, updateProfile, setError }),
-    [user, loading, error],
+    () => ({ user, loading, error, login, register, logout, changePassword, updateProfile, refreshProfile, setError }),
+    [user, loading, error, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

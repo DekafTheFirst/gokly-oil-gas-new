@@ -53,7 +53,7 @@ export const fetchProfile = async () => {
     throw new Error("Missing auth token.");
   }
 
-  return apiFetch("/auth/me", {
+  return apiFetch("/auth/profile", {
     headers: {
       Authorization: `Bearer ${token}`,
     },

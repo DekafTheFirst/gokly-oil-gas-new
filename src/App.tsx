@@ -69,6 +69,7 @@ const AppRoutes = () => {
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
         <Route path="/register" element={<TraineeRegister />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/courses" element={<TrainingCourses />} />
         <Route path="/training" element={<TrainingHome />} />
         <Route path="/training/courses" element={<ProtectedRoute><TrainingCourses /></ProtectedRoute>} />
         {/* Generic entry-point: redirects to the correct dashboard for the logged-in role */}

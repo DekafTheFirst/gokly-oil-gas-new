@@ -22,6 +22,7 @@ type Item = { to: string; label: string; icon: LucideIcon };
 
 const ADMIN_ITEMS: Item[] = [
   { to: "/training/admin", label: "Dashboard", icon: ShieldCheck },
+  { to: "/training/courses", label: "Course Catalog", icon: ClipboardList },
   { to: "/training/certificate-management", label: "Certificate Management", icon: Award },
   { to: "/training/user-management", label: "User Management", icon: User },
   { to: "/training/trainees", label: "Trainee Directory", icon: Users },
@@ -40,7 +41,7 @@ const TRAINER_ITEMS: Item[] = [
 
 const TRAINEE_ITEMS: Item[] = [
   { to: "/training/trainee-dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/training/courses", label: "My Courses", icon: GraduationCap },
+  { to: "/training/courses", label: "Course Catalog", icon: GraduationCap },
   { to: "/training/verify", label: "Certifications", icon: BadgeCheck },
 ];
 

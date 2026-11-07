@@ -1,214 +1,421 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Star, Plus, BarChart3, ArrowRight, BadgeCheck, AlertCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, Navigate, useLocation } from "react-router-dom";
+import {
+  ArrowRight,
+  BadgeCheck,
+  CheckCircle2,
+  Clock3,
+  FilterX,
+  GraduationCap,
+  Search,
+  ShieldCheck,
+  UsersRound,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { getAuthToken } from "@/lib/auth";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
+import { enrollInCourse, fetchPublicCourses, type CourseRecord } from "@/lib/courses";
+import { filterCourseCatalog, type CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
+import courseRigImage from "@/assets/course-rig.jpg";
+import courseSubseaImage from "@/assets/course-subsea.jpg";
+import courseHazmatImage from "@/assets/course-hazmat.jpg";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
-
-interface Course {
-  id: number;
-  title: string;
-  category: string;
-  description: string;
-  tier: string;
-  hours: string;
-  image?: string;
-  created_at: string;
+function getCourseImage(course: CourseRecord) {
+  if (course.thumbnail_url || course.image) return course.thumbnail_url || course.image || "";
+  const category = course.category?.toLowerCase() || "";
+  if (category.includes("safety") || category.includes("hse")) return courseHazmatImage;
+  if (category.includes("technical") || category.includes("engineering")) return courseRigImage;
+  return courseSubseaImage;
 }
 
-const categories = ["All Modules", "HSE & Safety", "Offshore Ops", "Technical Tools", "Environmental"];
-const tiers = ["Basic (T3)", "Advanced (T2)", "Expert (T1)"];
+function formatDuration(course: CourseRecord) {
+  if (!course.duration_value) return null;
+  const unit = course.duration_unit?.toLowerCase() || "hours";
+  return `${course.duration_value} ${unit}`;
+}
+
+function formatPrice(course: CourseRecord) {
+  const price = Number(course.price);
+  if (!Number.isFinite(price) || price <= 0) return "Contact for pricing";
+
+  const currency = ["NGN", "USD", "EUR", "GBP"].includes((course.currency || "").toUpperCase())
+    ? (course.currency || "NGN").toUpperCase()
+    : "NGN";
+
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price);
+}
 
 export default function Courses() {
   const { user } = useAuth() as { user: { role?: string } | null };
+  const location = useLocation();
+  const isPortalRoute = location.pathname.startsWith("/training/");
   const role = (user?.role || "").toUpperCase();
-  const dashboardLink = role === "ADMIN" ? "/training/admin" : role === "TRAINER" ? "/training/trainer-dashboard" : "/training/trainee-dashboard";
-  const [courses, setCourses] = useState<Course[]>([]);
+  const canEnroll = role === "TRAINEE" || role === "STUDENT";
+  const dashboardLink =
+    role === "ADMIN"
+      ? "/training/admin"
+      : role === "TRAINER"
+        ? "/training/trainer-dashboard"
+        : "/training/trainee-dashboard";
+
+  const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [tier, setTier] = useState("all");
+  const [enrollment, setEnrollment] = useState<CourseCatalogEnrollmentFilter>("all");
   const [enrollingCourseId, setEnrollingCourseId] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        setLoading(true);
-        const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/courses`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!response.ok) throw new Error("Failed to fetch courses");
-        const data = await response.json();
-        setCourses(data.courses || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load courses");
-      } finally {
-        setLoading(false);
-      }
-    };
+    let active = true;
 
-    fetchCourses();
+    fetchPublicCourses()
+      .then((publishedCourses) => {
+        if (active) setCourses(publishedCourses);
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setError(cause instanceof Error ? cause.message : "Could not load courses. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  const categories = useMemo(
+    () => [...new Set(courses.map((course) => course.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [courses],
+  );
+  const tiers = useMemo(
+    () => [...new Set(courses.map((course) => course.tier).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b)),
+    [courses],
+  );
+  const filteredCourses = useMemo(
+    () => filterCourseCatalog(courses, { search, category, tier, enrollment }),
+    [category, courses, enrollment, search, tier],
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setCategory("all");
+    setTier("all");
+    setEnrollment("all");
+  };
 
   const handleEnroll = async (courseId: number) => {
     try {
       setEnrollingCourseId(courseId);
-      const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/courses/${courseId}/enroll`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to enroll in course");
-      setSuccessMessage("Successfully enrolled in course!");
-      setTimeout(() => setSuccessMessage(""), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to enroll");
-      setTimeout(() => setError(""), 3000);
+      await enrollInCourse(courseId);
+      toast.success("You’re enrolled in this course.");
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Could not enroll in this course.");
     } finally {
       setEnrollingCourseId(null);
     }
   };
 
-  return (
-    <AdminPageShell withSidebar searchPlaceholder="Search courses...">
-      <div className="mx-auto max-w-[1280px] px-6 py-10">
-        {/* Featured + quick access */}
-        <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
-          <div className="relative overflow-hidden rounded-2xl shadow-[var(--shadow-card)]">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-deep/95 via-primary-deep/70 to-transparent" />
-            <div className="relative p-8 text-primary-foreground md:p-10">
-              <span className="inline-block rounded-md bg-energy px-3 py-1 text-xs font-bold uppercase tracking-wider text-energy-foreground">Featured Program</span>
-              <h2 className="mt-4 max-w-md text-3xl font-extrabold leading-tight md:text-4xl">Start Your Training Journey</h2>
-              <p className="mt-3 max-w-md text-primary-foreground/80">Explore our comprehensive training modules and advance your skills in your field.</p>
-              <div className="mt-6 flex gap-3">
-                <button className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">Browse Courses</button>
-                <button className="rounded-md bg-foreground/30 px-5 py-2.5 text-sm font-semibold text-primary-foreground backdrop-blur transition hover:bg-foreground/40">Learn More</button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            <div className="rounded-2xl bg-primary-deep p-6 text-primary-foreground shadow-[var(--shadow-card)]">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-energy">
-                <BadgeCheck className="h-4 w-4" /> Certified Training
-              </div>
-              <h3 className="mt-3 text-2xl font-bold">{courses.length} Active Courses</h3>
-              <p className="mt-2 text-sm text-primary-foreground/80">Enroll in courses and track your progress.</p>
-            </div>
-            <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-card)]">
-              <h3 className="font-bold">Your Dashboard</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Track your enrolled courses and progress.</p>
-              <Link to={dashboardLink} className="mt-4 flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm font-semibold text-primary-deep hover:bg-muted">
-                Go to Dashboard <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Catalog */}
-        <div className="mt-12 grid gap-8 lg:grid-cols-[220px_1fr]">
-          <aside className="space-y-8">
+  const content = (
+    <main className={isPortalRoute ? "page-padding" : "min-h-screen bg-background"}>
+      <div className={isPortalRoute ? "mx-auto max-w-[1440px] space-y-8" : "mx-auto max-w-[1440px] space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-12"}>
+        <section className="relative overflow-hidden rounded-2xl bg-primary-deep p-6 text-primary-foreground shadow-card sm:p-9">
+          <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-3xl" aria-hidden="true" />
+          <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:items-center">
             <div>
-              <h3 className="text-lg font-bold">Categories</h3>
-              <ul className="mt-3 space-y-2 text-sm">
-                {categories.map((c, i) => (
-                  <li key={c} className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked={i === 0} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
-                    <span>{c}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold">Certification Level</h3>
-              <ul className="mt-3 space-y-2 text-sm">
-                {tiers.map((t) => (
-                  <li key={t} className="flex items-center gap-2">
-                    <input type="radio" name="tier" className="h-4 w-4 border-border text-primary" />
-                    <span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-2xl bg-primary-deep p-5 text-primary-foreground shadow-[var(--shadow-card)]">
-              <BarChart3 className="h-6 w-6 text-energy" />
-              <h4 className="mt-3 font-bold">Admin Panel</h4>
-              <p className="mt-1 text-xs text-primary-foreground/80">Access admin controls and analytics.</p>
-              <Link to="/training/admin" className="mt-4 block w-full rounded-md bg-primary-foreground py-2 text-center text-sm font-semibold text-primary-deep hover:bg-primary-foreground/90">Admin Dashboard</Link>
-            </div>
-          </aside>
-
-          <div>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <h2 className="text-3xl font-extrabold">Course Catalog</h2>
-                <p className="text-sm text-muted-foreground">Showing {courses.length} course{courses.length !== 1 ? "s" : ""}</p>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold">
+                  <BadgeCheck className="h-4 w-4 text-energy" /> Professional training
+                </span>
+                <span className="rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold">Oil, gas &amp; safety</span>
               </div>
-              {error && (
-                <div className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-800">
-                  <AlertCircle className="h-4 w-4" />
-                  {error}
+              <h1 className="mt-5 max-w-2xl text-3xl font-extrabold leading-tight sm:text-4xl lg:text-5xl">
+                Find the training that moves your career forward.
+              </h1>
+              <p className="mt-4 max-w-2xl text-primary-foreground/80">
+                Search Gokly’s published courses by subject, certification level, and enrollment option. Create an account to start your training journey.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {!user ? (
+                  <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-energy px-5 py-3 text-sm font-bold text-energy-foreground transition hover:brightness-95">
+                    Create a trainee account <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <Link to={dashboardLink} className="inline-flex items-center gap-2 rounded-lg bg-energy px-5 py-3 text-sm font-bold text-energy-foreground transition hover:brightness-95">
+                    Go to your dashboard <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+                <a href="#course-catalog" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/30 px-5 py-3 text-sm font-semibold transition hover:bg-primary-foreground/10">
+                  Explore the catalog
+                </a>
+              </div>
+            </div>
+            <div className="rounded-xl border border-primary-foreground/10 bg-primary-foreground/10 p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                <div className="grid h-11 w-11 place-items-center rounded-lg bg-energy text-energy-foreground">
+                  <GraduationCap className="h-6 w-6" />
                 </div>
-              )}
-              {successMessage && (
-                <div className="rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800">{successMessage}</div>
-              )}
-            </div>
-            {loading ? (
-              <p className="mt-6 text-muted-foreground">Loading courses...</p>
-            ) : courses.length === 0 ? (
-              <p className="mt-6 text-muted-foreground">No courses available yet.</p>
-            ) : (
-              <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                {courses.map((course) => (
-                  <article key={course.id} className="group flex flex-col overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] transition hover:-translate-y-0.5">
-                    <div className="relative h-44 bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                      {course.image ? (
-                        <img src={course.image} alt={course.title} className="h-full w-full object-cover" loading="lazy" />
-                      ) : (
-                        <BadgeCheck className="h-16 w-16 text-primary/30" />
-                      )}
-                      <span className="absolute right-3 top-3 rounded-md bg-foreground/80 px-2 py-1 text-[10px] font-bold tracking-wider text-background">{course.hours} HOURS</span>
-                    </div>
-                    <div className="flex flex-1 flex-col p-5">
-                      <div className="flex items-center justify-between">
-                        <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">{course.category}</span>
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><Star className="h-3.5 w-3.5 fill-primary text-primary" />{course.tier}</span>
-                      </div>
-                      <h3 className="mt-3 font-bold leading-snug">{course.title}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{course.description}</p>
-                      <div className="mt-auto flex items-center justify-between pt-5">
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-                          {new Date(course.created_at).toLocaleDateString()}
-                        </span>
-                        {user?.role === "TRAINER" ? (
-                          <button disabled className="rounded-full bg-muted px-4 py-2 text-xs font-semibold text-muted-foreground">
-                            Trainer
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleEnroll(course.id)}
-                            disabled={enrollingCourseId === course.id}
-                            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {enrollingCourseId === course.id ? "Enrolling..." : "Enroll"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                <div>
+                  <p className="text-sm font-semibold">Explore at your pace</p>
+                  <p className="text-xs text-primary-foreground/70">Course details and fees are shown below.</p>
+                </div>
               </div>
-            )}
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg bg-primary-deep/50 p-3">
+                  <p className="text-xl font-bold">{loading ? "—" : courses.length}</p>
+                  <p className="mt-1 text-xs text-primary-foreground/70">Published courses</p>
+                </div>
+                <div className="rounded-lg bg-primary-deep/50 p-3">
+                  <p className="text-xl font-bold">{categories.length || "—"}</p>
+                  <p className="mt-1 text-xs text-primary-foreground/70">Training disciplines</p>
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
+
+        <section id="course-catalog" className="scroll-mt-24 space-y-5">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Course search</p>
+              <h2 className="mt-1 text-2xl font-extrabold sm:text-3xl">Training catalog</h2>
+              <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+                {loading ? "Loading published courses…" : `Showing ${filteredCourses.length} of ${courses.length} published course${courses.length === 1 ? "" : "s"}`}
+              </p>
+            </div>
+            <button type="button" onClick={resetFilters} className="inline-flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/5">
+              <FilterX className="h-4 w-4" /> Reset filters
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <label className="sr-only" htmlFor="course-search">Search courses</label>
+              <input
+                id="course-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search course name, code, discipline, or keyword…"
+                className="h-12 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <FilterSelect id="course-category" label="Discipline & category" value={category} onChange={setCategory}>
+                <option value="all">All categories</option>
+                {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+              </FilterSelect>
+              <FilterSelect id="course-tier" label="Certification level" value={tier} onChange={setTier}>
+                <option value="all">All levels</option>
+                {tiers.map((item) => <option key={item} value={item}>{item}</option>)}
+              </FilterSelect>
+              <FilterSelect id="course-enrollment" label="Enrollment option" value={enrollment} onChange={(value) => setEnrollment(value as CourseCatalogEnrollmentFilter)}>
+                <option value="all">All enrollment options</option>
+                <option value="individual">Individual enrollment</option>
+                <option value="organization">Organization enrollment</option>
+              </FilterSelect>
+            </div>
+          </div>
+
+          {error && (
+            <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-label="Loading courses">
+              {[0, 1, 2].map((item) => <div key={item} className="h-80 animate-pulse rounded-xl bg-muted" />)}
+            </div>
+          ) : !error && filteredCourses.length === 0 ? (
+            <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-14 text-center">
+              <div className="grid h-14 w-14 place-items-center rounded-full bg-muted text-muted-foreground">
+                <Search className="h-6 w-6" />
+              </div>
+              <h3 className="mt-4 text-lg font-bold">No courses match your search</h3>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                Try another keyword or adjust your filters to see more training options.
+              </p>
+              <button type="button" onClick={resetFilters} className="mt-4 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+                Clear filters
+              </button>
+            </div>
+          ) : !error && (
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredCourses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  image={getCourseImage(course)}
+                  canEnroll={canEnroll}
+                  isSignedIn={Boolean(user)}
+                  isEnrolling={enrollingCourseId === course.id}
+                  onEnroll={() => void handleEnroll(course.id)}
+                />
+              ))}
+              <aside className="flex flex-col justify-between rounded-xl bg-muted p-6">
+                <div>
+                  <div className="grid h-11 w-11 place-items-center rounded-lg bg-energy text-energy-foreground">
+                    <UsersRound className="h-6 w-6" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-bold">Training for your team?</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Ask us about dedicated cohorts and organization training for your workforce.
+                  </p>
+                </div>
+                <Link to="/contact" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+                  Contact the training team <ArrowRight className="h-4 w-4" />
+                </Link>
+              </aside>
+            </div>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-4 rounded-xl border border-border/70 bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <h2 className="font-bold">Ready to begin?</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Create a trainee account to enroll in available courses and manage your training records.
+              </p>
+            </div>
+          </div>
+          {!user ? (
+            <Link to="/register" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              Sign up <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <Link to={dashboardLink} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              Go to dashboard <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+
+  if (user && !isPortalRoute) {
+    return <Navigate to="/training/courses" replace />;
+  }
+
+  return isPortalRoute ? (
+    <AdminPageShell withSidebar={Boolean(user)} searchPlaceholder="Search published courses…">
+      {content}
+    </AdminPageShell>
+  ) : content;
+}
+
+function FilterSelect({
+  id,
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</label>
+      <select
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+
+function CourseCard({
+  course,
+  image,
+  canEnroll,
+  isSignedIn,
+  isEnrolling,
+  onEnroll,
+}: {
+  course: CourseRecord;
+  image: string;
+  canEnroll: boolean;
+  isSignedIn: boolean;
+  isEnrolling: boolean;
+  onEnroll: () => void;
+}) {
+  const duration = formatDuration(course);
+  const individuallyAvailable = course.individual_enrollment_enabled !== false;
+  const description = course.short_description || course.description;
+
+  return (
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-card">
+      <div className="relative h-48 overflow-hidden bg-muted">
+        <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent" aria-hidden="true" />
+        <span className={`absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${individuallyAvailable ? "bg-secondary text-secondary-foreground" : "bg-background/90 text-foreground"}`}>
+          <span className={`h-2 w-2 rounded-full ${individuallyAvailable ? "bg-primary" : "bg-muted-foreground"}`} />
+          {individuallyAvailable ? "Individual enrollment" : "Organization enrollment"}
+        </span>
+        <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 text-white">
+          <span className="truncate rounded bg-black/35 px-2 py-1 text-xs font-semibold backdrop-blur">{course.code || course.category}</span>
+          {duration && <span className="inline-flex shrink-0 items-center gap-1 rounded bg-black/35 px-2 py-1 text-xs backdrop-blur"><Clock3 className="h-3.5 w-3.5" />{duration}</span>}
         </div>
       </div>
-    </AdminPageShell>
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-primary">{course.category}</span>
+          {course.tier && <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground"><BadgeCheck className="h-3.5 w-3.5 text-primary" />{course.tier}</span>}
+        </div>
+        <h3 className="mt-3 text-lg font-bold leading-snug">{course.title}</h3>
+        <p className="mt-2 line-clamp-3 min-h-[3.75rem] text-sm text-muted-foreground">
+          {description || "Contact our training team for course details and prerequisites."}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          {course.delivery_mode && <span className="rounded-md bg-muted px-2 py-1">{course.delivery_mode}</span>}
+          {course.certificate_enabled && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Certificate included</span>}
+        </div>
+        <div className="mt-5 flex items-end justify-between gap-3 border-t border-border/70 pt-4">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Course fee</p>
+            <p className="mt-0.5 text-lg font-bold">{formatPrice(course)}</p>
+          </div>
+          {canEnroll && individuallyAvailable ? (
+            <button
+              type="button"
+              onClick={onEnroll}
+              disabled={isEnrolling}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isEnrolling ? "Enrolling…" : "Enroll"}
+              {!isEnrolling && <ArrowRight className="h-4 w-4" />}
+            </button>
+          ) : !individuallyAvailable || isSignedIn ? (
+            <Link to="/contact" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-muted px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/70">
+              Contact about enrollment <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <Link to="/register" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">
+              Sign up to enroll <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }

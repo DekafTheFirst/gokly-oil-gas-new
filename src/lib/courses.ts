@@ -103,6 +103,11 @@ export const fetchCourses = async (): Promise<CourseRecord[]> => {
   return data.courses || [];
 };
 
+export const fetchPublicCourses = async (): Promise<CourseRecord[]> => {
+  const data = await apiFetch(`/courses/public`);
+  return data.courses || [];
+};
+
 // Paginated course list used by the admin course management table.
 export const fetchAdminCourses = async (
   page: number = 1,

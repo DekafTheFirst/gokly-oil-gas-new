@@ -31,7 +31,7 @@ export default function HomePage() {
                 <Link to="/training/verify" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90">
                   <ScanLine className="h-4 w-4" /> Verify a Certificate
                 </Link>
-                <Link to="/training/courses" className="inline-flex items-center rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-5 py-3 font-semibold text-primary-foreground backdrop-blur transition hover:bg-primary-foreground/20">
+                <Link to="/courses" className="inline-flex items-center rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-5 py-3 font-semibold text-primary-foreground backdrop-blur transition hover:bg-primary-foreground/20">
                   View Course Catalog
                 </Link>
               </div>

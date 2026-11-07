@@ -54,6 +54,11 @@ export interface CourseDetailResponse {
   final_assessment: CourseFinalAssessment | null;
 }
 
+export interface PublicCourseDetailResponse {
+  course: CourseRecord;
+  modules: CourseModule[];
+}
+
 export interface ModuleAssessmentConfig {
   type: string;
   max_score: number;
@@ -106,6 +111,10 @@ export const fetchCourses = async (): Promise<CourseRecord[]> => {
 export const fetchPublicCourses = async (): Promise<CourseRecord[]> => {
   const data = await apiFetch(`/courses/public`);
   return data.courses || [];
+};
+
+export const fetchPublicCourseById = async (courseId: number): Promise<PublicCourseDetailResponse> => {
+  return apiFetch(`/courses/public/${courseId}`);
 };
 
 // Paginated course list used by the admin course management table.

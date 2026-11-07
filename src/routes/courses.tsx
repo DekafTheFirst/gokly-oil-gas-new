@@ -11,10 +11,9 @@ import {
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
-import { enrollInCourse, fetchPublicCourses, type CourseRecord } from "@/lib/courses";
+import { fetchPublicCourses, type CourseRecord } from "@/lib/courses";
 import { filterCourseCatalog, type CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
 import courseRigImage from "@/assets/course-rig.jpg";
 import courseSubseaImage from "@/assets/course-subsea.jpg";
@@ -70,7 +69,6 @@ export default function Courses() {
   const [category, setCategory] = useState("all");
   const [tier, setTier] = useState("all");
   const [enrollment, setEnrollment] = useState<CourseCatalogEnrollmentFilter>("all");
-  const [enrollingCourseId, setEnrollingCourseId] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -113,71 +111,49 @@ export default function Courses() {
     setEnrollment("all");
   };
 
-  const handleEnroll = async (courseId: number) => {
-    try {
-      setEnrollingCourseId(courseId);
-      await enrollInCourse(courseId);
-      toast.success("You’re enrolled in this course.");
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Could not enroll in this course.");
-    } finally {
-      setEnrollingCourseId(null);
-    }
-  };
-
   const content = (
     <main className={isPortalRoute ? "page-padding" : "min-h-screen bg-background"}>
       <div className={isPortalRoute ? "mx-auto max-w-[1440px] space-y-8" : "mx-auto max-w-[1440px] space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-12"}>
-        <section className="relative overflow-hidden rounded-2xl bg-primary-deep p-6 text-primary-foreground shadow-card sm:p-9">
-          <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-3xl" aria-hidden="true" />
-          <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:items-center">
+        <section className="relative overflow-hidden rounded-2xl bg-primary-deep p-5 text-primary-foreground shadow-card sm:p-6">
+          <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-primary/30 blur-3xl" aria-hidden="true" />
+          <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(240px,0.7fr)] lg:items-center">
             <div>
               <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold">
-                  <BadgeCheck className="h-4 w-4 text-energy" /> Professional training
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-semibold">
+                  <BadgeCheck className="h-3.5 w-3.5 text-energy" /> Professional training
                 </span>
-                <span className="rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold">Oil, gas &amp; safety</span>
+                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-semibold">Oil, gas &amp; safety</span>
               </div>
-              <h1 className="mt-5 max-w-2xl text-3xl font-extrabold leading-tight sm:text-4xl lg:text-5xl">
-                Find the training that moves your career forward.
+              <h1 className="mt-3 max-w-2xl text-2xl font-extrabold leading-tight sm:text-3xl">
+                Find the right course for your next step.
               </h1>
-              <p className="mt-4 max-w-2xl text-primary-foreground/80">
-                Search Gokly’s published courses by subject, certification level, and enrollment option. Create an account to start your training journey.
+              <p className="mt-2 max-w-2xl text-sm text-primary-foreground/80">
+                Browse accredited training by subject, level, and enrollment option.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {!user ? (
-                  <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-energy px-5 py-3 text-sm font-bold text-energy-foreground transition hover:brightness-95">
+                  <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-energy px-4 py-2.5 text-sm font-bold text-energy-foreground transition hover:brightness-95">
                     Create a trainee account <ArrowRight className="h-4 w-4" />
                   </Link>
                 ) : (
-                  <Link to={dashboardLink} className="inline-flex items-center gap-2 rounded-lg bg-energy px-5 py-3 text-sm font-bold text-energy-foreground transition hover:brightness-95">
+                  <Link to={dashboardLink} className="inline-flex items-center gap-2 rounded-lg bg-energy px-4 py-2.5 text-sm font-bold text-energy-foreground transition hover:brightness-95">
                     Go to your dashboard <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
-                <a href="#course-catalog" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/30 px-5 py-3 text-sm font-semibold transition hover:bg-primary-foreground/10">
+                <a href="#course-catalog" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/30 px-4 py-2.5 text-sm font-semibold transition hover:bg-primary-foreground/10">
                   Explore the catalog
                 </a>
               </div>
             </div>
-            <div className="rounded-xl border border-primary-foreground/10 bg-primary-foreground/10 p-5 backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                <div className="grid h-11 w-11 place-items-center rounded-lg bg-energy text-energy-foreground">
-                  <GraduationCap className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Explore at your pace</p>
-                  <p className="text-xs text-primary-foreground/70">Course details and fees are shown below.</p>
-                </div>
+            <div className="flex items-center gap-3 rounded-xl border border-primary-foreground/10 bg-primary-foreground/10 p-4 backdrop-blur-sm">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-energy text-energy-foreground">
+                <GraduationCap className="h-5 w-5" />
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg bg-primary-deep/50 p-3">
-                  <p className="text-xl font-bold">{loading ? "—" : courses.length}</p>
-                  <p className="mt-1 text-xs text-primary-foreground/70">Published courses</p>
-                </div>
-                <div className="rounded-lg bg-primary-deep/50 p-3">
-                  <p className="text-xl font-bold">{categories.length || "—"}</p>
-                  <p className="mt-1 text-xs text-primary-foreground/70">Training disciplines</p>
-                </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Explore at your pace</p>
+                <p className="mt-0.5 text-xs text-primary-foreground/70">
+                  {loading ? "Browse published training courses" : `${courses.length} published courses across ${categories.length} disciplines`}
+                </p>
               </div>
             </div>
           </div>
@@ -259,8 +235,7 @@ export default function Courses() {
                   image={getCourseImage(course)}
                   canEnroll={canEnroll}
                   isSignedIn={Boolean(user)}
-                  isEnrolling={enrollingCourseId === course.id}
-                  onEnroll={() => void handleEnroll(course.id)}
+                  isPortalRoute={isPortalRoute}
                 />
               ))}
               <aside className="flex flex-col justify-between rounded-xl bg-muted p-6">
@@ -306,7 +281,7 @@ export default function Courses() {
   );
 
   if (user && !isPortalRoute) {
-    return <Navigate to="/training/courses" replace />;
+    return <Navigate to={`/training/courses${location.search}`} replace />;
   }
 
   return isPortalRoute ? (
@@ -349,15 +324,13 @@ function CourseCard({
   image,
   canEnroll,
   isSignedIn,
-  isEnrolling,
-  onEnroll,
+  isPortalRoute,
 }: {
   course: CourseRecord;
   image: string;
   canEnroll: boolean;
   isSignedIn: boolean;
-  isEnrolling: boolean;
-  onEnroll: () => void;
+  isPortalRoute: boolean;
 }) {
   const duration = formatDuration(course);
   const individuallyAvailable = course.individual_enrollment_enabled !== false;
@@ -382,7 +355,14 @@ function CourseCard({
           <span className="text-xs font-bold uppercase tracking-wide text-primary">{course.category}</span>
           {course.tier && <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground"><BadgeCheck className="h-3.5 w-3.5 text-primary" />{course.tier}</span>}
         </div>
-        <h3 className="mt-3 text-lg font-bold leading-snug">{course.title}</h3>
+        <h3 className="mt-3 text-lg font-bold leading-snug">
+          <Link
+            to={`${isPortalRoute ? "/training/courses" : "/courses"}/${course.id}`}
+            className="transition hover:text-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {course.title}
+          </Link>
+        </h3>
         <p className="mt-2 line-clamp-3 min-h-[3.75rem] text-sm text-muted-foreground">
           {description || "Contact our training team for course details and prerequisites."}
         </p>
@@ -390,30 +370,35 @@ function CourseCard({
           {course.delivery_mode && <span className="rounded-md bg-muted px-2 py-1">{course.delivery_mode}</span>}
           {course.certificate_enabled && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Certificate included</span>}
         </div>
-        <div className="mt-5 flex items-end justify-between gap-3 border-t border-border/70 pt-4">
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-3 border-t border-border/70 pt-4">
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Course fee</p>
             <p className="mt-0.5 text-lg font-bold">{formatPrice(course)}</p>
           </div>
-          {canEnroll && individuallyAvailable ? (
-            <button
-              type="button"
-              onClick={onEnroll}
-              disabled={isEnrolling}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link
+              to={`${isPortalRoute ? "/training/courses" : "/courses"}/${course.id}`}
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              {isEnrolling ? "Enrolling…" : "Enroll"}
-              {!isEnrolling && <ArrowRight className="h-4 w-4" />}
-            </button>
-          ) : !individuallyAvailable || isSignedIn ? (
-            <Link to="/contact" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-muted px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/70">
-              Contact about enrollment <ArrowRight className="h-4 w-4" />
+              Details
             </Link>
-          ) : (
-            <Link to="/register" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">
-              Sign up to enroll <ArrowRight className="h-4 w-4" />
-            </Link>
-          )}
+            {canEnroll && individuallyAvailable ? (
+              <Link
+                to={`${isPortalRoute ? "/training/courses" : "/courses"}/${course.id}?enroll=1`}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+              >
+                Enroll <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : !individuallyAvailable || isSignedIn ? (
+              <Link to="/contact" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-muted px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/70">
+                Contact <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <Link to="/register" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">
+                Sign up <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </article>

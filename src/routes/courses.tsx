@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
-import { fetchPublicCourses, type CourseRecord } from "@/lib/courses";
+import { fetchMyEnrolledCourseIds, fetchPublicCourses, type CourseRecord } from "@/lib/courses";
 import { filterCourseCatalog, type CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
 import courseRigImage from "@/assets/course-rig.jpg";
 import courseSubseaImage from "@/assets/course-subsea.jpg";
@@ -35,7 +35,8 @@ function formatDuration(course: CourseRecord) {
 
 function formatPrice(course: CourseRecord) {
   const price = Number(course.price);
-  if (!Number.isFinite(price) || price <= 0) return "Contact for pricing";
+  if (Number.isFinite(price) && price === 0) return "Free";
+  if (!Number.isFinite(price) || price < 0) return "Contact for pricing";
 
   const currency = ["NGN", "USD", "EUR", "GBP"].includes((course.currency || "").toUpperCase())
     ? (course.currency || "NGN").toUpperCase()
@@ -50,7 +51,7 @@ function formatPrice(course: CourseRecord) {
 }
 
 export default function Courses() {
-  const { user } = useAuth() as { user: { role?: string } | null };
+  const { user } = useAuth() as { user: { id?: number; role?: string } | null };
   const location = useLocation();
   const isPortalRoute = location.pathname.startsWith("/training/");
   const role = (user?.role || "").toUpperCase();
@@ -63,6 +64,7 @@ export default function Courses() {
         : "/training/trainee-dashboard";
 
   const [courses, setCourses] = useState<CourseRecord[]>([]);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<number>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -73,9 +75,17 @@ export default function Courses() {
   useEffect(() => {
     let active = true;
 
-    fetchPublicCourses()
-      .then((publishedCourses) => {
-        if (active) setCourses(publishedCourses);
+    setLoading(true);
+    setError("");
+    setEnrolledCourseIds(new Set());
+    Promise.all([
+      fetchPublicCourses(),
+      canEnroll ? fetchMyEnrolledCourseIds() : Promise.resolve([]),
+    ])
+      .then(([publishedCourses, enrolledIds]) => {
+        if (!active) return;
+        setCourses(publishedCourses);
+        setEnrolledCourseIds(new Set(enrolledIds));
       })
       .catch((cause: unknown) => {
         if (active) {
@@ -89,7 +99,7 @@ export default function Courses() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [canEnroll, user?.id]);
 
   const categories = useMemo(
     () => [...new Set(courses.map((course) => course.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -234,6 +244,7 @@ export default function Courses() {
                   course={course}
                   image={getCourseImage(course)}
                   canEnroll={canEnroll}
+                  isEnrolled={enrolledCourseIds.has(course.id)}
                   isSignedIn={Boolean(user)}
                   isPortalRoute={isPortalRoute}
                 />
@@ -323,12 +334,14 @@ function CourseCard({
   course,
   image,
   canEnroll,
+  isEnrolled,
   isSignedIn,
   isPortalRoute,
 }: {
   course: CourseRecord;
   image: string;
   canEnroll: boolean;
+  isEnrolled: boolean;
   isSignedIn: boolean;
   isPortalRoute: boolean;
 }) {
@@ -341,6 +354,11 @@ function CourseCard({
       <div className="relative h-48 overflow-hidden bg-muted">
         <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent" aria-hidden="true" />
+        {isEnrolled && (
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-900 shadow-sm">
+            <CheckCircle2 className="h-4 w-4" /> Already enrolled
+          </span>
+        )}
         <span className={`absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${individuallyAvailable ? "bg-secondary text-secondary-foreground" : "bg-background/90 text-foreground"}`}>
           <span className={`h-2 w-2 rounded-full ${individuallyAvailable ? "bg-primary" : "bg-muted-foreground"}`} />
           {individuallyAvailable ? "Individual enrollment" : "Organization enrollment"}
@@ -382,7 +400,11 @@ function CourseCard({
             >
               Details
             </Link>
-            {canEnroll && individuallyAvailable ? (
+            {canEnroll && isEnrolled ? (
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-700/15 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-800" role="status">
+                <CheckCircle2 className="h-4 w-4" /> Already enrolled
+              </span>
+            ) : canEnroll && individuallyAvailable ? (
               <Link
                 to={`${isPortalRoute ? "/training/courses" : "/courses"}/${course.id}?enroll=1`}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"

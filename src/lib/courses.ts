@@ -28,7 +28,7 @@ export interface CourseRecord {
   image?: string | null;
   min_class_size?: number;
   max_class_size?: number;
-  price?: number;
+  price?: number | null;
   currency?: string;
   prerequisite_required?: boolean;
   prerequisite_type?: "internal" | "external" | null;
@@ -113,6 +113,14 @@ export const fetchPublicCourses = async (): Promise<CourseRecord[]> => {
   return data.courses || [];
 };
 
+export const fetchMyEnrolledCourseIds = async (): Promise<number[]> => {
+  const token = getAuthToken();
+  const data = await apiFetch("/courses/my-enrollments", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data.course_ids || [];
+};
+
 export const fetchPublicCourseById = async (courseId: number): Promise<PublicCourseDetailResponse> => {
   return apiFetch(`/courses/public/${courseId}`);
 };
@@ -153,6 +161,30 @@ export const enrollInCourse = async (courseId: number): Promise<void> => {
   await apiFetch(`/courses/${courseId}/enroll`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+export type CoursePaymentMethod = "CARD" | "BANK_TRANSFER";
+
+export const initializeCoursePayment = async (
+  courseId: number,
+  paymentMethod: CoursePaymentMethod,
+): Promise<{ authorization_url: string }> => {
+  const token = getAuthToken();
+  return apiFetch(`/payments/courses/${courseId}/initialize`, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token },
+    body: { payment_method: paymentMethod },
+  });
+};
+
+export const verifyCoursePayment = async (
+  reference: string,
+): Promise<{ status: string; enrolled: boolean; amount_kobo: number; payment_method: CoursePaymentMethod }> => {
+  const token = getAuthToken();
+  const path = "/payments/verify?reference=" + encodeURIComponent(reference);
+  return apiFetch(path, {
+    headers: { Authorization: "Bearer " + token },
   });
 };
 

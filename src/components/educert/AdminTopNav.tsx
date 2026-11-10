@@ -19,8 +19,8 @@ const TRAINER_LINKS = [
 ];
 
 const TRAINEE_LINKS = [
-  { to: "/training/trainee-dashboard" as const, label: "Dashboard" },
-  { to: "/training/courses" as const, label: "My Courses" },
+  { to: "/training/trainee-dashboard" as const, label: "My Trainings" },
+  { to: "/training/courses" as const, label: "Course Catalog" },
   { to: "/training/verify" as const, label: "Certifications" },
 ];
 

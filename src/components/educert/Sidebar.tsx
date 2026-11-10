@@ -40,7 +40,7 @@ const TRAINER_ITEMS: Item[] = [
 ];
 
 const TRAINEE_ITEMS: Item[] = [
-  { to: "/training/trainee-dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/training/trainee-dashboard", label: "My Trainings", icon: LayoutDashboard },
   { to: "/training/courses", label: "Course Catalog", icon: GraduationCap },
   { to: "/training/verify", label: "Certifications", icon: BadgeCheck },
 ];

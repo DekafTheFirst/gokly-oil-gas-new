@@ -4,7 +4,7 @@ import { Logo } from "./Logo";
 import { useAuth } from "@/context/AuthContext";
 
 const links = [
-  { to: "/training/trainee-dashboard" as const, label: "Dashboard" },
+  { to: "/training/trainee-dashboard" as const, label: "My Trainings" },
   { to: "/training/courses" as const, label: "Courses" },
   { to: "/training/verify" as const, label: "Certifications" },];
 

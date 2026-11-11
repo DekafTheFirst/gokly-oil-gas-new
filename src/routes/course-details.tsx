@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
@@ -10,8 +11,10 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
+  Download,
   GraduationCap,
   MapPin,
+  RefreshCw,
   ShieldCheck,
   X,
   type LucideIcon,
@@ -20,11 +23,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import {
+  downloadCourseReceipt,
   enrollInCourse,
+  fetchCoursePaymentStatus,
   fetchMyEnrolledCourseIds,
   fetchPublicCourseById,
   initializeCoursePayment,
   type CoursePaymentMethod,
+  type CoursePaymentStatus,
   type CourseModule,
   type CourseRecord,
   verifyCoursePayment,
@@ -94,6 +100,7 @@ function CourseEnrollmentSuccess({
   courseListPath: string;
   shouldReduceMotion: boolean | null;
 }) {
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const copyReference = async () => {
     if (!paymentReference) return;
     try {
@@ -103,6 +110,17 @@ function CourseEnrollmentSuccess({
       toast.error("Couldn’t copy the payment reference.", {
         description: "You can select and copy the reference manually.",
       });
+    }
+  };
+  const downloadReceipt = async () => {
+    if (!paymentReference) return;
+    setReceiptLoading(true);
+    try {
+      await downloadCourseReceipt(paymentReference);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Could not download the receipt.");
+    } finally {
+      setReceiptLoading(false);
     }
   };
 
@@ -143,16 +161,28 @@ function CourseEnrollmentSuccess({
               >
                 Go to my training <ArrowRight className="h-4 w-4" />
               </Link>
+              {paymentReference && (
+                <button
+                  type="button"
+                  onClick={() => void downloadReceipt()}
+                  disabled={receiptLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Download className="h-4 w-4" />
+                  {receiptLoading ? "Preparing receipt…" : "Download receipt"}
+                </button>
+              )}
               <Link
                 to={courseListPath}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-bold transition hover:bg-muted"
               >
                 Browse more courses
               </Link>
+              
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[280px] rounded-2xl border border-emerald-900/10 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/70 p-6 text-center shadow-inner">
+          <div className="relative mx-auto w-full  rounded-2xl border border-emerald-900/10 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/70 p-6 text-center shadow-inner">
             <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-100 text-emerald-700 ring-8 ring-white/80 shadow-sm">
               <CheckCircle2 className="h-11 w-11" strokeWidth={2.2} />
             </div>
@@ -327,11 +357,16 @@ export default function CourseDetails() {
   const [paymentResult, setPaymentResult] = useState<"verifying" | "success" | "failed" | null>(null);
   const [verifiedPayment, setVerifiedPayment] = useState<{ amountKobo: number; method: CoursePaymentMethod | "OTHER" } | null>(null);
   const [freeEnrollmentLoading, setFreeEnrollmentLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<CoursePaymentStatus | null>(null);
+  const paymentSuccessNoticeShownRef = useRef(false);
+  const paymentErrorNoticeShownRef = useRef(false);
   const paymentReference = searchParams.get("reference") || searchParams.get("trxref") || "";
   const isPaymentCallback = searchParams.get("payment") === "paystack";
   const numericPrice = Number(course?.price);
   const isFreeCourse = Number.isFinite(numericPrice) && numericPrice === 0;
   const isNgnCourse = course?.currency?.toUpperCase() === "NGN";
+  // A failed/expired attempt replaces the normal enroll CTA with the retry banner.
+  const paymentFailed = paymentStatus?.status === "FAILED" || paymentStatus?.status === "EXPIRED";
 
   useEffect(() => {
     if (searchParams.get("enroll") !== "1") return;
@@ -384,6 +419,45 @@ export default function CourseDetails() {
       active = false;
     };
   }, [isPaymentCallback, paymentReference]);
+
+  // Load the learner's latest payment state for this course. The backend
+  // reconciles the newest attempt against Paystack, so a payment that went
+  // through without a callback/webhook still flips to enrolled here.
+  useEffect(() => {
+    if (!canEnroll) return;
+    const id = Number(courseId);
+    if (!Number.isInteger(id) || id <= 0) return;
+    let active = true;
+    fetchCoursePaymentStatus(id)
+      .then((status) => {
+        if (!active) return;
+        setPaymentStatus(status);
+        if (status.enrolled || status.status === "SUCCESSFUL") {
+          setEnrollmentCheck("enrolled");
+          if (status.status === "SUCCESSFUL" && !paymentSuccessNoticeShownRef.current) {
+            paymentSuccessNoticeShownRef.current = true;
+            toast.success("Payment confirmed — your enrollment is active.");
+          }
+        } else if (
+          (status.status === "FAILED" || status.status === "EXPIRED") &&
+          paymentResult !== "verifying" &&
+          !paymentErrorNoticeShownRef.current
+        ) {
+          paymentErrorNoticeShownRef.current = true;
+          toast.error(
+            status.status === "FAILED"
+              ? "Your previous payment didn't go through. You can retry below."
+              : "Your previous checkout session expired before payment completed.",
+          );
+        }
+      })
+      .catch(() => {
+        // Non-fatal — the enroll button still works without status info.
+      });
+    return () => {
+      active = false;
+    };
+  }, [canEnroll, courseId, user?.id, paymentResult]);
 
   useEffect(() => {
     let active = true;
@@ -444,6 +518,7 @@ export default function CourseDetails() {
       window.location.assign(checkoutUrl.toString());
     } catch (cause) {
       setPaymentError(cause instanceof Error ? cause.message : "Could not start secure checkout.");
+      setPaymentExpanded(true);
       setPaymentLoading(false);
     }
   };
@@ -632,7 +707,7 @@ export default function CourseDetails() {
                     <div className="rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-xs leading-5 text-amber-950" role="alert">
                       We couldn’t check your enrollment status, so enrollment is temporarily unavailable. Please refresh or contact the training team.
                     </div>
-                  ) : canEnroll && course.individual_enrollment_enabled !== false ? (
+                  ) : canEnroll && course.individual_enrollment_enabled !== false && !paymentFailed ? (
                     <button
                       type="button"
                       aria-expanded={paymentExpanded}
@@ -646,7 +721,7 @@ export default function CourseDetails() {
                       {paymentExpanded ? "Close enrollment options" : "Enroll in this course"}
                       {paymentExpanded ? <X className="h-4 w-4" /> : <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
                     </button>
-                  ) : !user ? (
+                  ) : paymentFailed ? null : !user ? (
                     <Link to="/register" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
                       Create account to enroll <ArrowRight className="h-4 w-4" />
                     </Link>
@@ -656,8 +731,56 @@ export default function CourseDetails() {
                     </Link>
                   )}
 
+                  {canEnroll && enrollmentCheck === "available" && paymentStatus && (
+                    <>
+                      {(paymentStatus.status === "FAILED" || paymentStatus.status === "EXPIRED") && (
+                        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
+                          <p className="flex items-center gap-2 text-sm font-bold text-rose-900">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            {paymentStatus.status === "FAILED"
+                              ? "Your last payment didn't go through"
+                              : "Your checkout session expired"}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-rose-900/80">
+                            {paymentStatus.status === "FAILED"
+                              ? "The payment was declined or didn't complete. Your seat isn't reserved until payment succeeds — you can try again."
+                              : "The checkout window closed before the payment finished. Start a new checkout to continue."}
+                          </p>
+                          {paymentStatus.attempts.remaining > 0 ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={paymentLoading || paymentResult === "verifying"}
+                                onClick={() => void startCheckout()}
+                                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {paymentLoading ? "Connecting to Paystack…" : "Retry payment"}
+                                {!paymentLoading && <RefreshCw className="h-4 w-4" />}
+                              </button>
+                            </>
+                          ) : (
+                            <p className="mt-2 text-xs font-semibold leading-5 text-rose-900">
+                              Too many payment attempts. Please wait or contact the training team for help.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {(paymentStatus.status === "PENDING" || paymentStatus.status === "INITIALIZING") && (
+                        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4" role="status">
+                          <p className="flex items-center gap-2 text-sm font-bold text-sky-900">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-sky-300 border-t-sky-600" aria-hidden="true" />
+                            Confirming your payment…
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-sky-900/80">
+                            If you completed payment on Paystack, we're verifying it now — this page updates automatically.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <AnimatePresence initial={false}>
-                    {paymentExpanded && canEnroll && enrollmentCheck === "available" && course.individual_enrollment_enabled !== false && (
+                    {paymentExpanded && canEnroll && enrollmentCheck === "available" && !paymentFailed && course.individual_enrollment_enabled !== false && (
                       <motion.div
                         id="course-payment-options"
                         key="course-payment-options"

@@ -31,7 +31,7 @@ import {
 import { toast } from "sonner";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { useAuth } from "@/context/AuthContext";
-import { initializeCoursePayment } from "@/lib/courses";
+import { downloadCourseReceipt, initializeCoursePayment } from "@/lib/courses";
 import {
   fetchTraineeTrainingDetail,
   type TraineeTrainingAssessment,
@@ -199,6 +199,7 @@ export default function TraineeTrainingDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [continuingPayment, setContinuingPayment] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const name = displayName(user);
   const numericCourseId = Number(courseId);
 
@@ -291,6 +292,21 @@ export default function TraineeTrainingDetails() {
         description: cause instanceof Error ? cause.message : "Please try again or contact the training team.",
       });
       setContinuingPayment(false);
+    }
+  };
+
+  const downloadReceipt = async () => {
+    const reference = enrollment?.paid_payment?.transaction_reference;
+    if (!reference) return;
+    setReceiptLoading(true);
+    try {
+      await downloadCourseReceipt(reference);
+    } catch (cause) {
+      toast.error("Could not download the receipt", {
+        description: cause instanceof Error ? cause.message : "Please try again later.",
+      });
+    } finally {
+      setReceiptLoading(false);
     }
   };
 
@@ -777,7 +793,19 @@ export default function TraineeTrainingDetails() {
                   {paidPayment?.transaction_reference && (
                     <div className="flex items-center justify-between gap-3 py-2.5">
                       <span className="text-xs font-medium text-muted-foreground">Payment Reference</span>
-                      <span className="font-mono text-xs font-bold text-foreground">{paidPayment.transaction_reference}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-foreground">{paidPayment.transaction_reference}</span>
+                        <button
+                          type="button"
+                          onClick={() => void downloadReceipt()}
+                          disabled={receiptLoading}
+                          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                          title="Download payment receipt (PDF)"
+                        >
+                          <Download className="h-3 w-3" />
+                          {receiptLoading ? "Preparing…" : "Receipt"}
+                        </button>
+                      </span>
                     </div>
                   )}
                   {enrollment.engagement?.reference_number && (

@@ -1,4 +1,4 @@
-import { apiFetch } from "./api";
+import { apiFetch, API_BASE_URL } from "./api";
 import { getAuthToken } from "./auth";
 
 export interface CourseRecord {
@@ -174,6 +174,53 @@ export const initializeCoursePayment = async (
     method: "POST",
     headers: { Authorization: "Bearer " + token },
   });
+};
+
+export type CoursePaymentAttemptStatus =
+  | "NONE"
+  | "INITIALIZING"
+  | "PENDING"
+  | "FAILED"
+  | "EXPIRED"
+  | "SUCCESSFUL";
+
+export interface CoursePaymentStatus {
+  status: CoursePaymentAttemptStatus;
+  enrolled: boolean;
+  reference: string | null;
+  amount_kobo: number | null;
+  attempts: { used_24h: number; max: number; remaining: number };
+}
+
+export const fetchCoursePaymentStatus = async (
+  courseId: number,
+): Promise<CoursePaymentStatus> => {
+  const token = getAuthToken();
+  return apiFetch(`/payments/courses/${courseId}/status`, {
+    headers: { Authorization: "Bearer " + token },
+  });
+};
+
+export const downloadCourseReceipt = async (reference: string): Promise<void> => {
+  const token = getAuthToken();
+  const response = await fetch(
+    `${API_BASE_URL}/payments/receipts/${encodeURIComponent(reference)}`,
+    { headers: { Authorization: "Bearer " + token } },
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data?.error || "Could not download the receipt.");
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download =
+    response.headers.get("x-receipt-filename") || `gokly-receipt-${reference}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 };
 
 export const verifyCoursePayment = async (

@@ -14,15 +14,22 @@ import {
   Eye,
   GraduationCap,
   MapPin,
+  MoreHorizontal,
   Search,
   ShieldCheck,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { useAuth } from "@/context/AuthContext";
-import { initializeCoursePayment } from "@/lib/courses";
+import { downloadCourseReceipt, initializeCoursePayment } from "@/lib/courses";
 import { fetchTraineeDashboard, type TraineeDashboardCourse } from "@/lib/trainee-dashboard";
 import courseRigImage from "@/assets/course-rig.jpg";
 import courseSubseaImage from "@/assets/course-subsea.jpg";
@@ -443,6 +450,22 @@ function TrainingCard({
     : null;
   const paidAmount = formatMoney(course.paid_amount, course.paid_currency);
   const courseFee = formatMoney(course.course_price, course.currency);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+
+  const downloadReceipt = async () => {
+    const reference = course.paid_payment_reference;
+    if (!reference) return;
+    setReceiptLoading(true);
+    try {
+      await downloadCourseReceipt(reference);
+    } catch (cause) {
+      toast.error("Could not download the receipt", {
+        description: cause instanceof Error ? cause.message : "Please try again later.",
+      });
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
 
   return (
     <article className="relative flex flex-col gap-5 overflow-hidden rounded-xl border border-border/60 bg-card p-5 shadow-sm transition-shadow hover:shadow-md lg:flex-row lg:items-center lg:justify-between sm:p-6">
@@ -536,6 +559,28 @@ function TrainingCard({
           >
             <Eye className="h-4 w-4" /> View details
           </Link>
+          {course.paid_payment_reference && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="More actions"
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border bg-background px-3 text-foreground transition hover:bg-muted"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={receiptLoading}
+                  onSelect={() => void downloadReceipt()}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {receiptLoading ? "Preparing receipt…" : "Download receipt"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
     </article>

@@ -22,6 +22,7 @@ import TrainingHome from "./routes/index";
 import TrainingCourses from "./routes/courses";
 import TrainingCourseDetails from "./routes/course-details";
 import TrainingDashboard from "./routes/dashboard";
+import TraineeTrainingDetails from "./routes/trainee-training-details";
 import TrainingVerify from "./routes/verify";
 import TrainingAdmin from "./routes/admin";
 import TrainingTrainer from "./routes/trainer";
@@ -80,6 +81,7 @@ const AppRoutes = () => {
         {/* Trainee dashboard — canonical URL. /training/dashboard kept as alias for old links. */}
         <Route path="/training/trainee-dashboard" element={<ProtectedRoute allowedRoles={TRAINEE_ROLES}><TrainingDashboard /></ProtectedRoute>} />
         <Route path="/training/dashboard" element={<ProtectedRoute allowedRoles={TRAINEE_ROLES}><TrainingDashboard /></ProtectedRoute>} />
+        <Route path="/training/trainee-dashboard/:courseId" element={<ProtectedRoute allowedRoles={TRAINEE_ROLES}><TraineeTrainingDetails /></ProtectedRoute>} />
         <Route path="/training/trainer-dashboard" element={<ProtectedRoute allowedRoles={["TRAINER"]}><TrainingTrainer /></ProtectedRoute>} />
         <Route path="/training/admin" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingAdmin /></ProtectedRoute>} />
         <Route path="/training/certificate-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBulkCertificateIssuance /></ProtectedRoute>} />

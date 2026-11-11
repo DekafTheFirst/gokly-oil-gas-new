@@ -11,6 +11,7 @@ import {
   Clock3,
   CreditCard,
   Download,
+  Eye,
   GraduationCap,
   MapPin,
   Search,
@@ -514,7 +515,7 @@ function TrainingCard({
             </p>
           </div>
         )}
-        <div className="flex w-full items-center gap-2 sm:w-auto lg:justify-end">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto lg:justify-end">
           {pendingPayment ? (
             <button
               type="button"
@@ -528,11 +529,13 @@ function TrainingCard({
             <Link to="/training/verify" className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-primary/15 sm:flex-none">
               <Award className="h-4 w-4" /> View certificate
             </Link>
-          ) : (
-            <button type="button" disabled className="inline-flex min-h-10 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-muted px-4 py-2.5 text-xs font-bold text-muted-foreground sm:flex-none">
-              Training details coming soon
-            </button>
-          )}
+          ) : null}
+          <Link
+            to={`/training/trainee-dashboard/${course.course_id}`}
+            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-bold text-foreground transition hover:bg-muted sm:flex-none"
+          >
+            <Eye className="h-4 w-4" /> View details
+          </Link>
         </div>
       </div>
     </article>

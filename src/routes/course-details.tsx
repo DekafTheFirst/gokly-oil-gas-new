@@ -346,6 +346,11 @@ export default function CourseDetails() {
   }, [courseId, loading, searchParams, shouldReduceMotion]);
 
   useEffect(() => {
+    if (paymentResult !== "success") return;
+    window.scrollTo({ top: 0, behavior: shouldReduceMotion ? "auto" : "smooth" });
+  }, [paymentResult, shouldReduceMotion]);
+
+  useEffect(() => {
     if (!isPaymentCallback) return;
     setPaymentExpanded(true);
     if (!paymentReference) {

@@ -8,6 +8,8 @@ const dateSchema = z
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
   }, "Enter a valid session date.");
 
+const optionalDateSchema = z.union([z.literal(""), dateSchema]).optional();
+
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Enter a valid time.");
 
 export function isGoogleMeetUrl(value: string) {
@@ -37,6 +39,7 @@ const sessionSchema = z
     end_time: timeSchema,
     location: z.string().trim().max(250).optional(),
     online_url: googleMeetUrlSchema.optional(),
+    trainer_user_id: z.number().int().positive().nullable().optional(),
   })
   .superRefine((session, context) => {
     const [startHour, startMinute] = session.start_time.split(":").map(Number);
@@ -78,6 +81,9 @@ const baseSchema = z.object({
   capacity: z.number().int().min(1, "Capacity must be at least 1.").max(1000),
   min_quorum: z.number().int().min(1, "Minimum quorum must be at least 1."),
   notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer."),
+  trainer_in_charge: z.number().int().positive().nullable().optional(),
+  registration_start_date: optionalDateSchema,
+  registration_end_date: optionalDateSchema,
   sessions: z.array(sessionSchema),
   allocations: z.array(allocationSchema),
 });
@@ -130,6 +136,17 @@ export const trainingBatchFormSchema = baseSchema
         });
       }
     });
+    if (
+      batch.registration_start_date &&
+      batch.registration_end_date &&
+      batch.registration_end_date < batch.registration_start_date
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["registration_end_date"],
+        message: "Registration must close on or after it opens.",
+      });
+    }
     const allocated = batch.allocations.reduce((sum, allocation) => sum + allocation.seats_assigned, 0);
     if (allocated > batch.capacity) {
       context.addIssue({
@@ -205,6 +222,9 @@ export interface TrainingBatchFormValues {
   capacity: number;
   min_quorum: number;
   notes: string;
+  trainer_in_charge?: number | null;
+  registration_start_date?: string;
+  registration_end_date?: string;
   sessions: Array<{
     course_module_id: number | null;
     title: string;
@@ -214,6 +234,7 @@ export interface TrainingBatchFormValues {
     end_time: string;
     location?: string;
     online_url?: string;
+    trainer_user_id?: number | null;
   }>;
   allocations: Array<
     | { allocation_type: "CONTRACT"; engagement_item_id: string; seats_assigned: number }

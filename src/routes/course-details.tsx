@@ -8,6 +8,8 @@ import {
   BadgeCheck,
   BookOpen,
   Building2,
+  CalendarClock,
+  CalendarDays,
   CheckCircle2,
   Clock3,
   Copy,
@@ -16,6 +18,7 @@ import {
   MapPin,
   RefreshCw,
   ShieldCheck,
+  UserRound,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -28,7 +31,9 @@ import {
   fetchCoursePaymentStatus,
   fetchMyEnrolledCourseIds,
   fetchPublicCourseById,
+  formatShortCourseDate,
   initializeCoursePayment,
+  type CourseEnrollmentBatch,
   type CoursePaymentMethod,
   type CoursePaymentStatus,
   type CourseModule,
@@ -77,6 +82,18 @@ function formatPrice(course: CourseRecord) {
 function formatDuration(course: CourseRecord) {
   if (!course.duration_value) return "Not specified";
   return `${course.duration_value} ${(course.duration_unit || "hours").toLowerCase()}`;
+}
+
+function batchRegistrationWindowLabel(batch: CourseEnrollmentBatch) {
+  const { registration_start_date: opens, registration_end_date: closes } = batch;
+  if (opens && closes) {
+    return opens === closes
+      ? `Until ${formatShortCourseDate(closes)}`
+      : `${formatShortCourseDate(opens)} – ${formatShortCourseDate(closes)}`;
+  }
+  if (opens) return `From ${formatShortCourseDate(opens)}`;
+  if (closes) return `Until ${formatShortCourseDate(closes)}`;
+  return "Open enrollment";
 }
 
 function formatNairaKobo(amountKobo: number) {
@@ -367,6 +384,10 @@ export default function CourseDetails() {
   const isNgnCourse = course?.currency?.toUpperCase() === "NGN";
   // A failed/expired attempt replaces the normal enroll CTA with the retry banner.
   const paymentFailed = paymentStatus?.status === "FAILED" || paymentStatus?.status === "EXPIRED";
+  const enrollmentBatch: CourseEnrollmentBatch | null = course?.enrollment_batch ?? null;
+  const registrationBlocked = Boolean(
+    enrollmentBatch && enrollmentBatch.registration_status !== "open",
+  );
 
   useEffect(() => {
     if (searchParams.get("enroll") !== "1") return;
@@ -606,6 +627,82 @@ export default function CourseDetails() {
                   </div>
                 </section>
 
+                {enrollmentBatch && (
+                  <section className="space-y-5 rounded-xl border border-border/70 bg-card p-5 shadow-sm sm:p-7">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <SectionHeading icon={CalendarClock} eyebrow="Training schedule" title="Upcoming batch" />
+                      <span
+                        className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+                          enrollmentBatch.registration_status === "open"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : enrollmentBatch.registration_status === "upcoming"
+                              ? "bg-sky-100 text-sky-800"
+                              : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {enrollmentBatch.registration_status === "open"
+                          ? "Registration open"
+                          : enrollmentBatch.registration_status === "upcoming"
+                            ? "Opens soon"
+                            : "Registration closed"}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <h3 className="text-lg font-bold tracking-tight text-foreground">{enrollmentBatch.name}</h3>
+                      <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs font-semibold text-muted-foreground">
+                        {enrollmentBatch.batch_code}
+                      </span>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <BatchFact
+                        icon={CalendarDays}
+                        label="Training dates"
+                        value={
+                          enrollmentBatch.start_date
+                            ? `${formatShortCourseDate(enrollmentBatch.start_date)}${
+                                enrollmentBatch.end_date && enrollmentBatch.end_date !== enrollmentBatch.start_date
+                                  ? ` – ${formatShortCourseDate(enrollmentBatch.end_date)}`
+                                  : ""
+                              }`
+                            : "To be confirmed"
+                        }
+                      />
+                      <BatchFact
+                        icon={CalendarClock}
+                        label="Registration window"
+                        value={batchRegistrationWindowLabel(enrollmentBatch)}
+                        highlight={enrollmentBatch.registration_status !== "open"}
+                      />
+                      <BatchFact
+                        icon={MapPin}
+                        label="Location"
+                        value={enrollmentBatch.location || "To be confirmed"}
+                      />
+                      <BatchFact
+                        icon={UserRound}
+                        label="Trainer in charge"
+                        value={enrollmentBatch.trainer_name || "To be assigned"}
+                      />
+                      <BatchFact
+                        icon={Building2}
+                        label="Delivery mode"
+                        value={enrollmentBatch.delivery_mode ? enrollmentBatch.delivery_mode.charAt(0) + enrollmentBatch.delivery_mode.slice(1).toLowerCase() : "To be confirmed"}
+                      />
+                    </div>
+
+                    {enrollmentBatch.registration_status !== "open" && (
+                      <p className="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
+                        <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        {enrollmentBatch.registration_status === "upcoming"
+                          ? `Registration for this batch opens on ${formatShortCourseDate(enrollmentBatch.registration_start_date)}. Enrollment is unavailable until then.`
+                          : "Registration for this batch has closed. Contact the training team about the next intake."}
+                      </p>
+                    )}
+                  </section>
+                )}
+
                 <section className="space-y-4 rounded-xl border border-border/70 bg-card p-5 shadow-sm sm:p-7">
                   <SectionHeading icon={GraduationCap} eyebrow="Course curriculum" title="Modules & learning content" />
                   {modules.length > 0 ? (
@@ -706,6 +803,20 @@ export default function CourseDetails() {
                   ) : canEnroll && enrollmentCheck === "error" ? (
                     <div className="rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-xs leading-5 text-amber-950" role="alert">
                       We couldn’t check your enrollment status, so enrollment is temporarily unavailable. Please refresh or contact the training team.
+                    </div>
+                  ) : canEnroll && registrationBlocked ? (
+                    <div className="rounded-xl border border-amber-300/70 bg-amber-50 p-4" role="status">
+                      <p className="flex items-center gap-2 text-sm font-bold text-amber-950">
+                        <CalendarClock className="h-4 w-4 shrink-0" />
+                        {enrollmentBatch?.registration_status === "upcoming"
+                          ? "Registration hasn't opened yet"
+                          : "Registration is closed"}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-amber-950/80">
+                        {enrollmentBatch?.registration_status === "upcoming"
+                          ? `Enrollment for ${enrollmentBatch?.name} opens on ${formatShortCourseDate(enrollmentBatch?.registration_start_date)}. Check back then or contact the training team.`
+                          : `Registration for ${enrollmentBatch?.name} has closed. Contact the training team about the next intake.`}
+                      </p>
                     </div>
                   ) : canEnroll && course.individual_enrollment_enabled !== false && !paymentFailed ? (
                     <button
@@ -931,6 +1042,27 @@ function Fact({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg bg-muted/60 p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function BatchFact({
+  icon: Icon,
+  label,
+  value,
+  highlight = false,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`rounded-lg p-3 ${highlight ? "bg-amber-50 ring-1 ring-amber-200/70" : "bg-muted/60"}`}>
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" /> {label}
+      </p>
+      <p className="mt-1.5 text-sm font-semibold leading-6">{value}</p>
     </div>
   );
 }

@@ -1,5 +1,20 @@
 import { apiFetch, API_BASE_URL } from "./api";
 import { getAuthToken } from "./auth";
+import type { ModuleMaterial } from "../components/educert/ModuleMaterials";
+
+export interface CourseEnrollmentBatch {
+  id: string;
+  name: string;
+  batch_code: string;
+  start_date: string | null;
+  end_date: string | null;
+  location: string | null;
+  delivery_mode?: string | null;
+  trainer_name?: string | null;
+  registration_start_date: string | null;
+  registration_end_date: string | null;
+  registration_status: "open" | "upcoming" | "closed";
+}
 
 export interface CourseRecord {
   id: number;
@@ -34,7 +49,40 @@ export interface CourseRecord {
   prerequisite_type?: "internal" | "external" | null;
   prerequisite_course_id?: number | null;
   prerequisite_description?: string;
+  enrollment_batch?: CourseEnrollmentBatch | null;
   created_at: string;
+}
+
+export function formatShortCourseDate(value: string | null | undefined) {
+  if (!value) return "";
+  return new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function registrationStatusLabel(batch: CourseEnrollmentBatch) {
+  if (batch.registration_status === "open") return "Registration open";
+  if (batch.registration_status === "upcoming") {
+    return batch.registration_start_date
+      ? `Registration opens ${formatShortCourseDate(batch.registration_start_date)}`
+      : "Registration upcoming";
+  }
+  return "Registration closed";
+}
+
+export function registrationWindowLabel(batch: CourseEnrollmentBatch) {
+  const opens = batch.registration_start_date;
+  const closes = batch.registration_end_date;
+  if (opens && closes) {
+    return opens === closes
+      ? `Reg closes ${formatShortCourseDate(closes)}`
+      : `Registration Window: ${formatShortCourseDate(opens)} – ${formatShortCourseDate(closes)}`;
+  }
+  if (opens) return `Registration from ${formatShortCourseDate(opens)}`;
+  if (closes) return `Registration until ${formatShortCourseDate(closes)}`;
+  return null;
 }
 
 export interface CourseFinalAssessment {
@@ -84,7 +132,7 @@ export interface CourseModule {
   assessment_description?: string;
   sort_order?: number;
   is_required?: boolean;
-  materials?: any[];
+  materials?: ModuleMaterial[];
   duration?: number;
   delivery_type?: string;
 }

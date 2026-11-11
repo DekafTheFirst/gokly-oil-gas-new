@@ -74,6 +74,17 @@ function formatDateRange(start: string | null | undefined, end: string | null | 
   return formattedStart || formattedEnd || "Schedule to be confirmed";
 }
 
+function formatRegWindow(start: string | null | undefined, end: string | null | undefined) {
+  const formattedStart = formatDate(start);
+  const formattedEnd = formatDate(end);
+  if (formattedStart && formattedEnd) {
+    return formattedStart === formattedEnd ? `Closes ${formattedEnd}` : `${formattedStart} – ${formattedEnd}`;
+  }
+  if (formattedStart) return `From ${formattedStart}`;
+  if (formattedEnd) return `Until ${formattedEnd}`;
+  return "Open enrollment";
+}
+
 function formatTime(value: string | null | undefined) {
   if (!value) return null;
   const [hours, minutes] = value.split(":");
@@ -552,6 +563,12 @@ export default function TraineeTrainingDetails() {
                     value={batch ? formatDateRange(batch.start_date, batch.end_date) : "Self-paced enrollment"}
                     hint={batch?.delivery_mode ? `${batch.delivery_mode.toLowerCase()} delivery` : formatDuration(course) || undefined}
                   />
+                  {batch && (
+                    <Fact
+                      label="Registration window"
+                      value={formatRegWindow(batch.registration_start_date, batch.registration_end_date)}
+                    />
+                  )}
                   <div className="sm:col-span-2">
                     <Fact
                       label="Training Location"

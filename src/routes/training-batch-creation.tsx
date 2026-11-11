@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useFieldArray, useForm, useWatch, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   BadgeCheck,
   Bookmark,
@@ -51,11 +51,15 @@ import { toast } from "sonner";
 import { format, isValid, parseISO } from "date-fns";
 import {
   createTrainingBatch,
+  fetchTrainingBatch,
   fetchTrainingBatchOptions,
+  updateTrainingBatch,
   type TrainingBatchAllocationOption,
   type TrainingBatchCourseOption,
+  type TrainingBatchDetail,
   type TrainingBatchPayload,
   type TrainingBatchSession,
+  type TrainingBatchTrainerOption,
 } from "@/lib/training-batches";
 import { ApiError } from "@/lib/api";
 import {
@@ -97,6 +101,7 @@ function moduleToSession(
   module: TrainingBatchCourseOption["modules"][number],
   location: string,
   onlineUrl: string,
+  trainerUserId: number | null,
 ) {
   return {
     course_module_id: module.id,
@@ -107,6 +112,7 @@ function moduleToSession(
     end_time: "12:30",
     location,
     online_url: onlineUrl,
+    trainer_user_id: trainerUserId,
   };
 }
 
@@ -158,11 +164,13 @@ function DatePickerField({
   label,
   value,
   onChange,
+  large = false,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
+  large?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const parsedDate = value ? parseISO(value) : undefined;
@@ -177,7 +185,9 @@ function DatePickerField({
           variant="outline"
           aria-label={label}
           aria-haspopup="dialog"
-          className="h-auto w-full justify-start rounded-lg border-0 bg-white px-3 py-2 text-left text-xs font-normal text-[#121c2a] shadow-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]"
+          className={large
+            ? "h-auto w-full justify-start rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-left text-sm font-normal text-[#121c2a] shadow-none hover:bg-[#eff4ff] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]"
+            : "h-auto w-full justify-start rounded-lg border-0 bg-white px-3 py-2 text-left text-xs font-normal text-[#121c2a] shadow-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[#1b7a43]"}
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-[#3f4940]" />
           {selectedDate ? format(selectedDate, "PPP") : <span className="text-muted-foreground/70">Select a date</span>}
@@ -273,7 +283,10 @@ function ActionButton({
 
 export default function TrainingBatchCreation() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editBatchId = searchParams.get("edit");
   const [courses, setCourses] = useState<TrainingBatchCourseOption[]>([]);
+  const [trainers, setTrainers] = useState<TrainingBatchTrainerOption[]>([]);
   const [allocationOptions, setAllocationOptions] = useState<TrainingBatchAllocationOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState("");
@@ -283,6 +296,7 @@ export default function TrainingBatchCreation() {
   const [pendingCourseId, setPendingCourseId] = useState<number | null>(null);
   const [contextVisible, setContextVisible] = useState(true);
   const allocationOptionsRequest = useRef(0);
+  const editLoadedRef = useRef(false);
 
   const {
     register,
@@ -308,6 +322,9 @@ export default function TrainingBatchCreation() {
       capacity: 25,
       min_quorum: 10,
       notes: "",
+      trainer_in_charge: null,
+      registration_start_date: "",
+      registration_end_date: "",
       sessions: [],
       allocations: [],
     },
@@ -321,6 +338,7 @@ export default function TrainingBatchCreation() {
   const capacity = watch("capacity");
   const minQuorum = watch("min_quorum");
   const watchedAllocations = useWatch({ control, name: "allocations" });
+  const trainerInCharge = watch("trainer_in_charge");
   const selectedCourse = courses.find((course) => course.id === Number(courseId));
   const selectedLocation = LOCATIONS.find((location) => location.id === locationId) ?? LOCATIONS[0];
 
@@ -373,6 +391,7 @@ export default function TrainingBatchCreation() {
         const response = await fetchTrainingBatchOptions();
         if (!mounted) return;
         setCourses(response.courses);
+        setTrainers(response.trainers ?? []);
         if (response.courses.length === 0) {
           setOptionsError("No published courses are available for scheduling.");
           return;
@@ -392,6 +411,70 @@ export default function TrainingBatchCreation() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!editBatchId || editLoadedRef.current) return;
+    editLoadedRef.current = true;
+    let mounted = true;
+    const loadBatch = async () => {
+      try {
+        const { batch } = await fetchTrainingBatch(editBatchId);
+        if (!mounted) return;
+        if (batch.status !== "DRAFT") {
+          toast.error("Only draft batches can be edited.");
+          navigate("/training/batches");
+          return;
+        }
+        setLocationId(LOCATIONS.find((item) => item.label === batch.location)?.id ?? LOCATIONS[0].id);
+        setValue("course_id", batch.course_id, { shouldValidate: true });
+        setValue("delivery_mode", batch.delivery_mode);
+        setValue("name", batch.name, { shouldValidate: true });
+        setValue("batch_code", batch.batch_code);
+        setValue("location", batch.location ?? "");
+        setValue("online_url", batch.online_url ?? "");
+        setValue("capacity", batch.capacity ?? 25);
+        setValue("min_quorum", batch.min_quorum ?? 10);
+        setValue("notes", batch.notes ?? "");
+        setValue("trainer_in_charge", batch.trainer_in_charge ?? null);
+        setValue("registration_start_date", normalizeDate(batch.registration_start_date));
+        setValue("registration_end_date", normalizeDate(batch.registration_end_date));
+        sessions.replace(batch.sessions.map((session) => ({
+          course_module_id: session.course_module_id ?? null,
+          title: session.title,
+          description: session.description ?? "",
+          session_date: normalizeDate(session.session_date),
+          start_time: session.start_time,
+          end_time: session.end_time,
+          location: session.location ?? "",
+          online_url: session.online_url ?? "",
+          trainer_user_id: session.trainer_user_id ?? null,
+        })));
+        allocations.replace(batch.allocations.map((allocation) => (
+          allocation.allocation_type === "CONTRACT"
+            ? {
+                allocation_type: "CONTRACT" as const,
+                engagement_item_id: allocation.engagement_item_id ?? "",
+                seats_assigned: allocation.seats_assigned,
+              }
+            : {
+                allocation_type: "OPEN_ENROLLMENT" as const,
+                seats_assigned: allocation.seats_assigned,
+              }
+        )));
+        const optionsResponse = await fetchTrainingBatchOptions(batch.course_id);
+        if (mounted) setAllocationOptions(optionsResponse.allocation_options);
+      } catch (error) {
+        if (!mounted) return;
+        const message = error instanceof Error ? error.message : "Unable to load this training batch for editing.";
+        toast.error(message);
+        navigate("/training/batches");
+      }
+    };
+    void loadBatch();
+    return () => {
+      mounted = false;
+    };
+  }, [editBatchId, navigate, sessions, allocations, setValue]);
+
   const changeCourse = async (nextCourseId: number) => {
     const course = courses.find((item) => item.id === nextCourseId);
     if (!course) return;
@@ -405,7 +488,12 @@ export default function TrainingBatchCreation() {
     setValue("batch_code", `BTCH-${new Date().getFullYear()}-${course.code || course.id}-001`);
     setValue("location", courseLocation);
     setValue("online_url", courseOnlineUrl);
-    sessions.replace(course.modules.map((module) => moduleToSession(module, courseLocation, courseOnlineUrl)));
+    sessions.replace(course.modules.map((module) => moduleToSession(
+      module,
+      courseLocation,
+      courseOnlineUrl,
+      getValues("trainer_in_charge") ?? null,
+    )));
     setSelectedQuotaIds([]);
     setQuotaDialogOpen(false);
     allocations.replace([]);
@@ -432,6 +520,16 @@ export default function TrainingBatchCreation() {
     getValues("sessions").forEach((_session, index) => {
       setValue(`sessions.${index}.location`, nextLocation, { shouldDirty: true });
       clearErrors(`sessions.${index}.location`);
+    });
+  };
+
+  const updateTrainerInCharge = (nextValue: string) => {
+    const nextTrainerId = nextValue === "unassigned" ? null : Number(nextValue);
+    setValue("trainer_in_charge", nextTrainerId, { shouldDirty: true });
+    clearErrors("trainer_in_charge");
+    getValues("sessions").forEach((_session, index) => {
+      setValue(`sessions.${index}.trainer_user_id`, nextTrainerId, { shouldDirty: true });
+      clearErrors(`sessions.${index}.trainer_user_id`);
     });
   };
 
@@ -462,8 +560,14 @@ export default function TrainingBatchCreation() {
 
   const submitBatch = async (payload: TrainingBatchPayload) => {
     try {
-      const response = await createTrainingBatch(payload);
-      toast.success(`Training batch ${response.batch.batch_code} created.`);
+      const response = editBatchId
+        ? await updateTrainingBatch(editBatchId, payload)
+        : await createTrainingBatch(payload);
+      toast.success(
+        editBatchId
+          ? `Training batch ${response.batch.batch_code} updated.`
+          : `Training batch ${response.batch.batch_code} created.`,
+      );
       navigate("/training/batches");
     } catch (error) {
       if (error instanceof ApiError) {
@@ -516,6 +620,9 @@ export default function TrainingBatchCreation() {
         capacity: values.capacity,
         min_quorum: values.min_quorum,
         notes: values.notes,
+        trainer_in_charge: values.trainer_in_charge ?? null,
+        registration_start_date: values.registration_start_date || null,
+        registration_end_date: values.registration_end_date || null,
         status: "UPCOMING",
         sessions: values.sessions.map((session) => ({
           ...session,
@@ -560,6 +667,9 @@ export default function TrainingBatchCreation() {
       capacity: current.capacity,
       min_quorum: current.min_quorum,
       notes: current.notes,
+      trainer_in_charge: current.trainer_in_charge ?? null,
+      registration_start_date: current.registration_start_date || null,
+      registration_end_date: current.registration_end_date || null,
       sessions: (current.sessions ?? []).map((session) => ({
         ...session,
         location: current.delivery_mode === "ONLINE" ? null : session.location ?? current.location ?? null,
@@ -579,6 +689,7 @@ export default function TrainingBatchCreation() {
       end_time: "12:30",
       location: getValues("location") ?? "",
       online_url: getValues("online_url") ?? "",
+      trainer_user_id: getValues("trainer_in_charge") ?? null,
     });
   };
 
@@ -642,7 +753,7 @@ export default function TrainingBatchCreation() {
 
   const getSessionError = (
     index: number,
-    field: "title" | "session_date" | "start_time" | "end_time" | "location" | "online_url",
+    field: "title" | "session_date" | "start_time" | "end_time" | "location" | "online_url" | "trainer_user_id",
   ) =>
     errors.sessions?.[index]?.[field]?.message;
 
@@ -654,15 +765,15 @@ export default function TrainingBatchCreation() {
             <div className="flex items-center gap-1 text-xs font-semibold text-[#3f4940]">
               <button type="button" onClick={() => navigate("/training/batches")} className="transition-colors hover:text-[#006030]">Batches</button>
               <ChevronRight className="h-3.5 w-3.5" />
-              <span className="font-semibold text-[#006030]">Create Batch</span>
+              <span className="font-semibold text-[#006030]">{editBatchId ? "Edit Batch" : "Create Batch"}</span>
             </div>
             <div className="flex flex-wrap items-baseline gap-3">
               <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#121c2a]" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                Create Training Batch
+                {editBatchId ? "Edit Training Batch" : "Create Training Batch"}
               </h1>
               <span className="inline-flex items-center gap-2 rounded-full bg-[#e6eeff] px-3 py-1.5 text-xs font-semibold text-[#3f4940]">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#8a6400]" />
-                Form State: Unsaved Draft
+                {editBatchId ? "Editing Draft Batch" : "Form State: Unsaved Draft"}
               </span>
             </div>
             <p className="max-w-3xl text-sm leading-relaxed text-[#3f4940]">
@@ -674,7 +785,7 @@ export default function TrainingBatchCreation() {
               <X className="h-[18px] w-[18px]" />Cancel
             </ActionButton>
             <ActionButton type="button" onClick={() => void saveDraft()} disabled={isSubmitting || optionsLoading || Boolean(optionsError)} className="bg-[#dee9fc] text-[#006030] hover:bg-[#d9e3f6]">
-              <Bookmark className="h-[18px] w-[18px]" />Save Draft
+              <Bookmark className="h-[18px] w-[18px]" />{editBatchId ? "Save Changes" : "Save Draft"}
             </ActionButton>
             <ActionButton type="button" onClick={() => void handleReady()} disabled={isSubmitting || optionsLoading || Boolean(optionsError)} className="bg-[#1b7a43] text-white shadow-sm hover:bg-[#006030] hover:shadow">
               <BadgeCheck className="h-[18px] w-[18px]" />Save &amp; Ready
@@ -774,6 +885,44 @@ export default function TrainingBatchCreation() {
                     </div>
                     <FieldError>{errors.batch_code?.message}</FieldError>
                   </div>
+
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel htmlFor="registration-start">
+                      <span>Registration Opens</span>
+                      <span className="text-[11px] font-normal text-[#3f4940]">Optional window for enrollment</span>
+                    </FieldLabel>
+                    <DatePickerField
+                      id="registration-start"
+                      label="Registration opens date"
+                      large
+                      value={watch("registration_start_date") ?? ""}
+                      onChange={(value) => setValue("registration_start_date", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })}
+                    />
+                    <FieldError>{errors.registration_start_date?.message}</FieldError>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel htmlFor="registration-end">
+                      <span>Registration Closes</span>
+                      <span className="text-[11px] font-normal text-[#3f4940]">Leave empty for open enrollment</span>
+                    </FieldLabel>
+                    <DatePickerField
+                      id="registration-end"
+                      label="Registration closes date"
+                      large
+                      value={watch("registration_end_date") ?? ""}
+                      onChange={(value) => setValue("registration_end_date", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })}
+                    />
+                    <FieldError>{errors.registration_end_date?.message}</FieldError>
+                  </div>
                 </div>
               </section>
 
@@ -822,6 +971,35 @@ export default function TrainingBatchCreation() {
                     <FieldError>{errors.online_url?.message}</FieldError>
                   </div>
                 )}
+                <div className="flex flex-col gap-2">
+                  <FieldLabel htmlFor="batch-trainer">
+                    <span>Trainer In Charge</span>
+                    <span className="text-[11px] font-normal text-[#3f4940]">Applies to all modules by default — override per module below</span>
+                  </FieldLabel>
+                  <Select
+                    value={trainerInCharge ? String(trainerInCharge) : "unassigned"}
+                    onValueChange={updateTrainerInCharge}
+                    disabled={trainers.length === 0}
+                  >
+                    <SelectTrigger id="batch-trainer" className="h-auto rounded-lg border-0 bg-[#eff4ff] px-3 py-3 text-sm text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
+                      <SelectValue placeholder={trainers.length === 0 ? "No trainer accounts yet" : "Select trainer in charge"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">No trainer assigned</SelectItem>
+                      {trainers.map((trainer) => (
+                        <SelectItem key={trainer.id} value={String(trainer.id)}>
+                          {trainer.name || trainer.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{errors.trainer_in_charge?.message}</FieldError>
+                  {trainers.length === 0 && (
+                    <p className="text-[11px] text-[#3f4940]">
+                      No trainer accounts found. Create a user with the TRAINER role to assign one.
+                    </p>
+                  )}
+                </div>
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#3f4940]">Course Modules Timeline &amp; Cell Assignment ({sessions.fields.length} Modules)</span>
@@ -935,6 +1113,35 @@ export default function TrainingBatchCreation() {
                               <FieldError>{getSessionError(index, "online_url")}</FieldError>
                             </div>
                           )}
+                          <div className="flex flex-col gap-1.5 sm:col-span-2">
+                            <label htmlFor={`session-trainer-${index}`} className="text-[11px] font-semibold text-[#121c2a]">
+                              Module Trainer
+                            </label>
+                            <Select
+                              value={watch(`sessions.${index}.trainer_user_id`)
+                                ? String(watch(`sessions.${index}.trainer_user_id`))
+                                : "unassigned"}
+                              onValueChange={(value) => setValue(
+                                `sessions.${index}.trainer_user_id`,
+                                value === "unassigned" ? null : Number(value),
+                                { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+                              )}
+                              disabled={trainers.length === 0}
+                            >
+                              <SelectTrigger id={`session-trainer-${index}`} className="h-auto rounded-lg border-0 bg-white px-3 py-2 text-xs text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]">
+                                <SelectValue placeholder="Select module trainer" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">No trainer assigned</SelectItem>
+                                {trainers.map((trainer) => (
+                                  <SelectItem key={trainer.id} value={String(trainer.id)}>
+                                    {trainer.name || trainer.email}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FieldError>{getSessionError(index, "trainer_user_id")}</FieldError>
+                          </div>
                         </div>
                         {/* <button type="button" onClick={() => sessions.remove(index)} className="self-end text-[11px] font-semibold text-[#3f4940] hover:text-red-700">Remove session</button> */}
                       </article>

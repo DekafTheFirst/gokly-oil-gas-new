@@ -13,6 +13,8 @@ export interface TrainingBatchSession {
   end_time: string;
   location: string | null;
   online_url?: string | null;
+  trainer_user_id?: number | null;
+  trainer_name?: string | null;
 }
 
 export interface TrainingBatchAllocation {
@@ -31,6 +33,9 @@ export interface TrainingBatchPayload {
   min_quorum?: number;
   notes?: string;
   status: "DRAFT" | "UPCOMING";
+  trainer_in_charge?: number | null;
+  registration_start_date?: string | null;
+  registration_end_date?: string | null;
   sessions: TrainingBatchSession[];
   allocations: TrainingBatchAllocation[];
 }
@@ -43,6 +48,12 @@ export interface TrainingBatchCourseModule {
   duration?: number;
   scheduled_date?: string | null;
   sort_order: number;
+}
+
+export interface TrainingBatchTrainerOption {
+  id: number;
+  name: string | null;
+  email: string;
 }
 
 export interface TrainingBatchCourseOption {
@@ -103,6 +114,12 @@ export interface TrainingBatchDetail extends Omit<
   TrainingBatchListItem,
   "enrolled_count" | "session_count" | "allocation_count"
 > {
+  notes?: string | null;
+  online_url?: string | null;
+  registration_start_date?: string | null;
+  registration_end_date?: string | null;
+  trainer_in_charge?: number | null;
+  trainer_in_charge_name?: string | null;
   sessions: TrainingBatchSession[];
   allocations: TrainingBatchAllocationDetail[];
 }
@@ -135,6 +152,7 @@ export async function fetchTrainingBatchOptions(courseId?: number) {
     headers: authHeaders(),
   }) as Promise<{
     courses: TrainingBatchCourseOption[];
+    trainers: TrainingBatchTrainerOption[];
     allocation_options: TrainingBatchAllocationOption[];
   }>;
 }

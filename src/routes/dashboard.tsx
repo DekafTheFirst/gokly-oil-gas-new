@@ -6,6 +6,7 @@ import {
   Award,
   BadgeCheck,
   Building2,
+  CalendarClock,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -112,6 +113,17 @@ function formatDateRange(start: string | null, end: string | null) {
   const formattedEnd = formatDate(end);
   if (formattedStart && formattedEnd) return `${formattedStart} – ${formattedEnd}`;
   return formattedStart || formattedEnd || "Schedule to be confirmed";
+}
+
+function formatRegWindow(start: string | null, end: string | null) {
+  const formattedStart = formatDate(start);
+  const formattedEnd = formatDate(end);
+  if (formattedStart && formattedEnd) {
+    return formattedStart === formattedEnd ? `Reg closes ${formattedEnd}` : `Reg open ${formattedStart} – ${formattedEnd}`;
+  }
+  if (formattedStart) return `Reg open from ${formattedStart}`;
+  if (formattedEnd) return `Reg until ${formattedEnd}`;
+  return null;
 }
 
 function formatMoney(value: string | number | null, currency: string | null) {
@@ -496,6 +508,9 @@ function TrainingCard({
             {course.code && <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-4 w-4" />{course.code}</span>}
             {course.batch_name && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{course.batch_name}</span>}
             {(course.start_date || course.end_date) && <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" />{formatDateRange(course.start_date, course.end_date)}</span>}
+            {formatRegWindow(course.registration_start_date, course.registration_end_date) && (
+              <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-4 w-4" />{formatRegWindow(course.registration_start_date, course.registration_end_date)}</span>
+            )}
             {course.location && <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" />{course.location}</span>}
           </div>
 

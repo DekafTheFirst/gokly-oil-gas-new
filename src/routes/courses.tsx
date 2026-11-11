@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
-import { fetchMyEnrolledCourseIds, fetchPublicCourses, type CourseRecord } from "@/lib/courses";
+import { fetchMyEnrolledCourseIds, fetchPublicCourses, registrationStatusLabel, registrationWindowLabel, type CourseRecord } from "@/lib/courses";
 import { filterCourseCatalog, type CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
 import courseRigImage from "@/assets/course-rig.jpg";
 import courseSubseaImage from "@/assets/course-subsea.jpg";
@@ -384,9 +384,29 @@ function CourseCard({
         <p className="mt-2 line-clamp-3 min-h-[3.75rem] text-sm text-muted-foreground">
           {description || "Contact our training team for course details and prerequisites."}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <div className="my-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {course.delivery_mode && <span className="rounded-md bg-muted px-2 py-1">{course.delivery_mode}</span>}
           {course.certificate_enabled && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Certificate included</span>}
+          {course.enrollment_batch && (
+            <>
+              <span
+                className={`rounded-md px-2 py-1 font-medium ${
+                  course.enrollment_batch.registration_status === "open"
+                    ? "bg-emerald-50 text-emerald-800"
+                    : course.enrollment_batch.registration_status === "upcoming"
+                      ? "bg-sky-50 text-sky-800"
+                      : "bg-amber-50 text-amber-800"
+                }`}
+              >
+                {course.enrollment_batch.batch_code} · {registrationStatusLabel(course.enrollment_batch)}
+              </span>
+              {registrationWindowLabel(course.enrollment_batch) && (
+                <span className="rounded-md bg-muted px-2 py-1">
+                  {registrationWindowLabel(course.enrollment_batch)}
+                </span>
+              )}
+            </>
+          )}
         </div>
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 border-t border-border/70 pt-4">
           <div className="min-w-0">

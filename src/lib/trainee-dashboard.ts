@@ -26,6 +26,8 @@ export interface TraineeDashboardCourse {
   start_date: string | null;
   end_date: string | null;
   location: string | null;
+  registration_start_date: string | null;
+  registration_end_date: string | null;
   batch_status: string | null;
   completion_percentage: number;
   total_modules: number;
@@ -83,6 +85,8 @@ export interface TraineeTrainingBatch {
   end_date: string | null;
   location: string | null;
   capacity: number | null;
+  registration_start_date: string | null;
+  registration_end_date: string | null;
   status: string | null;
   delivery_mode: string | null;
 }

@@ -11,6 +11,7 @@ import {
   Clock3,
   Eye,
   MapPin,
+  Pencil,
   Plus,
   Search,
 } from "lucide-react";
@@ -348,14 +349,27 @@ export default function TrainingBatches() {
                       </td>
                       <td><Badge variant="outline" className={STATUS_STYLES[batch.status]}>{STATUS_LABELS[batch.status]}</Badge></td>
                       <td className="text-right">
-                        <Button
-                          aria-label={`Preview ${batch.batch_code}`}
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => void openBatchDetails(batch.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {batch.status === "DRAFT" && (
+                            <Button
+                              aria-label={`Edit ${batch.batch_code}`}
+                              size="icon"
+                              variant="ghost"
+                              title="Edit draft batch"
+                              onClick={() => navigate(`/training/batches/create?edit=${batch.id}`)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            aria-label={`Preview ${batch.batch_code}`}
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => void openBatchDetails(batch.id)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -404,6 +418,13 @@ export default function TrainingBatches() {
                   <p><span className="font-semibold">Capacity:</span> {selectedBatch.capacity ?? "Not set"}</p>
                   <p><span className="font-semibold">Minimum quorum:</span> {selectedBatch.min_quorum ?? "Not set"}</p>
                   <p><span className="font-semibold">Delivery:</span> {selectedBatch.delivery_mode}</p>
+                  <p><span className="font-semibold">Trainer in charge:</span> {selectedBatch.trainer_in_charge_name || "Not assigned"}</p>
+                  <p>
+                    <span className="font-semibold">Registration window:</span>{" "}
+                    {selectedBatch.registration_start_date || selectedBatch.registration_end_date
+                      ? `${formatDate(selectedBatch.registration_start_date)} – ${formatDate(selectedBatch.registration_end_date)}`
+                      : "Open"}
+                  </p>
                 </div>
                 <section>
                   <h3 className="mb-2 text-sm font-semibold">Sessions ({selectedBatch.sessions.length})</h3>

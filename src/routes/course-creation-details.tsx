@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { CourseSaveSuccess, SUCCESS_REDIRECT_MS } from "@/components/educert/CourseSaveSuccess";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ModuleMaterials } from "@/components/educert/ModuleMaterials";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ import {
   Fingerprint,
   Smartphone,
   Sparkles,
+  X,
 } from "lucide-react";
 import { fetchCourses, fetchCourseById } from "@/lib/courses";
 import type { CourseModule, CourseRecord } from "@/lib/courses";
@@ -84,6 +86,7 @@ import {
 } from "@/lib/course-autofill";
 import { cn } from "@/lib/utils";
 import { submitCourseForm, describeUploadFailures } from "@/lib/materials";
+import { formatNumberWithCommas, parseFormattedNumber } from "@/lib/number-format";
 import type { CourseUploadReport } from "@/lib/materials";
 import { toast } from "sonner";
 import {
@@ -1190,6 +1193,11 @@ export default function CourseCreation() {
     // Assessments defaults (sync'd from module-level setup + final)
     assessments: [],
   });
+  const [priceInput, setPriceInput] = useState("");
+
+  useEffect(() => {
+    setPriceInput(formData.price ? formatNumberWithCommas(formData.price) : "");
+  }, [formData.price]);
   const totalModuleHours = calculateTotalModuleHours(formData.modules);
 
   /* Drop validation errors whose key matches ("certificate_authority" or any
@@ -1556,12 +1564,76 @@ export default function CourseCreation() {
     });
   };
 
+  /* ---- unsaved-changes tracking ----------------------------------------
+     The wizard keeps everything in a single `formData` state object, so
+     "dirty" is detected by comparing a serialized snapshot against the last
+     known-clean baseline (post-load / post-save / initial defaults). */
+  const serializeFormData = (data: FormData) =>
+    JSON.stringify(data, (_key, value) =>
+      value instanceof Blob
+        ? {
+            __file: value instanceof File ? value.name : "",
+            size: value.size,
+            lastModified: value instanceof File ? value.lastModified : 0,
+          }
+        : value,
+    );
+
+  const initialFormDataRef = useRef<FormData | null>(null);
+  if (initialFormDataRef.current === null) initialFormDataRef.current = formData;
+  const baselineRef = useRef("");
+  const pristineRef = useRef<FormData | null>(null);
+
+  // Refresh the clean baseline whenever the wizard is showing saved/view data.
+  useEffect(() => {
+    if (isViewMode && !isEditMode) {
+      baselineRef.current = serializeFormData(formData);
+      pristineRef.current = formData;
+    }
+  }, [isViewMode, isEditMode, formData]);
+
+  const hasUnsavedChanges = () =>
+    serializeFormData(formData) !==
+    (baselineRef.current || serializeFormData(initialFormDataRef.current as FormData));
+
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const pendingExitRef = useRef<(() => void) | null>(null);
+
+  /** Run `action` immediately when clean, or ask first when there are unsaved changes. */
+  const requestExit = (action: () => void) => {
+    if (!hasUnsavedChanges()) {
+      action();
+      return;
+    }
+    pendingExitRef.current = action;
+    setDiscardDialogOpen(true);
+  };
+
+  const handleConfirmDiscard = () => {
+    const action = pendingExitRef.current;
+    pendingExitRef.current = null;
+    action?.();
+  };
+
+  // Warn on browser reload / tab close while dirty.
+  useEffect(() => {
+    const baseline =
+      baselineRef.current || serializeFormData(initialFormDataRef.current as FormData);
+    if (serializeFormData(formData) === baseline) return;
+    const handler = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [formData]);
+
   const handleCancelEdit = () => {
-    setIsViewMode(true);
-    setIsEditMode(false);
-    setCurrentStep(1);
-    toast.info("Edit cancelled", {
-      description: "Changes have been discarded",
+    requestExit(() => {
+      if (pristineRef.current) setFormData(pristineRef.current);
+      setIsViewMode(true);
+      setIsEditMode(false);
+      setCurrentStep(1);
+      toast.info("Edit cancelled", {
+        description: "Changes have been discarded",
+      });
     });
   };
 
@@ -1727,18 +1799,17 @@ export default function CourseCreation() {
     try {
       setLoading(true);
 
-      // Set status based on whether we're publishing or saving as draft
-      if (publish) {
-        setFormData((prev) => ({ ...prev, status: "PUBLISHED" }));
-      } else {
-        setFormData((prev) => ({ ...prev, status: "DRAFT" }));
-      }
+      // Set status based on whether we're publishing or saving. In edit mode a
+      // plain save keeps the course's current status — it must not silently
+      // demote a PUBLISHED course back to DRAFT.
+      const nextStatus = publish ? "PUBLISHED" : isEditMode ? formData.status || "DRAFT" : "DRAFT";
+      setFormData((prev) => ({ ...prev, status: nextStatus }));
 
       // The cover image travels as a file in the same request; keep any existing
       // URL when the user did not pick a new one.
       const thumbnailRef = formData.thumbnail_file ? null : formData.thumbnail_url || null;
       const payload = buildCoursePayload(
-        publish ? { ...formData, status: "PUBLISHED" } : { ...formData, status: "DRAFT" },
+        { ...formData, status: nextStatus },
         thumbnailRef,
       );
       if (!isEditMode) {
@@ -2611,6 +2682,28 @@ export default function CourseCreation() {
                       </button>
                     );
                   })}
+                </div>
+
+                <div className="grid gap-4 border-t border-slate-200 pt-5 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <FieldLabel htmlFor="price">Course Price (NGN)</FieldLabel>
+                    <Input
+                      id="price"
+                      type="text"
+                      inputMode="decimal"
+                      value={priceInput}
+                      onChange={(e) => {
+                        const formatted = formatNumberWithCommas(e.target.value);
+                        setPriceInput(formatted);
+                        updateFormData("price", parseFormattedNumber(formatted));
+                      }}
+                      className="h-11 border-slate-200 bg-slate-50/70 text-sm"
+                      placeholder="0.00"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Set to 0 for free courses. Online checkout (Paystack) is available for NGN pricing.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -4915,22 +5008,24 @@ export default function CourseCreation() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => navigate("/training/course-management")}
+                  onClick={() => requestExit(() => navigate("/training/course-management"))}
                   className="h-9 gap-1.5 whitespace-nowrap px-2 text-[12px] text-slate-600 hover:text-rose-600 sm:gap-2 sm:px-3 sm:text-[13px]"
                 >
-                  <Trash className="h-4 w-4" />
-                  Discard draft
+                  <X className="h-4 w-4" />
+                  Cancel
                 </Button>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => handleSubmit(false, true)}
-                  className="h-9 gap-1.5 whitespace-nowrap px-2 text-[12px] text-slate-600 sm:gap-2 sm:px-3 sm:text-[13px]"
-                >
-                  <Save className="h-4 w-4" />
-                  Save draft & exit
-                </Button>
+                {!isEditMode && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => handleSubmit(false, true)}
+                    className="h-9 gap-1.5 whitespace-nowrap px-2 text-[12px] text-slate-600 sm:gap-2 sm:px-3 sm:text-[13px]"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save draft & exit
+                  </Button>
+                )}
 
                 <span className="ml-auto hidden items-center gap-2 text-[12px] text-slate-500 xl:inline-flex">
                   {validateStep(currentStep) ? (
@@ -4962,7 +5057,11 @@ export default function CourseCreation() {
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="h-10 gap-1.5 whitespace-nowrap bg-emerald-700 px-3 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
+                    className={
+                      isEditMode
+                        ? "h-10 gap-1.5 whitespace-nowrap bg-slate-800 px-3 text-[12px] font-semibold text-white hover:bg-slate-900 sm:gap-2 sm:px-5 sm:text-[13px]"
+                        : "h-10 gap-1.5 whitespace-nowrap bg-emerald-700 px-3 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
+                    }
                   >
                     <span className="sm:hidden">Continue</span>
                     <span className="hidden sm:inline">Proceed to step {currentStep + 1}: {STEPS[currentStep].label}</span>
@@ -4977,7 +5076,7 @@ export default function CourseCreation() {
                       variant="outline"
                       className="h-10 gap-1.5 border-slate-300 px-3 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-4 sm:text-[13px]"
                     >
-                      {loading ? "Saving…" : "Save as Draft"}
+                      {loading ? "Saving…" : isEditMode ? "Save Changes" : "Save as Draft"}
                       <Save className="h-4 w-4" />
                     </Button>
                     <Button
@@ -4991,11 +5090,38 @@ export default function CourseCreation() {
                     </Button>
                   </div>
                 )}
+
+                {isEditMode && currentStep < STEPS.length && (
+                  <Button
+                    type="button"
+                    onClick={() => handleSubmit(false)}
+                    disabled={loading}
+                    className="h-10 gap-1.5 whitespace-nowrap bg-emerald-700 px-4 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
+                  >
+                    <Save className="h-4 w-4" />
+                    {loading ? "Saving…" : "Save Changes"}
+                  </Button>
+                )}
               </div>
             </div>
           </form>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={discardDialogOpen}
+        onOpenChange={setDiscardDialogOpen}
+        title="Discard unsaved changes?"
+        description={
+          isEditMode
+            ? "You have unsaved changes to this course. If you leave now, they will be lost."
+            : "You have unsaved progress on this course. If you leave now, it will be lost."
+        }
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        destructive
+        onConfirm={handleConfirmDiscard}
+      />
     </AdminPageShell>
   );
 }

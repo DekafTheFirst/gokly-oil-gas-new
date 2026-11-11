@@ -272,7 +272,7 @@ export default function TraineeTrainingDetails() {
   }, [detail]);
 
   const continuePayment = async () => {
-    if (!course || !enrollment?.pending_payment?.method) {
+    if (!course || !enrollment?.pending_payment) {
       toast.error("Payment method is unavailable for this checkout.", {
         description: "Open the course catalog or contact the training team for help.",
       });
@@ -280,7 +280,7 @@ export default function TraineeTrainingDetails() {
     }
     setContinuingPayment(true);
     try {
-      const checkout = await initializeCoursePayment(course.id, enrollment.pending_payment.method);
+      const checkout = await initializeCoursePayment(course.id);
       const url = new URL(checkout.authorization_url);
       if (url.protocol !== "https:" || url.hostname !== "checkout.paystack.com") {
         throw new Error("Paystack returned an invalid checkout address.");

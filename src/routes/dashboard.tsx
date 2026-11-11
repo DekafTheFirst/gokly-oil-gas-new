@@ -249,7 +249,7 @@ export default function Dashboard() {
 
     setContinuingPayment(course.course_id);
     try {
-      const checkout = await initializeCoursePayment(course.course_id, course.pending_payment_method);
+      const checkout = await initializeCoursePayment(course.course_id);
       const url = new URL(checkout.authorization_url);
       if (url.protocol !== "https:" || url.hostname !== "checkout.paystack.com") {
         throw new Error("Paystack returned an invalid checkout address.");

@@ -168,19 +168,17 @@ export type CoursePaymentMethod = "CARD" | "BANK_TRANSFER";
 
 export const initializeCoursePayment = async (
   courseId: number,
-  paymentMethod: CoursePaymentMethod,
 ): Promise<{ authorization_url: string }> => {
   const token = getAuthToken();
   return apiFetch(`/payments/courses/${courseId}/initialize`, {
     method: "POST",
     headers: { Authorization: "Bearer " + token },
-    body: { payment_method: paymentMethod },
   });
 };
 
 export const verifyCoursePayment = async (
   reference: string,
-): Promise<{ status: string; enrolled: boolean; amount_kobo: number; payment_method: CoursePaymentMethod }> => {
+): Promise<{ status: string; enrolled: boolean; amount_kobo: number; payment_method: CoursePaymentMethod | "OTHER" }> => {
   const token = getAuthToken();
   const path = "/payments/verify?reference=" + encodeURIComponent(reference);
   return apiFetch(path, {

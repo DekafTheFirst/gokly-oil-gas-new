@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { ModuleMaterials } from "@/components/educert/ModuleMaterials";
 import { CourseSaveSuccess, SUCCESS_REDIRECT_MS } from "@/components/educert/CourseSaveSuccess";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +73,7 @@ import {
   Fingerprint,
   Smartphone,
   Sparkles,
+  X,
 } from "lucide-react";
 import { fetchCourses } from "@/lib/courses";
 import type { CourseModule, CourseRecord } from "@/lib/courses";
@@ -1500,6 +1502,55 @@ export default function CourseCreation() {
     });
     return false;
   };
+
+  /* ---- unsaved-changes tracking ----------------------------------------
+     The wizard keeps everything in a single `formData` state object, so
+     "dirty" is detected by comparing a serialized snapshot against the
+     initial defaults captured on first render. */
+  const serializeFormData = (data: FormData) =>
+    JSON.stringify(data, (_key, value) =>
+      value instanceof Blob
+        ? {
+            __file: value instanceof File ? value.name : "",
+            size: value.size,
+            lastModified: value instanceof File ? value.lastModified : 0,
+          }
+        : value,
+    );
+
+  const initialFormDataRef = useRef<FormData | null>(null);
+  if (initialFormDataRef.current === null) initialFormDataRef.current = formData;
+
+  const hasUnsavedChanges = () =>
+    serializeFormData(formData) !==
+    serializeFormData(initialFormDataRef.current as FormData);
+
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const pendingExitRef = useRef<(() => void) | null>(null);
+
+  /** Run `action` immediately when clean, or ask first when there are unsaved changes. */
+  const requestExit = (action: () => void) => {
+    if (!hasUnsavedChanges()) {
+      action();
+      return;
+    }
+    pendingExitRef.current = action;
+    setDiscardDialogOpen(true);
+  };
+
+  const handleConfirmDiscard = () => {
+    const action = pendingExitRef.current;
+    pendingExitRef.current = null;
+    action?.();
+  };
+
+  // Warn on browser reload / tab close while dirty.
+  useEffect(() => {
+    if (!hasUnsavedChanges()) return;
+    const handler = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  });
 
   const handleBack = () => {
     setFieldErrors({});
@@ -4243,17 +4294,17 @@ export default function CourseCreation() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => navigate("/training/course-management")}
+                  onClick={() => requestExit(() => navigate("/training/course-management"))}
                   className="h-9 gap-1.5 whitespace-nowrap px-2 text-[12px] text-slate-600 hover:text-rose-600 sm:gap-2 sm:px-3 sm:text-[13px]"
                 >
-                  <Trash className="h-4 w-4" />
-                  Discard draft
+                  <X className="h-4 w-4" />
+                  Cancel
                 </Button>
 
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => navigate("/training/course-management")}
+                  onClick={() => requestExit(() => navigate("/training/course-management"))}
                   className="h-9 gap-1.5 whitespace-nowrap px-2 text-[12px] text-slate-600 sm:gap-2 sm:px-3 sm:text-[13px]"
                 >
                   <Save className="h-4 w-4" />
@@ -4324,6 +4375,17 @@ export default function CourseCreation() {
           </form>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={discardDialogOpen}
+        onOpenChange={setDiscardDialogOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved progress on this course. If you leave now, it will be lost."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        destructive
+        onConfirm={handleConfirmDiscard}
+      />
     </AdminPageShell>
   );
 }

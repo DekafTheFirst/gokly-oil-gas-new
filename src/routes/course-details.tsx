@@ -9,10 +9,8 @@ import {
   Building2,
   CheckCircle2,
   Clock3,
-  CreditCard,
   Copy,
   GraduationCap,
-  Landmark,
   MapPin,
   ShieldCheck,
   X,
@@ -91,7 +89,7 @@ function CourseEnrollmentSuccess({
 }: {
   course: CourseRecord;
   amountKobo: number | null;
-  paymentMethod: CoursePaymentMethod | null;
+  paymentMethod: CoursePaymentMethod | "OTHER" | null;
   paymentReference: string | null;
   courseListPath: string;
   shouldReduceMotion: boolean | null;
@@ -140,7 +138,7 @@ function CourseEnrollmentSuccess({
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                to="/training/dashboard"
+                to={`/training/trainee-dashboard/${course.id}`}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:bg-primary/90"
               >
                 Go to my training <ArrowRight className="h-4 w-4" />
@@ -324,11 +322,10 @@ export default function CourseDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paymentExpanded, setPaymentExpanded] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<CoursePaymentMethod | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentResult, setPaymentResult] = useState<"verifying" | "success" | "failed" | null>(null);
-  const [verifiedPayment, setVerifiedPayment] = useState<{ amountKobo: number; method: CoursePaymentMethod } | null>(null);
+  const [verifiedPayment, setVerifiedPayment] = useState<{ amountKobo: number; method: CoursePaymentMethod | "OTHER" } | null>(null);
   const [freeEnrollmentLoading, setFreeEnrollmentLoading] = useState(false);
   const paymentReference = searchParams.get("reference") || searchParams.get("trxref") || "";
   const isPaymentCallback = searchParams.get("payment") === "paystack";
@@ -435,11 +432,11 @@ export default function CourseDetails() {
 
   const courseListPath = isPortalRoute ? "/training/courses" : "/courses";
   const startCheckout = async () => {
-    if (!course || !paymentMethod) return;
+    if (!course) return;
     setPaymentLoading(true);
     setPaymentError("");
     try {
-      const { authorization_url } = await initializeCoursePayment(course.id, paymentMethod);
+      const { authorization_url } = await initializeCoursePayment(course.id);
       const checkoutUrl = new URL(authorization_url);
       if (checkoutUrl.protocol !== "https:" || checkoutUrl.hostname !== "checkout.paystack.com") {
         throw new Error("Paystack returned an invalid checkout address.");
@@ -724,39 +721,12 @@ export default function CourseDetails() {
                             </div>
                           ) : (
                             <>
-                              <fieldset>
-                                <legend className="text-sm font-bold">Choose a payment method</legend>
-                                <p className="mt-1 text-xs leading-5 text-muted-foreground">You’ll complete payment on Paystack’s secure checkout page.</p>
-                                <div className="mt-3 grid gap-2">
-                                  <PaymentMethodOption
-                                    id="payment-card"
-                                    name="course-payment-method"
-                                    title="Card or USSD"
-                                    description="Pay securely with a card or USSD"
-                                    icon={CreditCard}
-                                    selected={paymentMethod === "CARD"}
-                                    onChange={() => {
-                                      setPaymentMethod("CARD");
-                                      setPaymentError("");
-                                    }}
-                                  />
-                                  <PaymentMethodOption
-                                    id="payment-transfer"
-                                    name="course-payment-method"
-                                    title="Bank transfer"
-                                    description="Pay by bank transfer through Paystack"
-                                    icon={Landmark}
-                                    selected={paymentMethod === "BANK_TRANSFER"}
-                                    onChange={() => {
-                                      setPaymentMethod("BANK_TRANSFER");
-                                      setPaymentError("");
-                                    }}
-                                  />
-                                </div>
-                              </fieldset>
+                              <p className="text-xs leading-5 text-muted-foreground">
+                                You’ll complete payment on Paystack’s secure checkout page — card, bank transfer, and USSD are all available there.
+                              </p>
                               <button
                                 type="button"
-                                disabled={!paymentMethod || paymentLoading || paymentResult === "verifying"}
+                                disabled={paymentLoading || paymentResult === "verifying"}
                                 onClick={() => void startCheckout()}
                                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-40"
                               >
@@ -764,7 +734,7 @@ export default function CourseDetails() {
                                 {!paymentLoading && <ArrowRight className="h-4 w-4" />}
                               </button>
                               <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">
-                                Your card details are entered on Paystack; Gokly does not store them.
+                                Your payment details are entered on Paystack; Gokly does not store them.
                               </p>
                             </>
                           )}
@@ -809,53 +779,6 @@ export default function CourseDetails() {
       {mainContent}
     </AdminPageShell>
   ) : mainContent;
-}
-
-function PaymentMethodOption({
-  id,
-  name,
-  title,
-  description,
-  icon: Icon,
-  selected,
-  onChange,
-}: {
-  id: string;
-  name: string;
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  selected: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label
-      className={`relative flex w-full cursor-pointer items-center gap-3 rounded-lg border p-3 text-left transition focus-within:outline-none focus-within:ring-2 focus-within:ring-primary ${
-        selected
-          ? "border-primary bg-primary/[0.07] shadow-sm"
-          : "border-border bg-background/80 hover:border-primary/40 hover:bg-background"
-      }`}
-    >
-      <input
-        id={id}
-        type="radio"
-        name={name}
-        checked={selected}
-        onChange={onChange}
-        className="sr-only"
-      />
-      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{title}</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
-      </span>
-      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"}`}>
-        {selected && <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
-      </span>
-    </label>
-  );
 }
 
 function SectionHeading({

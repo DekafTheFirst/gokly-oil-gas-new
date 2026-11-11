@@ -4,17 +4,20 @@ import {
   ArrowRight,
   BadgeCheck,
   BellRing,
+  CalendarClock,
   CheckCircle2,
+  CircleDashed,
   Clock3,
   FilterX,
   GraduationCap,
   Search,
   ShieldCheck,
   UsersRound,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
-import { fetchMyEnrolledCourseIds, fetchMyWaitlistEntries, fetchPublicCourses, registrationStatusLabel, registrationWindowLabel, type CourseRecord, type CourseWaitlistSummary } from "@/lib/courses";
+import { fetchMyEnrolledCourseIds, fetchMyWaitlistEntries, fetchPublicCourses, formatShortCourseDate, type CourseEnrollmentBatch, type CourseRecord, type CourseWaitlistSummary } from "@/lib/courses";
 import { filterCourseCatalog, type CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
 import courseRigImage from "@/assets/course-rig.jpg";
 import courseSubseaImage from "@/assets/course-subsea.jpg";
@@ -395,29 +398,25 @@ function CourseCard({
         <p className="mt-2 line-clamp-3 min-h-[3.75rem] text-sm text-muted-foreground">
           {description || "Contact our training team for course details and prerequisites."}
         </p>
-        <div className="my-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {course.delivery_mode && <span className="rounded-md bg-muted px-2 py-1">{course.delivery_mode}</span>}
-          {course.certificate_enabled && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Certificate included</span>}
+        <div className="mb-5 flex flex-col gap-2.5 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-2">
+            {course.delivery_mode && <span className="rounded-md bg-muted px-2 py-1">{course.delivery_mode}</span>}
+            {course.certificate_enabled && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Certificate included</span>}
+          </div>
           {course.enrollment_batch && (
-            <>
-              <span
-                className={`rounded-md px-2 py-1 font-medium ${
-                  course.enrollment_batch.registration_status === "open"
-                    ? "bg-emerald-50 text-emerald-800"
-                    : course.enrollment_batch.registration_status === "upcoming"
-                      ? "bg-sky-50 text-sky-800"
-                      : "bg-amber-50 text-amber-800"
-                }`}
-              >
-                {course.enrollment_batch.batch_code} · {registrationStatusLabel(course.enrollment_batch)}
-              </span>
-              {registrationWindowLabel(course.enrollment_batch) && (
-                <span className="rounded-md bg-muted px-2 py-1">
-                  {registrationWindowLabel(course.enrollment_batch)}
-                </span>
-              )}
-            </>
+            <span className="w-fit rounded-md bg-muted px-2 py-1 font-mono text-[11px] font-semibold">
+              {course.enrollment_batch.batch_code}
+            </span>
           )}
+          <div className="flex flex-wrap gap-2">
+            {course.enrollment_batch ? (
+              <BatchStatusPill batch={course.enrollment_batch} />
+            ) : (
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 text-[13px] font-semibold text-muted-foreground">
+                <CircleDashed className="h-4 w-4" /> No active batch yet
+              </span>
+            )}
+          </div>
         </div>
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 border-t border-border/70 pt-4">
           <div className="min-w-0">
@@ -470,5 +469,33 @@ function CourseCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function BatchStatusPill({ batch }: { batch: CourseEnrollmentBatch }) {
+  const base = "inline-flex w-fit items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-bold";
+  if (batch.registration_status === "open") {
+    return (
+      <span className={`${base} bg-emerald-100 text-emerald-800`}>
+        <CheckCircle2 className="h-4 w-4" />
+        Accepting enrollments{batch.registration_end_date ? ` until ${formatShortCourseDate(batch.registration_end_date)}` : ""}
+      </span>
+    );
+  }
+  if (batch.registration_status === "upcoming") {
+    return (
+      <span className={`${base} bg-amber-100 text-amber-800`}>
+        <CalendarClock className="h-4 w-4" />
+        {batch.registration_start_date
+          ? `Registration opens ${formatShortCourseDate(batch.registration_start_date)}`
+          : "Registration upcoming"}
+      </span>
+    );
+  }
+  return (
+    <span className={`${base} bg-rose-100 text-rose-800`}>
+      <XCircle className="h-4 w-4" />
+      Registration closed
+    </span>
   );
 }

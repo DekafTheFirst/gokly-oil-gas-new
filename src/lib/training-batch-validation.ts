@@ -147,6 +147,16 @@ export const trainingBatchFormSchema = baseSchema
         message: "Registration must close on or after it opens.",
       });
     }
+    if (batch.registration_start_date) {
+      const earliestSession = batch.sessions.map((session) => session.session_date).sort()[0];
+      if (earliestSession && batch.registration_start_date > earliestSession) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["registration_start_date"],
+          message: "Registration must open on or before the first session date.",
+        });
+      }
+    }
     const allocated = batch.allocations.reduce((sum, allocation) => sum + allocation.seats_assigned, 0);
     if (allocated > batch.capacity) {
       context.addIssue({
@@ -194,6 +204,16 @@ export const trainingBatchDraftSchema = baseSchema
         path: ["min_quorum"],
         message: "Minimum quorum cannot exceed maximum capacity.",
       });
+    }
+    if (batch.registration_start_date) {
+      const earliestSession = (batch.sessions ?? []).map((session) => session.session_date).sort()[0];
+      if (earliestSession && batch.registration_start_date > earliestSession) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["registration_start_date"],
+          message: "Registration must open on or before the first session date.",
+        });
+      }
     }
     const allocated = (batch.allocations ?? []).reduce((sum, allocation) => sum + allocation.seats_assigned, 0);
     if (allocated > batch.capacity) {

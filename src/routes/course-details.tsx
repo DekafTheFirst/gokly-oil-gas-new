@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
+  BellRing,
   BookOpen,
   Building2,
   CalendarClock,
@@ -29,6 +30,7 @@ import {
   downloadCourseReceipt,
   enrollInCourse,
   fetchCoursePaymentStatus,
+  fetchCourseWaitlistEntry,
   fetchMyEnrolledCourseIds,
   fetchPublicCourseById,
   formatShortCourseDate,
@@ -38,6 +40,7 @@ import {
   type CoursePaymentStatus,
   type CourseModule,
   type CourseRecord,
+  type CourseWaitlistEntry,
   verifyCoursePayment,
 } from "@/lib/courses";
 import courseRigImage from "@/assets/course-rig.jpg";
@@ -375,6 +378,7 @@ export default function CourseDetails() {
   const [verifiedPayment, setVerifiedPayment] = useState<{ amountKobo: number; method: CoursePaymentMethod | "OTHER" } | null>(null);
   const [freeEnrollmentLoading, setFreeEnrollmentLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<CoursePaymentStatus | null>(null);
+  const [waitlistEntry, setWaitlistEntry] = useState<CourseWaitlistEntry | null>(null);
   const paymentSuccessNoticeShownRef = useRef(false);
   const paymentErrorNoticeShownRef = useRef(false);
   const paymentReference = searchParams.get("reference") || searchParams.get("trxref") || "";
@@ -388,6 +392,10 @@ export default function CourseDetails() {
   const registrationBlocked = Boolean(
     enrollmentBatch && enrollmentBatch.registration_status !== "open",
   );
+  // No enrollable intake: either no upcoming batch exists at all, or the
+  // batch's registration window isn't open. Both route to the waitlist.
+  const waitlistEligible = !enrollmentBatch || registrationBlocked;
+  const waitlistPath = `${isPortalRoute ? "/training/courses" : "/courses"}/${courseId}/waitlist`;
 
   useEffect(() => {
     if (searchParams.get("enroll") !== "1") return;
@@ -479,6 +487,24 @@ export default function CourseDetails() {
       active = false;
     };
   }, [canEnroll, courseId, user?.id, paymentResult]);
+
+  // Check whether the learner already joined the waitlist for this course.
+  useEffect(() => {
+    if (!canEnroll) return;
+    const id = Number(courseId);
+    if (!Number.isInteger(id) || id <= 0) return;
+    let active = true;
+    fetchCourseWaitlistEntry(id)
+      .then((entry) => {
+        if (active) setWaitlistEntry(entry);
+      })
+      .catch(() => {
+        // Non-fatal — the join button still works without status info.
+      });
+    return () => {
+      active = false;
+    };
+  }, [canEnroll, courseId, user?.id]);
 
   useEffect(() => {
     let active = true;
@@ -804,20 +830,38 @@ export default function CourseDetails() {
                     <div className="rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-xs leading-5 text-amber-950" role="alert">
                       We couldn’t check your enrollment status, so enrollment is temporarily unavailable. Please refresh or contact the training team.
                     </div>
-                  ) : canEnroll && registrationBlocked ? (
-                    <div className="rounded-xl border border-amber-300/70 bg-amber-50 p-4" role="status">
-                      <p className="flex items-center gap-2 text-sm font-bold text-amber-950">
-                        <CalendarClock className="h-4 w-4 shrink-0" />
-                        {enrollmentBatch?.registration_status === "upcoming"
-                          ? "Registration hasn't opened yet"
-                          : "Registration is closed"}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-amber-950/80">
-                        {enrollmentBatch?.registration_status === "upcoming"
-                          ? `Enrollment for ${enrollmentBatch?.name} opens on ${formatShortCourseDate(enrollmentBatch?.registration_start_date)}. Check back then or contact the training team.`
-                          : `Registration for ${enrollmentBatch?.name} has closed. Contact the training team about the next intake.`}
-                      </p>
-                    </div>
+                  ) : canEnroll && enrollmentCheck === "available" && waitlistEligible ? (
+                    waitlistEntry ? (
+                      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4" role="status">
+                        <p className="flex items-center gap-2 text-sm font-bold text-sky-950">
+                          <BellRing className="h-4 w-4 shrink-0" />
+                          You're on the waitlist
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-sky-950/80">
+                          Ticket <span className="font-mono font-bold">{waitlistEntry.ticket_number}</span> — we'll notify you when a cohort opens.
+                        </p>
+                        <Link to={waitlistPath} className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-sky-800 hover:underline">
+                          View waitlist details <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    ) : (
+                      <div>
+                        <Link
+                          to={waitlistPath}
+                          className="group inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        >
+                          <BellRing className="h-4 w-4" />
+                          Join waitlist
+                        </Link>
+                        <p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">
+                          {!enrollmentBatch
+                            ? "No cohort is scheduled yet — get notified when one opens."
+                            : enrollmentBatch.registration_status === "upcoming"
+                              ? `Registration opens ${formatShortCourseDate(enrollmentBatch.registration_start_date)} — join the waitlist for priority alerts.`
+                              : "Registration is closed — join the waitlist for the next intake."}
+                        </p>
+                      </div>
+                    )
                   ) : canEnroll && course.individual_enrollment_enabled !== false && !paymentFailed ? (
                     <button
                       type="button"
@@ -844,7 +888,7 @@ export default function CourseDetails() {
 
                   {canEnroll && enrollmentCheck === "available" && paymentStatus && (
                     <>
-                      {(paymentStatus.status === "FAILED" || paymentStatus.status === "EXPIRED") && (
+                      {!waitlistEligible && (paymentStatus.status === "FAILED" || paymentStatus.status === "EXPIRED") && (
                         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
                           <p className="flex items-center gap-2 text-sm font-bold text-rose-900">
                             <AlertTriangle className="h-4 w-4 shrink-0" />

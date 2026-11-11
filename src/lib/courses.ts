@@ -169,6 +169,22 @@ export const fetchMyEnrolledCourseIds = async (): Promise<number[]> => {
   return data.course_ids || [];
 };
 
+export interface CourseWaitlistSummary {
+  course_id: number;
+  ticket_number: string;
+  timeframe: string | null;
+  status: string;
+  created_at: string;
+}
+
+export const fetchMyWaitlistEntries = async (): Promise<CourseWaitlistSummary[]> => {
+  const token = getAuthToken();
+  const data = await apiFetch("/courses/my-waitlist", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data.entries || [];
+};
+
 export const fetchPublicCourseById = async (courseId: number): Promise<PublicCourseDetailResponse> => {
   return apiFetch(`/courses/public/${courseId}`);
 };
@@ -209,6 +225,49 @@ export const enrollInCourse = async (courseId: number): Promise<void> => {
   await apiFetch(`/courses/${courseId}/enroll`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+export interface CourseWaitlistEntry {
+  id: string;
+  ticket_number: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  organization: string | null;
+  timeframe: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface CourseWaitlistPayload {
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  timeframe?: string | null;
+  notes?: string | null;
+}
+
+export const fetchCourseWaitlistEntry = async (
+  courseId: number,
+): Promise<CourseWaitlistEntry | null> => {
+  const token = getAuthToken();
+  const data = await apiFetch(`/courses/${courseId}/waitlist`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data.entry || null;
+};
+
+export const joinCourseWaitlist = async (
+  courseId: number,
+  payload: CourseWaitlistPayload,
+): Promise<{ entry: CourseWaitlistEntry; already_waitlisted: boolean }> => {
+  const token = getAuthToken();
+  return apiFetch(`/courses/${courseId}/waitlist`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: payload,
   });
 };
 

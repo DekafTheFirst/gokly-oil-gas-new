@@ -95,6 +95,7 @@ export interface TrainingBatchListItem {
   delivery_mode: "PHYSICAL" | "ONLINE" | "HYBRID";
   status: TrainingBatchStatus;
   enrolled_count: number;
+  waitlist_count: number;
   session_count: number;
   allocation_count: number;
 }
@@ -163,6 +164,7 @@ export interface TrainingBatchStats {
   active_count: number;
   completed_count: number;
   cancelled_count: number;
+  waitlist_count: number;
 }
 
 export interface TrainingBatchFilterOptions {

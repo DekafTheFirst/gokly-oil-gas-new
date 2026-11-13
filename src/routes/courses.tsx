@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import {
   ArrowRight,
@@ -17,8 +17,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
-import { fetchMyEnrolledCourseIds, fetchMyWaitlistEntries, fetchPublicCourses, formatShortCourseDate, type CourseEnrollmentBatch, type CourseRecord, type CourseWaitlistSummary } from "@/lib/courses";
-import { filterCourseCatalog, type CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
+import { fetchPublicCourses, formatShortCourseDate, type CourseEnrollmentBatch, type CoursePagination, type CourseRecord } from "@/lib/courses";
+import type { CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
 import courseRigImage from "@/assets/course-rig.jpg";
 import courseSubseaImage from "@/assets/course-subsea.jpg";
 import courseHazmatImage from "@/assets/course-hazmat.jpg";
@@ -68,8 +68,9 @@ export default function Courses() {
         : "/training/trainee-dashboard";
 
   const [courses, setCourses] = useState<CourseRecord[]>([]);
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<number>>(() => new Set());
-  const [waitlistByCourse, setWaitlistByCourse] = useState<Map<number, CourseWaitlistSummary>>(() => new Map());
+  const [pagination, setPagination] = useState<CoursePagination | null>(null);
+  const [filterOptions, setFilterOptions] = useState<{ categories: string[]; tiers: string[] }>({ categories: [], tiers: [] });
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -78,49 +79,49 @@ export default function Courses() {
   const [enrollment, setEnrollment] = useState<CourseCatalogEnrollmentFilter>("all");
 
   useEffect(() => {
-    let active = true;
+    setPage(1);
+  }, [search, category, tier, enrollment]);
 
-    setLoading(true);
-    setError("");
-    setEnrolledCourseIds(new Set());
-    setWaitlistByCourse(new Map());
-    Promise.all([
-      fetchPublicCourses(),
-      canEnroll ? fetchMyEnrolledCourseIds() : Promise.resolve([]),
-      canEnroll ? fetchMyWaitlistEntries() : Promise.resolve([]),
-    ])
-      .then(([publishedCourses, enrolledIds, waitlistEntries]) => {
-        if (!active) return;
-        setCourses(publishedCourses);
-        setEnrolledCourseIds(new Set(enrolledIds));
-        setWaitlistByCourse(new Map(waitlistEntries.map((entry) => [entry.course_id, entry])));
+  useEffect(() => {
+    let active = true;
+    // Debounce so typing in the search box doesn't fire a request per keystroke.
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError("");
+      fetchPublicCourses({
+        page,
+        limit: 12,
+        search,
+        category,
+        tier,
+        enrollment: enrollment === "all" ? "" : enrollment,
       })
-      .catch((cause: unknown) => {
-        if (active) {
-          setError(cause instanceof Error ? cause.message : "Could not load courses. Please try again.");
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+        .then((response) => {
+          if (!active) return;
+          setCourses(response.courses);
+          setPagination(response.pagination);
+          setFilterOptions(response.filter_options);
+        })
+        .catch((cause: unknown) => {
+          if (active) {
+            setError(cause instanceof Error ? cause.message : "Could not load courses. Please try again.");
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 300);
 
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [canEnroll, user?.id]);
+  }, [page, search, category, tier, enrollment, user?.id]);
 
-  const categories = useMemo(
-    () => [...new Set(courses.map((course) => course.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [courses],
-  );
-  const tiers = useMemo(
-    () => [...new Set(courses.map((course) => course.tier).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b)),
-    [courses],
-  );
-  const filteredCourses = useMemo(
-    () => filterCourseCatalog(courses, { search, category, tier, enrollment }),
-    [category, courses, enrollment, search, tier],
-  );
+  const categories = filterOptions.categories;
+  const tiers = filterOptions.tiers;
+  const filteredCourses = courses;
+  const totalCourses = pagination?.total ?? courses.length;
 
   const resetFilters = () => {
     setSearch("");
@@ -170,7 +171,7 @@ export default function Courses() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold">Explore at your pace</p>
                 <p className="mt-0.5 text-xs text-primary-foreground/70">
-                  {loading ? "Browse published training courses" : `${courses.length} published courses across ${categories.length} disciplines`}
+                  {loading ? "Browse published training courses" : `${totalCourses} published courses across ${categories.length} disciplines`}
                 </p>
               </div>
             </div>
@@ -183,7 +184,11 @@ export default function Courses() {
               <p className="text-sm font-semibold uppercase tracking-wide text-primary">Course search</p>
               <h2 className="mt-1 text-2xl font-extrabold sm:text-3xl">Training catalog</h2>
               <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
-                {loading ? "Loading published courses…" : `Showing ${filteredCourses.length} of ${courses.length} published course${courses.length === 1 ? "" : "s"}`}
+                {loading
+                  ? "Loading published courses…"
+                  : pagination
+                    ? `Showing ${pagination.from}–${pagination.to} of ${pagination.total} published course${pagination.total === 1 ? "" : "s"}`
+                    : `Showing ${filteredCourses.length} published course${filteredCourses.length === 1 ? "" : "s"}`}
               </p>
             </div>
             <button type="button" onClick={resetFilters} className="inline-flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/5">
@@ -252,8 +257,8 @@ export default function Courses() {
                   course={course}
                   image={getCourseImage(course)}
                   canEnroll={canEnroll}
-                  isEnrolled={enrolledCourseIds.has(course.id)}
-                  waitlistEntry={waitlistByCourse.get(course.id)}
+                  isEnrolled={course.my_enrollment === true}
+                  waitlistEntry={course.my_waitlist ?? undefined}
                   isSignedIn={Boolean(user)}
                   isPortalRoute={isPortalRoute}
                 />
@@ -273,6 +278,32 @@ export default function Courses() {
                 </Link>
               </aside>
             </div>
+          )}
+
+          {!loading && !error && pagination && pagination.totalPages > 1 && (
+            <nav className="flex items-center justify-between gap-3" aria-label="Course catalog pagination">
+              <p className="text-xs text-muted-foreground">
+                Page {pagination.page} of {pagination.totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={pagination.page <= 1}
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+                  disabled={pagination.page >= pagination.totalPages}
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </nav>
           )}
         </section>
 

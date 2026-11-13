@@ -50,6 +50,10 @@ export interface CourseRecord {
   prerequisite_course_id?: number | null;
   prerequisite_description?: string;
   enrollment_batch?: CourseEnrollmentBatch | null;
+  /** Present on /courses/public responses — true when the signed-in user is enrolled. */
+  my_enrollment?: boolean;
+  /** Latest WAITLISTED entry for the signed-in user, if any. */
+  my_waitlist?: CourseWaitlistSummary | null;
   created_at: string;
 }
 
@@ -156,9 +160,50 @@ export const fetchCourses = async (): Promise<CourseRecord[]> => {
   return data.courses || [];
 };
 
-export const fetchPublicCourses = async (): Promise<CourseRecord[]> => {
-  const data = await apiFetch(`/courses/public`);
-  return data.courses || [];
+export interface CourseWaitlistSummary {
+  course_id: number;
+  ticket_number: string;
+  timeframe: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface PublicCourseListResponse {
+  courses: CourseRecord[];
+  pagination: CoursePagination;
+  filter_options: {
+    categories: string[];
+    tiers: string[];
+  };
+}
+
+export interface PublicCourseQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: string;
+  tier?: string;
+  enrollment?: "individual" | "organization" | "";
+}
+
+export const fetchPublicCourses = async (query: PublicCourseQuery = {}): Promise<PublicCourseListResponse> => {
+  const params = new URLSearchParams();
+  if (query.page) params.set("page", String(query.page));
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.search) params.set("search", query.search);
+  if (query.category && query.category !== "all") params.set("category", query.category);
+  if (query.tier && query.tier !== "all") params.set("tier", query.tier);
+  if (query.enrollment) params.set("enrollment", query.enrollment);
+  const qs = params.toString();
+  const token = getAuthToken();
+  const data = await apiFetch(`/courses/public${qs ? `?${qs}` : ""}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return {
+    courses: data.courses || [],
+    pagination: data.pagination,
+    filter_options: data.filter_options || { categories: [], tiers: [] },
+  };
 };
 
 export const fetchMyEnrolledCourseIds = async (): Promise<number[]> => {
@@ -168,14 +213,6 @@ export const fetchMyEnrolledCourseIds = async (): Promise<number[]> => {
   });
   return data.course_ids || [];
 };
-
-export interface CourseWaitlistSummary {
-  course_id: number;
-  ticket_number: string;
-  timeframe: string | null;
-  status: string;
-  created_at: string;
-}
 
 export const fetchMyWaitlistEntries = async (): Promise<CourseWaitlistSummary[]> => {
   const token = getAuthToken();

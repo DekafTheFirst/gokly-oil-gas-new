@@ -4,6 +4,7 @@ import {
   ArrowDownToLine,
   ArrowLeft,
   ArrowRight,
+  BellRing,
   CalendarDays,
   Check,
   ClipboardList,
@@ -173,6 +174,15 @@ export default function TrainingBatches() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate("/training/waitlist")}>
+              <BellRing className="h-4 w-4" />
+              Course Waitlist
+              {(stats?.waitlist_count ?? 0) > 0 && (
+                <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  {stats?.waitlist_count}
+                </span>
+              )}
+            </Button>
             <Button variant="outline" onClick={() => exportSchedule(batches)} disabled={batches.length === 0}>
               <ArrowDownToLine className="h-4 w-4" />
               Export Current Page
@@ -305,6 +315,9 @@ export default function TrainingBatches() {
                       <td>
                         <span className="font-semibold">{batch.enrolled_count}</span>
                         <p className="mt-1 text-xs text-muted-foreground">enrolled</p>
+                        {(batch.waitlist_count ?? 0) > 0 && (
+                          <p className="mt-1 text-xs font-medium text-amber-700">{batch.waitlist_count} on waitlist</p>
+                        )}
                       </td>
                       <td className="min-w-36">
                         <p className="font-medium text-muted-foreground">Not assigned</p>

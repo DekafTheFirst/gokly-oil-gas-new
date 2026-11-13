@@ -14,6 +14,7 @@ import {
   Building2,
   Briefcase,
   CalendarDays,
+  BellRing,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -30,6 +31,7 @@ const ADMIN_ITEMS: Item[] = [
   { to: "/training/organization-management", label: "Organization Management", icon: Building2 },
   { to: "/training/engagement-management", label: "Engagements", icon: Briefcase },
   { to: "/training/batches", label: "Training Batches", icon: CalendarDays },
+  { to: "/training/waitlist", label: "Course Waitlist", icon: BellRing },
 
 ];
 

@@ -123,8 +123,8 @@ function formatDuration(course: { duration_value?: number | null; duration_unit?
 
 function statusLabel(status: string | null | undefined) {
   switch (status) {
-    case "ACTIVE": return "In progress";
-    case "UPCOMING": return "Upcoming";
+    case "IN_PROGRESS": return "In progress";
+    case "ENROLLED": return "Enrolled";
     case "PENDING_PAYMENT": return "Pending payment";
     case "COMPLETED": return "Completed";
     case "CANCELLED": return "Cancelled";
@@ -134,8 +134,8 @@ function statusLabel(status: string | null | undefined) {
 
 function statusStyles(status: string | null | undefined) {
   switch (status) {
-    case "ACTIVE": return "bg-emerald-100 text-emerald-900";
-    case "UPCOMING": return "bg-amber-100 text-amber-900";
+    case "IN_PROGRESS": return "bg-emerald-100 text-emerald-900";
+    case "ENROLLED": return "bg-sky-100 text-sky-900";
     case "PENDING_PAYMENT": return "bg-amber-100 text-amber-900";
     case "COMPLETED": return "bg-primary/10 text-primary";
     case "CANCELLED": return "bg-muted text-muted-foreground";

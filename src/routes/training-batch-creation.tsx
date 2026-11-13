@@ -288,6 +288,8 @@ export default function TrainingBatchCreation() {
   const [courses, setCourses] = useState<TrainingBatchCourseOption[]>([]);
   const [trainers, setTrainers] = useState<TrainingBatchTrainerOption[]>([]);
   const [allocationOptions, setAllocationOptions] = useState<TrainingBatchAllocationOption[]>([]);
+  const [waitlistCount, setWaitlistCount] = useState(0);
+  const [courseDataLoading, setCourseDataLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState("");
   const [locationId, setLocationId] = useState(LOCATIONS[0].id);
@@ -340,6 +342,7 @@ export default function TrainingBatchCreation() {
   const watchedAllocations = useWatch({ control, name: "allocations" });
   const trainerInCharge = watch("trainer_in_charge");
   const selectedCourse = courses.find((course) => course.id === Number(courseId));
+  const showCourseSections = Boolean(courseId) && !courseDataLoading;
   const selectedLocation = LOCATIONS.find((location) => location.id === locationId) ?? LOCATIONS[0];
 
   const allocationRows = useMemo(
@@ -416,6 +419,7 @@ export default function TrainingBatchCreation() {
     editLoadedRef.current = true;
     let mounted = true;
     const loadBatch = async () => {
+      setCourseDataLoading(true);
       try {
         const { batch } = await fetchTrainingBatch(editBatchId);
         if (!mounted) return;
@@ -461,12 +465,17 @@ export default function TrainingBatchCreation() {
               }
         )));
         const optionsResponse = await fetchTrainingBatchOptions(batch.course_id);
-        if (mounted) setAllocationOptions(optionsResponse.allocation_options);
+        if (mounted) {
+          setAllocationOptions(optionsResponse.allocation_options);
+          setWaitlistCount(optionsResponse.waitlist_count ?? 0);
+        }
       } catch (error) {
         if (!mounted) return;
         const message = error instanceof Error ? error.message : "Unable to load this training batch for editing.";
         toast.error(message);
         navigate("/training/batches");
+      } finally {
+        if (mounted) setCourseDataLoading(false);
       }
     };
     void loadBatch();
@@ -499,16 +508,21 @@ export default function TrainingBatchCreation() {
     allocations.replace([]);
     setValue("allocations", [], { shouldDirty: true, shouldValidate: true });
     setAllocationOptions([]);
+    setWaitlistCount(0);
+    setCourseDataLoading(true);
     clearErrors();
     try {
       const response = await fetchTrainingBatchOptions(course.id);
       if (requestId === allocationOptionsRequest.current) {
         setAllocationOptions(response.allocation_options);
+        setWaitlistCount(response.waitlist_count ?? 0);
       }
     } catch (error) {
       if (requestId !== allocationOptionsRequest.current) return;
       const message = error instanceof Error ? error.message : "Unable to load contract quotas for this course.";
       toast.error(message);
+    } finally {
+      if (requestId === allocationOptionsRequest.current) setCourseDataLoading(false);
     }
   };
 
@@ -834,7 +848,7 @@ export default function TrainingBatchCreation() {
             }}
             className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12"
           >
-            <div className="flex flex-col gap-12 lg:col-span-8">
+            <div className={`flex flex-col gap-12 ${showCourseSections ? "lg:col-span-8" : "lg:col-span-12"}`}>
               <section className="flex flex-col gap-6 rounded-xl bg-white p-6 shadow-sm">
                 <SectionHeading number="01" title="Course & Training Batch Foundation" description="Standardized petroleum syllabus and identifier taxonomy." badge="Accredited Rig Syllabus" />
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -926,6 +940,7 @@ export default function TrainingBatchCreation() {
                 </div>
               </section>
 
+              {showCourseSections && (<>
               <section className="flex flex-col gap-6 rounded-xl bg-white p-6 shadow-sm">
                 <SectionHeading number="02" title="Module Scheduling & Venue Logistics" description="Configure dates, times, and venue locations for each module in this training batch." />
                 <div className="flex items-center gap-3 rounded-xl border border-[#becabd]/30 bg-[#eff4ff] p-3">
@@ -1285,8 +1300,10 @@ export default function TrainingBatchCreation() {
                     const option = allocation.option;
                     const quota = allocation.allocation_type === "OPEN_ENROLLMENT" ? null : option;
                     const seatsRegistration = register(`allocations.${index}.seats_assigned`, { valueAsNumber: true });
-                    const fulfillment = quota?.agreed_quantity
-                      ? Math.min(100, Math.round((allocation.seats_assigned / quota.agreed_quantity) * 100))
+                    const isPublicSeats = allocation.allocation_type === "OPEN_ENROLLMENT";
+                    const fulfillmentTarget = quota?.agreed_quantity ?? (isPublicSeats ? waitlistCount : 0);
+                    const fulfillment = fulfillmentTarget
+                      ? Math.min(100, Math.round((allocation.seats_assigned / fulfillmentTarget) * 100))
                       : 0;
                     return (
                       <div key={allocation.id} className="grid grid-cols-1 items-center gap-3 border-b border-[#becabd]/20 px-4 py-4 transition-colors last:border-0 hover:bg-[#eff4ff] md:grid-cols-12">
@@ -1304,22 +1321,26 @@ export default function TrainingBatchCreation() {
                         </div>
                         <div className="flex flex-col gap-1 md:col-span-2">
                           <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-[#121c2a]"><FileText className="h-3.5 w-3.5 text-[#006030]" />{quota ? `${quota.agreed_quantity} Agreed Trainees` : "Public Seats"}</span>
-                          <span className="text-[10px] leading-tight text-[#3f4940]">{quota?.engagement_name || "Open Enrollment"}</span>
+                          <span className="text-[10px] leading-tight text-[#3f4940]">{quota ? quota.engagement_name : `${waitlistCount} on waitlist`}</span>
                         </div>
                         <div className="flex flex-col gap-1.5 md:col-span-3">
                           <div className="flex items-center justify-between gap-2 text-[11px]">
                             <span className="text-[#3f4940] md:hidden">Batch fulfillment</span>
                             <span className="text-[#3f4940]">
-                              {quota ? `${allocation.seats_assigned} of ${quota.agreed_quantity} agreed trainees assigned` : "Not applicable"}
+                              {quota
+                                ? `${allocation.seats_assigned} of ${quota.agreed_quantity} agreed trainees assigned`
+                                : isPublicSeats
+                                  ? `${allocation.seats_assigned} of ${waitlistCount} waitlisted assigned`
+                                  : "Not applicable"}
                             </span>
-                            {quota && <span className="shrink-0 font-mono text-[10px] font-semibold text-[#121c2a]">{fulfillment}%</span>}
+                            {fulfillmentTarget > 0 && <span className="shrink-0 font-mono text-[10px] font-semibold text-[#121c2a]">{fulfillment}%</span>}
                           </div>
-                          {quota && (
+                          {fulfillmentTarget > 0 && (
                             <div
                               role="progressbar"
-                              aria-label={`${quota.organization_name || quota.engagement_name} batch fulfillment`}
+                              aria-label={`${quota?.organization_name || quota?.engagement_name || "Public seats"} batch fulfillment`}
                               aria-valuemin={0}
-                              aria-valuemax={quota.agreed_quantity}
+                              aria-valuemax={fulfillmentTarget}
                               aria-valuenow={allocation.seats_assigned}
                               className="h-1.5 w-full overflow-hidden rounded-full bg-[#dee9fc]"
                             >
@@ -1364,8 +1385,10 @@ export default function TrainingBatchCreation() {
                   {allocationRows.length === 0 && <div className="px-4 py-8 text-center text-sm text-[#3f4940]">Add a contract quota or public enrollment seats.</div>}
                 </div>
               </section>
+              </>)}
             </div>
 
+            {showCourseSections && (
             <aside className="flex flex-col gap-6 lg:col-span-4">
               {deliveryMode !== "ONLINE" && (
                 <section className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm">
@@ -1389,6 +1412,7 @@ export default function TrainingBatchCreation() {
                 <p className="text-xs leading-relaxed text-[#3f4940]">All candidates must have verifiable NOGIC JQS candidate registration numbers submitted at least 48 hours prior to start date for certification filing.</p>
               </section>
             </aside>
+            )}
 
             <div className="flex flex-col justify-between gap-4 rounded-xl bg-white p-6 shadow-md sm:flex-row sm:items-center lg:col-span-12">
               <div className="flex flex-col">

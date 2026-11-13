@@ -41,8 +41,8 @@ type FundingFilter = "all" | "sponsored" | "self";
 
 const filters: { id: TrainingFilter; label: string }[] = [
   { id: "all", label: "All trainings" },
-  { id: "active", label: "Active" },
-  { id: "upcoming", label: "Upcoming" },
+  { id: "active", label: "In progress" },
+  { id: "upcoming", label: "Enrolled" },
   { id: "completed", label: "Completed" },
   { id: "cancelled", label: "Cancelled" },
 ];
@@ -75,16 +75,16 @@ function isSponsored(course: TraineeDashboardCourse) {
 
 function matchesStatus(course: TraineeDashboardCourse, filter: TrainingFilter) {
   if (filter === "all") return true;
-  if (filter === "active") return course.training_status === "ACTIVE";
-  if (filter === "upcoming") return course.training_status === "UPCOMING" || course.training_status === "PENDING_PAYMENT";
+  if (filter === "active") return course.training_status === "IN_PROGRESS";
+  if (filter === "upcoming") return course.training_status === "ENROLLED" || course.training_status === "PENDING_PAYMENT";
   if (filter === "completed") return course.training_status === "COMPLETED";
   return course.training_status === "CANCELLED";
 }
 
 function statusLabel(course: TraineeDashboardCourse) {
   switch (course.training_status) {
-    case "ACTIVE": return "Active";
-    case "UPCOMING": return "Upcoming";
+    case "IN_PROGRESS": return "In progress";
+    case "ENROLLED": return "Enrolled";
     case "PENDING_PAYMENT": return "Pending payment";
     case "COMPLETED": return "Completed";
     case "CANCELLED": return "Cancelled";
@@ -93,8 +93,8 @@ function statusLabel(course: TraineeDashboardCourse) {
 
 function statusStyles(course: TraineeDashboardCourse) {
   switch (course.training_status) {
-    case "ACTIVE": return "bg-emerald-100 text-emerald-900";
-    case "UPCOMING": return "bg-amber-100 text-amber-900";
+    case "IN_PROGRESS": return "bg-emerald-100 text-emerald-900";
+    case "ENROLLED": return "bg-sky-100 text-sky-900";
     case "PENDING_PAYMENT": return "bg-amber-100 text-amber-900";
     case "COMPLETED": return "bg-primary/10 text-primary";
     case "CANCELLED": return "bg-muted text-muted-foreground";
@@ -219,8 +219,8 @@ export default function Dashboard() {
 
   const counts = useMemo(() => ({
     all: courses.length,
-    active: courses.filter((course) => course.training_status === "ACTIVE").length,
-    upcoming: courses.filter((course) => ["UPCOMING", "PENDING_PAYMENT"].includes(course.training_status)).length,
+    active: courses.filter((course) => course.training_status === "IN_PROGRESS").length,
+    upcoming: courses.filter((course) => ["ENROLLED", "PENDING_PAYMENT"].includes(course.training_status)).length,
     completed: courses.filter((course) => course.training_status === "COMPLETED").length,
     cancelled: courses.filter((course) => course.training_status === "CANCELLED").length,
     sponsored: courses.filter(isSponsored).length,
@@ -244,8 +244,8 @@ export default function Dashboard() {
     });
   }, [courses, fundingFilter, search, statusFilter]);
 
-  const activeCourses = courses.filter((course) => course.training_status === "ACTIVE");
-  const upcomingCourses = courses.filter((course) => ["UPCOMING", "PENDING_PAYMENT"].includes(course.training_status));
+  const activeCourses = courses.filter((course) => course.training_status === "IN_PROGRESS");
+  const upcomingCourses = courses.filter((course) => ["ENROLLED", "PENDING_PAYMENT"].includes(course.training_status));
   const completedCourses = courses.filter((course) => course.training_status === "COMPLETED");
   const metricDetails = [
     activeCourses.slice(0, 2).map((course) => course.title).join(" · ") || "No active training",

@@ -14,7 +14,7 @@ export interface TraineeDashboardCourse {
   enrolled_at: string | null;
   enrollment_status: string | null;
   completed_at: string | null;
-  training_status: "ACTIVE" | "UPCOMING" | "COMPLETED" | "CANCELLED" | "PENDING_PAYMENT";
+  training_status: "ENROLLED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "PENDING_PAYMENT";
   source_type: string | null;
   sponsor_name: string | null;
   pending_amount_kobo: number | string | null;
@@ -102,7 +102,7 @@ export interface TraineeTrainingEnrollment {
   completed_at: string | null;
   completion_percentage: number;
   final_score: number | null;
-  training_status: "ACTIVE" | "UPCOMING" | "COMPLETED" | "CANCELLED" | "PENDING_PAYMENT";
+  training_status: "ENROLLED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "PENDING_PAYMENT";
   batch: TraineeTrainingBatch | null;
   sponsor: { name: string; email: string | null; phone: string | null } | null;
   engagement: { title: string | null; reference_number: string | null } | null;

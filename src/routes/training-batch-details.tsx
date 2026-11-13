@@ -3,6 +3,7 @@ import { useFieldArray, useForm, useWatch, type FieldPath } from "react-hook-for
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   BadgeCheck,
   Bell,
   Bookmark,
@@ -17,9 +18,11 @@ import {
   GraduationCap,
   Handshake,
   Loader2,
+  MailCheck,
   MapPin,
   Minus,
   Pencil,
+  Play,
   Plus,
   Rocket,
   RefreshCw,
@@ -32,6 +35,7 @@ import {
   Eye,
 } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -62,6 +66,7 @@ import {
   fetchTrainingBatchEnrollments,
   fetchTrainingBatchOptions,
   fetchTrainingBatchWaitlist,
+  transitionTrainingBatch,
   updateTrainingBatch,
   type TrainingBatchAllocationOption,
   type TrainingBatchCourseOption,
@@ -303,12 +308,15 @@ export default function TrainingBatchDetails() {
   const [courses, setCourses] = useState<TrainingBatchCourseOption[]>([]);
   const [trainers, setTrainers] = useState<TrainingBatchTrainerOption[]>([]);
   const [allocationOptions, setAllocationOptions] = useState<TrainingBatchAllocationOption[]>([]);
+  const [waitlistCount, setWaitlistCount] = useState(0);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState("");
   const [locationId, setLocationId] = useState(LOCATIONS[0].id);
   const [selectedQuotaIds, setSelectedQuotaIds] = useState<string[]>([]);
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
   const [pendingCourseId, setPendingCourseId] = useState<number | null>(null);
+  const [pendingTransition, setPendingTransition] = useState<"ACTIVE" | "COMPLETED" | null>(null);
+  const [transitioning, setTransitioning] = useState(false);
   const [contextVisible, setContextVisible] = useState(true);
   const allocationOptionsRequest = useRef(0);
   const loadedBatchRef = useRef<string | null>(null);
@@ -472,12 +480,32 @@ export default function TrainingBatchDetails() {
       )));
       const optionsResponse = await fetchTrainingBatchOptions(detail.course_id);
       setAllocationOptions(optionsResponse.allocation_options);
+      setWaitlistCount(optionsResponse.waitlist_count ?? 0);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load this training batch.";
       setBatchError(message);
       toast.error(message);
     } finally {
       setBatchLoading(false);
+    }
+  };
+
+  const runStatusTransition = async () => {
+    if (!batch || !pendingTransition) return;
+    setTransitioning(true);
+    try {
+      const { batch: updated } = await transitionTrainingBatch(batch.id, pendingTransition);
+      setBatch(updated);
+      toast.success(
+        pendingTransition === "ACTIVE"
+          ? "Batch started — registration and training can now proceed."
+          : "Batch marked complete.",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update the batch status.");
+    } finally {
+      setTransitioning(false);
+      setPendingTransition(null);
     }
   };
 
@@ -516,11 +544,13 @@ export default function TrainingBatchDetails() {
     allocations.replace([]);
     setValue("allocations", [], { shouldDirty: true, shouldValidate: true });
     setAllocationOptions([]);
+    setWaitlistCount(0);
     clearErrors();
     try {
       const response = await fetchTrainingBatchOptions(course.id);
       if (requestId === allocationOptionsRequest.current) {
         setAllocationOptions(response.allocation_options);
+        setWaitlistCount(response.waitlist_count ?? 0);
       }
     } catch (error) {
       if (requestId !== allocationOptionsRequest.current) return;
@@ -833,13 +863,33 @@ export default function TrainingBatchDetails() {
             ) : (
               <>
                 <ActionButton type="button" onClick={() => navigate("/training/batches")} className="bg-[#eff4ff] text-[#121c2a] hover:bg-[#e6eeff]">
-                  <X className="h-[18px] w-[18px]" />Back to Batches
+                  <ArrowLeft className="h-[18px] w-[18px]" />Back to Batches
                 </ActionButton>
+                {batch && batch.status === "UPCOMING" && (
+                  <ActionButton
+                    type="button"
+                    onClick={() => setPendingTransition("ACTIVE")}
+                    disabled={transitioning}
+                    className="bg-[#1b7a43] text-white shadow-sm hover:bg-[#006030] hover:shadow"
+                  >
+                    <Play className="h-[18px] w-[18px]" />Start Batch
+                  </ActionButton>
+                )}
+                {batch && batch.status === "ACTIVE" && (
+                  <ActionButton
+                    type="button"
+                    onClick={() => setPendingTransition("COMPLETED")}
+                    disabled={transitioning}
+                    className="bg-[#dee9fc] text-[#006030] hover:bg-[#d9e3f6]"
+                  >
+                    <CircleCheck className="h-[18px] w-[18px]" />Mark Complete
+                  </ActionButton>
+                )}
                 {batch && (
                   <ActionButton
                     type="button"
                     onClick={() => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("edit", "1"); return next; })}
-                    className="bg-[#1b7a43] text-white shadow-sm hover:bg-[#006030] hover:shadow"
+                    className="bg-[#eff4ff] text-[#121c2a] hover:bg-[#e6eeff]"
                   >
                     <Pencil className="h-[18px] w-[18px]" />Edit Batch
                   </ActionButton>
@@ -859,7 +909,7 @@ export default function TrainingBatchDetails() {
             <div className="flex flex-col items-center gap-4 rounded-xl border border-red-200 bg-red-50 p-10 text-center">
               <p className="text-sm font-semibold text-red-800">{batchError || "Training batch not found."}</p>
               <ActionButton type="button" onClick={() => navigate("/training/batches")} className="bg-white text-[#121c2a] hover:bg-[#eff4ff]">
-                <X className="h-4 w-4" />Back to Batches
+                <ArrowLeft className="h-4 w-4" />Back to Batches
               </ActionButton>
             </div>
           ) : editing ? (
@@ -1357,8 +1407,10 @@ export default function TrainingBatchDetails() {
                     const option = allocation.option;
                     const quota = allocation.allocation_type === "OPEN_ENROLLMENT" ? null : option;
                     const seatsRegistration = register(`allocations.${index}.seats_assigned`, { valueAsNumber: true });
-                    const fulfillment = quota?.agreed_quantity
-                      ? Math.min(100, Math.round((allocation.seats_assigned / quota.agreed_quantity) * 100))
+                    const isPublicSeats = allocation.allocation_type === "OPEN_ENROLLMENT";
+                    const fulfillmentTarget = quota?.agreed_quantity ?? (isPublicSeats ? waitlistCount : 0);
+                    const fulfillment = fulfillmentTarget
+                      ? Math.min(100, Math.round((allocation.seats_assigned / fulfillmentTarget) * 100))
                       : 0;
                     return (
                       <div key={allocation.id} className="grid grid-cols-1 items-center gap-3 border-b border-[#becabd]/20 px-4 py-4 transition-colors last:border-0 hover:bg-[#eff4ff] md:grid-cols-12">
@@ -1376,22 +1428,26 @@ export default function TrainingBatchDetails() {
                         </div>
                         <div className="flex flex-col gap-1 md:col-span-2">
                           <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-[#121c2a]"><FileText className="h-3.5 w-3.5 text-[#006030]" />{quota ? `${quota.agreed_quantity} Agreed Trainees` : "Public Seats"}</span>
-                          <span className="text-[10px] leading-tight text-[#3f4940]">{quota?.engagement_name || "Open Enrollment"}</span>
+                          <span className="text-[10px] leading-tight text-[#3f4940]">{quota ? quota.engagement_name : `${waitlistCount} on waitlist`}</span>
                         </div>
                         <div className="flex flex-col gap-1.5 md:col-span-3">
                           <div className="flex items-center justify-between gap-2 text-[11px]">
                             <span className="text-[#3f4940] md:hidden">Batch fulfillment</span>
                             <span className="text-[#3f4940]">
-                              {quota ? `${allocation.seats_assigned} of ${quota.agreed_quantity} agreed trainees assigned` : "Not applicable"}
+                              {quota
+                                ? `${allocation.seats_assigned} of ${quota.agreed_quantity} agreed trainees assigned`
+                                : isPublicSeats
+                                  ? `${allocation.seats_assigned} of ${waitlistCount} waitlisted assigned`
+                                  : "Not applicable"}
                             </span>
-                            {quota && <span className="shrink-0 font-mono text-[10px] font-semibold text-[#121c2a]">{fulfillment}%</span>}
+                            {fulfillmentTarget > 0 && <span className="shrink-0 font-mono text-[10px] font-semibold text-[#121c2a]">{fulfillment}%</span>}
                           </div>
-                          {quota && (
+                          {fulfillmentTarget > 0 && (
                             <div
                               role="progressbar"
-                              aria-label={`${quota.organization_name || quota.engagement_name} batch fulfillment`}
+                              aria-label={`${quota?.organization_name || quota?.engagement_name || "Public seats"} batch fulfillment`}
                               aria-valuemin={0}
-                              aria-valuemax={quota.agreed_quantity}
+                              aria-valuemax={fulfillmentTarget}
                               aria-valuenow={allocation.seats_assigned}
                               className="h-1.5 w-full overflow-hidden rounded-full bg-[#dee9fc]"
                             >
@@ -1588,6 +1644,18 @@ export default function TrainingBatchDetails() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <ConfirmDialog
+            open={pendingTransition !== null}
+            onOpenChange={(open) => { if (!open && !transitioning) setPendingTransition(null); }}
+            title={pendingTransition === "ACTIVE" ? "Start this batch?" : "Mark this batch complete?"}
+            description={
+              pendingTransition === "ACTIVE"
+                ? "The batch will move to In Progress. Enrolled trainees will see their training as active and attendance/progress can begin."
+                : "The batch will be marked Completed. This does not issue certificates — that stays a separate step."
+            }
+            confirmLabel={pendingTransition === "ACTIVE" ? "Start Batch" : "Mark Complete"}
+            onConfirm={() => void runStatusTransition()}
+          />
         </div>
       </div>
     </AdminPageShell>
@@ -1949,11 +2017,9 @@ function BatchDetailsView({ batch }: { batch: TrainingBatchDetail }) {
                     <th className="px-5 py-3">Name</th>
                     <th className="px-5 py-3">Email</th>
                     <th className="px-5 py-3">Phone</th>
-                    <th className="px-5 py-3">Organization</th>
                     <th className="px-5 py-3">Target Date</th>
-                    <th className="px-5 py-3">Notes</th>
                     <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Joined</th>
+                    <th className="px-5 py-3">Notified</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1963,11 +2029,7 @@ function BatchDetailsView({ batch }: { batch: TrainingBatchDetail }) {
                       <td className="px-5 py-3 font-semibold text-[#121c2a]">{entry.full_name}</td>
                       <td className="px-5 py-3 text-xs text-[#3f4940]">{entry.email}</td>
                       <td className="px-5 py-3 text-xs text-[#3f4940]">{entry.phone || "—"}</td>
-                      <td className="px-5 py-3 text-xs text-[#3f4940]">{entry.organization || "—"}</td>
                       <td className="px-5 py-3 text-xs text-[#3f4940]">{entry.timeframe || "—"}</td>
-                      <td className="max-w-[220px] truncate px-5 py-3 text-xs text-[#3f4940]" title={entry.notes || undefined}>
-                        {entry.notes || "—"}
-                      </td>
                       <td className="px-5 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                           entry.status === "WAITLISTED" ? "bg-[#dee9fc] text-[#3f4940]"
@@ -1977,7 +2039,15 @@ function BatchDetailsView({ batch }: { batch: TrainingBatchDetail }) {
                           {entry.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#3f4940]">{formatBatchDateTime(entry.created_at)}</td>
+                      <td className="px-5 py-3">
+                        {entry.notified_at ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#afeec2] px-2 py-0.5 text-[11px] font-bold text-[#336e4b]">
+                            <MailCheck className="h-3 w-3" />{formatBatchDateTime(entry.notified_at)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#3f4940]">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

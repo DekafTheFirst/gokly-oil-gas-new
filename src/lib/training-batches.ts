@@ -152,6 +152,7 @@ export interface TrainingBatchWaitlistEntry {
   timeframe: string | null;
   notes: string | null;
   status: string;
+  notified_at: string | null;
   created_at: string;
 }
 
@@ -185,6 +186,7 @@ export async function fetchTrainingBatchOptions(courseId?: number) {
     courses: TrainingBatchCourseOption[];
     trainers: TrainingBatchTrainerOption[];
     allocation_options: TrainingBatchAllocationOption[];
+    waitlist_count?: number;
   }>;
 }
 
@@ -251,4 +253,12 @@ export async function updateTrainingBatch(batchId: string, payload: TrainingBatc
     headers: authHeaders(),
     body: payload,
   }) as Promise<{ batch: TrainingBatchListItem }>;
+}
+
+export async function transitionTrainingBatch(batchId: string, status: "ACTIVE" | "COMPLETED") {
+  return apiFetch(`/training-batches/${encodeURIComponent(batchId)}/status`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: { status },
+  }) as Promise<{ batch: TrainingBatchDetail }>;
 }

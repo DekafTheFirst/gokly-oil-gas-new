@@ -114,14 +114,45 @@ export interface TrainingBatchDetail extends Omit<
   TrainingBatchListItem,
   "enrolled_count" | "session_count" | "allocation_count"
 > {
+  enrolled_count: number;
+  waitlist_count: number;
   notes?: string | null;
   online_url?: string | null;
+  course_code?: string | null;
+  course_delivery_mode?: "PHYSICAL" | "ONLINE" | "HYBRID" | null;
   registration_start_date?: string | null;
   registration_end_date?: string | null;
   trainer_in_charge?: number | null;
   trainer_in_charge_name?: string | null;
   sessions: TrainingBatchSession[];
   allocations: TrainingBatchAllocationDetail[];
+}
+
+export interface TrainingBatchEnrollment {
+  id: number;
+  enrollment_number: string | null;
+  status: string | null;
+  source_type: string | null;
+  enrolled_at: string | null;
+  completed_at: string | null;
+  completion_percentage: number | null;
+  final_score: number | null;
+  trainee_name: string | null;
+  email: string | null;
+  organization_name: string | null;
+}
+
+export interface TrainingBatchWaitlistEntry {
+  id: string;
+  ticket_number: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  organization: string | null;
+  timeframe: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
 }
 
 export interface TrainingBatchStats {
@@ -192,6 +223,18 @@ export async function fetchTrainingBatch(batchId: string) {
   return apiFetch(`/training-batches/${encodeURIComponent(batchId)}`, {
     headers: authHeaders(),
   }) as Promise<{ batch: TrainingBatchDetail }>;
+}
+
+export async function fetchTrainingBatchEnrollments(batchId: string) {
+  return apiFetch(`/training-batches/${encodeURIComponent(batchId)}/enrollments`, {
+    headers: authHeaders(),
+  }) as Promise<{ enrollments: TrainingBatchEnrollment[] }>;
+}
+
+export async function fetchTrainingBatchWaitlist(batchId: string) {
+  return apiFetch(`/training-batches/${encodeURIComponent(batchId)}/waitlist`, {
+    headers: authHeaders(),
+  }) as Promise<{ waitlist: TrainingBatchWaitlistEntry[] }>;
 }
 
 export async function createTrainingBatch(payload: TrainingBatchPayload) {

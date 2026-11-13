@@ -20,13 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  fetchTrainingBatch,
   fetchTrainingBatches,
   fetchTrainingBatchStats,
-  type TrainingBatchDetail,
   type TrainingBatchListItem,
   type TrainingBatchStats,
 } from "@/lib/training-batches";
@@ -58,22 +55,6 @@ function formatDateRange(batch: Pick<TrainingBatchListItem, "start_date" | "end_
   if (!batch.start_date) return `Through ${formatDate(batch.end_date)}`;
   if (!batch.end_date || batch.start_date === batch.end_date) return formatDate(batch.start_date);
   return `${formatDate(batch.start_date)} – ${formatDate(batch.end_date)}`;
-}
-
-function safeMeetUrl(value?: string | null) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:"
-      && url.hostname === "meet.google.com"
-      && !url.port
-      && !url.username
-      && !url.password
-      ? url.href
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 function exportSchedule(batches: TrainingBatchListItem[]) {
@@ -116,9 +97,6 @@ export default function TrainingBatches() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState<TrainingBatchDetail | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,19 +154,8 @@ export default function TrainingBatches() {
     setPage(1);
   };
 
-  const openBatchDetails = async (batchId: string) => {
-    setDetailOpen(true);
-    setDetailLoading(true);
-    setSelectedBatch(null);
-    try {
-      const response = await fetchTrainingBatch(batchId);
-      setSelectedBatch(response.batch);
-    } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : "Unable to load training batch details.";
-      toast.error(message);
-    } finally {
-      setDetailLoading(false);
-    }
+  const openBatchDetails = (batchId: string) => {
+    navigate(`/training/batches/${batchId}`);
   };
 
   return (
@@ -315,7 +282,7 @@ export default function TrainingBatches() {
                       <td className="max-w-[270px]">
                         <button
                           type="button"
-                          onClick={() => void openBatchDetails(batch.id)}
+                          onClick={() => openBatchDetails(batch.id)}
                           className="text-left font-mono text-xs font-semibold text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           aria-label={`View details for batch ${batch.batch_code}`}
                         >
@@ -350,22 +317,20 @@ export default function TrainingBatches() {
                       <td><Badge variant="outline" className={STATUS_STYLES[batch.status]}>{STATUS_LABELS[batch.status]}</Badge></td>
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {batch.status === "DRAFT" && (
-                            <Button
-                              aria-label={`Edit ${batch.batch_code}`}
-                              size="icon"
-                              variant="ghost"
-                              title="Edit draft batch"
-                              onClick={() => navigate(`/training/batches/create?edit=${batch.id}`)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            aria-label={`Edit ${batch.batch_code}`}
+                            size="icon"
+                            variant="ghost"
+                            title="Edit batch"
+                            onClick={() => navigate(`/training/batches/${batch.id}?edit=1`)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             aria-label={`Preview ${batch.batch_code}`}
                             size="icon"
                             variant="ghost"
-                            onClick={() => void openBatchDetails(batch.id)}
+                            onClick={() => openBatchDetails(batch.id)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -396,82 +361,6 @@ export default function TrainingBatches() {
             {error}
           </div>
         )}
-
-        <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{selectedBatch?.name ?? "Training batch details"}</DialogTitle>
-              <DialogDescription>
-                {selectedBatch
-                  ? `${selectedBatch.batch_code} · ${selectedBatch.course_title}`
-                  : "Review the schedule and seat allocations for this training batch."}
-              </DialogDescription>
-            </DialogHeader>
-            {detailLoading ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Loading batch details…</p>
-            ) : selectedBatch ? (
-              <div className="space-y-5">
-                <div className="grid gap-3 rounded-lg bg-muted/50 p-4 text-sm sm:grid-cols-2">
-                  <p><span className="font-semibold">Status:</span> {STATUS_LABELS[selectedBatch.status]}</p>
-                  <p><span className="font-semibold">Dates:</span> {formatDateRange(selectedBatch)}</p>
-                  <p><span className="font-semibold">Location:</span> {selectedBatch.location || (selectedBatch.delivery_mode === "ONLINE" ? "Online" : "Not assigned")}</p>
-                  <p><span className="font-semibold">Capacity:</span> {selectedBatch.capacity ?? "Not set"}</p>
-                  <p><span className="font-semibold">Minimum quorum:</span> {selectedBatch.min_quorum ?? "Not set"}</p>
-                  <p><span className="font-semibold">Delivery:</span> {selectedBatch.delivery_mode}</p>
-                  <p><span className="font-semibold">Trainer in charge:</span> {selectedBatch.trainer_in_charge_name || "Not assigned"}</p>
-                  <p>
-                    <span className="font-semibold">Registration window:</span>{" "}
-                    {selectedBatch.registration_start_date || selectedBatch.registration_end_date
-                      ? `${formatDate(selectedBatch.registration_start_date)} – ${formatDate(selectedBatch.registration_end_date)}`
-                      : "Open"}
-                  </p>
-                </div>
-                <section>
-                  <h3 className="mb-2 text-sm font-semibold">Sessions ({selectedBatch.sessions.length})</h3>
-                  {selectedBatch.sessions.length ? (
-                    <ul className="space-y-2">
-                      {selectedBatch.sessions.map((session) => {
-                        const meetUrl = safeMeetUrl(session.online_url);
-                        return (
-                          <li key={session.id ?? `${session.session_date}-${session.title}`} className="rounded-lg border border-border p-3 text-sm">
-                            <p className="font-medium">{session.title}</p>
-                            <p className="mt-1 text-muted-foreground">
-                              {formatDate(session.session_date)} · {session.start_time}–{session.end_time}
-                              {session.location ? ` · ${session.location}` : selectedBatch.delivery_mode === "ONLINE" ? " · Online" : ""}
-                            </p>
-                            {meetUrl && (
-                              <a
-                                href={meetUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 inline-flex text-sm font-medium text-primary underline underline-offset-4"
-                              >
-                                Join Google Meet
-                              </a>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : <p className="text-sm text-muted-foreground">No sessions added.</p>}
-                </section>
-                <section>
-                  <h3 className="mb-2 text-sm font-semibold">Seat allocations ({selectedBatch.allocations.length})</h3>
-                  {selectedBatch.allocations.length ? (
-                    <ul className="space-y-2">
-                      {selectedBatch.allocations.map((allocation) => (
-                        <li key={allocation.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
-                          <span>{allocation.organization_name || (allocation.allocation_type === "OPEN_ENROLLMENT" ? "Open enrollment" : allocation.engagement_name || "Contract allocation")}</span>
-                          <span className="font-semibold">{allocation.seats_assigned} seats</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <p className="text-sm text-muted-foreground">No seat allocations added.</p>}
-                </section>
-              </div>
-            ) : null}
-          </DialogContent>
-        </Dialog>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="rounded-xl border border-border bg-card p-5 shadow-sm">

@@ -1,5 +1,6 @@
 import { apiFetch } from "./api";
 import { getAuthToken } from "./auth";
+import type { ModuleMaterial } from "../components/educert/ModuleMaterials";
 
 export interface TraineeDashboardCourse {
   enrollment_id: number | null;
@@ -138,6 +139,7 @@ export interface TraineeTrainingModule {
   assessment_score: string | number | null;
   assessment_passed: boolean | null;
   assessment_graded_at: string | null;
+  materials?: ModuleMaterial[] | null;
 }
 
 export interface TraineeTrainingSession {

@@ -43,6 +43,7 @@ import EngagementCreation from "./routes/engagement-creation";
 import EngagementDetails from "./routes/engagement-details";
 import TrainingBatches from "./routes/training-batches";
 import TrainingBatchCreation from "./routes/training-batch-creation";
+import TrainingBatchDetails from "./routes/training-batch-details";
 import Trainees from "./routes/trainees";
 import TraineeCreation from "./routes/trainee-creation";
 
@@ -104,6 +105,7 @@ const AppRoutes = () => {
         <Route path="/training/engagement-creation" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EngagementCreation /></ProtectedRoute>} />
         <Route path="/training/batches" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBatches /></ProtectedRoute>} />
         <Route path="/training/batches/create" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBatchCreation /></ProtectedRoute>} />
+        <Route path="/training/batches/:batchId" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBatchDetails /></ProtectedRoute>} />
         <Route path="/training/verify" element={<TrainingVerify />} />
         <Route path="/public-verification" element={<PublicVerification />} />
         <Route path="*" element={<NotFound />} />

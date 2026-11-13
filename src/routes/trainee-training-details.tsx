@@ -13,6 +13,7 @@ import {
   Clock3,
   CreditCard,
   Download,
+  FileText,
   GraduationCap,
   Headset,
   IdCard,
@@ -1053,10 +1054,43 @@ function ModuleRow({ module, index }: { module: TraineeTrainingModule; index: nu
               <span className="inline-flex items-center gap-1 font-semibold text-primary">{Math.round(pct)}% complete</span>
             )}
           </div>
+          {module.materials && module.materials.length > 0 && (
+            <div className="mt-2.5 flex flex-col gap-1.5">
+              {module.materials.map((material, materialIndex) => {
+                const url = materialDownloadUrl(material);
+                if (!url) return null;
+                return (
+                  <a
+                    key={`${material.name}-${materialIndex}`}
+                    href={url}
+                    download={material.name}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex w-fit max-w-full items-center gap-2 rounded-lg border border-border/60 bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/[0.04]"
+                  >
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span className="truncate">{material.name}</span>
+                    <Download className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function materialDownloadUrl(material: { url?: string | null }): string | null {
+  const url = material?.url;
+  if (!url) return null;
+  // Cloudinary delivery URLs ignore the `download` attribute cross-origin;
+  // fl_attachment forces a real download with the original filename.
+  if (url.includes("res.cloudinary.com") && url.includes("/upload/") && !url.includes("fl_attachment")) {
+    return url.replace("/upload/", "/upload/fl_attachment/");
+  }
+  return url;
 }
 
 function ReadinessRow({

@@ -636,23 +636,24 @@ export default function TraineeTrainingDetails() {
                   }
                 />
 
-                {sessions.length > 0 && (
+                {modules.length > 0 && (
                   <div className="flex flex-col gap-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Batch sessions</span>
-                    {sessions.map((session) => (
-                      <SessionRow key={session.id} session={session} />
+                    {modules.map((module, index) => (
+                      <ModuleRow
+                        key={module.id}
+                        module={module}
+                        index={index}
+                        sessions={sessions.filter((s) => s.course_module_id != null && Number(s.course_module_id) === Number(module.id))}
+                      />
                     ))}
                   </div>
                 )}
 
-                {modules.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Course modules</span>
-                    {modules.map((module, index) => (
-                      <ModuleRow key={module.id} module={module} index={index} />
-                    ))}
-                  </div>
-                )}
+                {sessions
+                  .filter((s) => s.course_module_id == null || !modules.some((m) => Number(m.id) === Number(s.course_module_id)))
+                  .map((session) => (
+                    <SessionRow key={session.id} session={session} />
+                  ))}
 
                 {!modules.length && !sessions.length && (
                   <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
@@ -999,7 +1000,15 @@ function SessionRow({ session }: { session: TraineeTrainingSession }) {
   );
 }
 
-function ModuleRow({ module, index }: { module: TraineeTrainingModule; index: number }) {
+function ModuleRow({
+  module,
+  index,
+  sessions = [],
+}: {
+  module: TraineeTrainingModule;
+  index: number;
+  sessions?: TraineeTrainingSession[];
+}) {
   const progress = moduleProgress(module);
   const pct = Number(module.progress_percentage || 0);
   const assessmentScore = module.assessment_score !== null ? Number(module.assessment_score) : null;
@@ -1054,6 +1063,81 @@ function ModuleRow({ module, index }: { module: TraineeTrainingModule; index: nu
               <span className="inline-flex items-center gap-1 font-semibold text-primary">{Math.round(pct)}% complete</span>
             )}
           </div>
+          {sessions.length > 0 && (
+            <div className="mt-2.5 flex flex-col gap-1.5">
+              {sessions.map((session) => {
+                const attended = ["PRESENT", "LATE"].includes(session.attendance_status || "");
+                const missed = session.attendance_status === "ABSENT" || session.attendance_status === "EXCUSED";
+                const isPast = new Date(session.session_date).getTime() < Date.now();
+                const statusLabel = attended ? "Attended" : missed ? "Missed" : isPast ? "No record" : "Upcoming";
+                const accent = attended
+                  ? "border-emerald-300 bg-emerald-50"
+                  : missed
+                    ? "border-red-300 bg-red-50"
+                    : isPast
+                      ? "border-border bg-muted/70"
+                      : "border-primary/30 bg-primary/[0.06]";
+                return (
+                  <div
+                    key={session.id}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-xs shadow-sm ${accent}`}
+                  >
+                    <span
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+                        attended
+                          ? "bg-emerald-600 text-white"
+                          : missed
+                            ? "bg-red-500 text-white"
+                            : isPast
+                              ? "bg-muted text-muted-foreground ring-1 ring-border"
+                              : "bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      {attended ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : missed ? (
+                        <Lock className="h-3.5 w-3.5" />
+                      ) : (
+                        <CalendarDays className="h-4 w-4" />
+                      )}
+                    </span>
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <span className="font-bold text-foreground">
+                        {formatDate(session.session_date)}
+                        {session.start_time ? ` · ${formatTime(session.start_time)}` : ""}
+                        {session.end_time ? ` – ${formatTime(session.end_time)}` : ""}
+                      </span>
+                      {session.trainer_name && (
+                        <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                          <GraduationCap className="h-3 w-3" />
+                          {session.trainer_name}
+                        </span>
+                      )}
+                      {session.location && (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          {session.location}
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                        attended
+                          ? "bg-emerald-600 text-white"
+                          : missed
+                            ? "bg-red-500 text-white"
+                            : isPast
+                              ? "bg-muted-foreground/80 text-white"
+                              : "bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      {statusLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {module.materials && module.materials.length > 0 && (
             <div className="mt-2.5 flex flex-col gap-1.5">
               {module.materials.map((material, materialIndex) => {
@@ -1082,13 +1166,28 @@ function ModuleRow({ module, index }: { module: TraineeTrainingModule; index: nu
   );
 }
 
-function materialDownloadUrl(material: { url?: string | null }): string | null {
+function materialDownloadFlag(name: string | null | undefined): string {
+  // Cloudinary's fl_attachment flag: the value must not contain "." or
+  // characters like &, —, %, (, ) — Cloudinary appends the real file
+  // extension itself, so we strip any extension from the display name.
+  const cleanName = String(name || "")
+    .replace(/\.[a-z0-9]{2,5}$/i, "")
+    .replace(/[^A-Za-z0-9 _-]+/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/-{2,}/g, "-")
+    .trim();
+  return cleanName || "material";
+}
+
+function materialDownloadUrl(material: { url?: string | null; name?: string | null }): string | null {
   const url = material?.url;
   if (!url) return null;
   // Cloudinary delivery URLs ignore the `download` attribute cross-origin;
-  // fl_attachment forces a real download with the original filename.
+  // fl_attachment:<name> forces a download and Cloudinary appends the
+  // file's real extension automatically.
   if (url.includes("res.cloudinary.com") && url.includes("/upload/") && !url.includes("fl_attachment")) {
-    return url.replace("/upload/", "/upload/fl_attachment/");
+    const flag = materialDownloadFlag(material.name);
+    return url.replace("/upload/", `/upload/fl_attachment:${encodeURIComponent(flag)}/`);
   }
   return url;
 }

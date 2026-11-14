@@ -314,6 +314,7 @@ export default function EngagementManagement() {
                 <th className="py-3 px-4 font-semibold">Agreed Trainees</th>
                 <th className="py-3 px-4 font-semibold">Start Date</th>
                 <th className="py-3 px-4 font-semibold">Amount</th>
+                <th className="py-3 px-4 font-semibold">Payment</th>
                 <th className="py-3 px-4 font-semibold">Status</th>
                 <th className="py-3 px-4 font-semibold">Created</th>
                 <th className="py-3 px-4 font-semibold text-right">Actions</th>
@@ -322,13 +323,13 @@ export default function EngagementManagement() {
             <tbody className="divide-y divide-border text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-muted-foreground">
+                  <td colSpan={10} className="py-8 text-center text-muted-foreground">
                     Loading...
                   </td>
                 </tr>
               ) : engagements.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-muted-foreground">
+                  <td colSpan={10} className="py-8 text-center text-muted-foreground">
                     No engagements found
                   </td>
                 </tr>
@@ -371,6 +372,23 @@ export default function EngagementManagement() {
                     </td>
                     <td className="py-4 px-4 font-bold">
                       {formatCurrency(engagement.total_amount, engagement.currency)}
+                    </td>
+                    <td className="py-4 px-4">
+                      <Badge
+                        className={
+                          engagement.payment_status === "PAID"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : engagement.payment_status === "PENDING"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-slate-100 text-slate-600"
+                        }
+                      >
+                        {engagement.payment_status === "PAID"
+                          ? "Paid"
+                          : engagement.payment_status === "PENDING"
+                            ? "Invoice sent"
+                            : "Unpaid"}
+                      </Badge>
                     </td>
                     <td className="py-4 px-4">
                       <Badge className={getStatusColor(engagement.status)}>

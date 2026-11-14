@@ -41,6 +41,7 @@ import OrganizationDetails from "./routes/organization-details";
 import EngagementManagement from "./routes/engagement-management";
 import EngagementCreation from "./routes/engagement-creation";
 import EngagementDetails from "./routes/engagement-details";
+import EngagementInvoicePage from "./routes/engagement-invoice";
 import TrainingBatches from "./routes/training-batches";
 import CourseWaitlistAdmin from "./routes/course-waitlist-admin";
 import TrainingBatchCreation from "./routes/training-batch-creation";
@@ -55,7 +56,7 @@ const TRAINEE_ROLES = ["TRAINEE", "STUDENT"];
 const AppRoutes = () => {
   const location = useLocation();
   const isEmailVerificationPage = location.pathname === "/auth/verify-email";
-  const usesTrainingShell = location.pathname.startsWith("/training") || location.pathname === "/profile";
+  const usesTrainingShell = location.pathname.startsWith("/training") || location.pathname === "/profile" || location.pathname.startsWith("/pay");
   const showNavbar = !usesTrainingShell;
   const showFooter = showNavbar && !isEmailVerificationPage;
 
@@ -104,6 +105,7 @@ const AppRoutes = () => {
         <Route path="/training/engagement-management" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EngagementManagement /></ProtectedRoute>} />
         <Route path="/training/engagement-management/:engagementId" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EngagementDetails /></ProtectedRoute>} />
         <Route path="/training/engagement-creation" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EngagementCreation /></ProtectedRoute>} />
+        <Route path="/pay/invoice/:reference" element={<EngagementInvoicePage />} />
         <Route path="/training/batches" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBatches /></ProtectedRoute>} />
         <Route path="/training/waitlist" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CourseWaitlistAdmin /></ProtectedRoute>} />
         <Route path="/training/batches/create" element={<ProtectedRoute allowedRoles={["ADMIN"]}><TrainingBatchCreation /></ProtectedRoute>} />
@@ -113,7 +115,7 @@ const AppRoutes = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {showFooter && <Footer />}
-      <ChatBot />
+      {!location.pathname.startsWith("/pay") && <ChatBot />}
     </>
   );
 };

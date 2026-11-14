@@ -157,6 +157,7 @@ export interface TraineeTrainingSession {
   trainer_name: string | null;
   attendance_status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | null;
   check_in_at: string | null;
+  course_module_id: number | null;
 }
 
 export interface TraineeTrainingAssessment {

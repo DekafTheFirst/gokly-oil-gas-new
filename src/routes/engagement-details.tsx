@@ -11,9 +11,13 @@ import {
   FileCheck2,
   FileText,
   Info,
+  LayoutDashboard,
   Users,
+  Wallet,
 } from "lucide-react";
 import { fetchEngagementById, type EngagementRecord } from "@/lib/engagements";
+import { EngagementTraineesTab } from "@/components/educert/EngagementTraineesTab";
+import { EngagementPaymentsTab } from "@/components/educert/EngagementPaymentsTab";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,6 +100,7 @@ export default function EngagementDetails() {
   const navigate = useNavigate();
   const [engagement, setEngagement] = useState<EngagementRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"overview" | "trainees" | "payments">("overview");
 
   useEffect(() => {
     if (!engagementId) {
@@ -203,6 +208,34 @@ export default function EngagementDetails() {
               </Badge>
             </div>
 
+            <nav className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm" aria-label="Engagement sections">
+              {([
+                { id: "overview", label: "Overview", icon: LayoutDashboard },
+                { id: "trainees", label: "Trainees", icon: Users },
+                { id: "payments", label: "Payments", icon: Wallet },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={activeTab === tab.id ? "page" : undefined}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                    activeTab === tab.id
+                      ? "bg-emerald-700 text-white"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+
+            {activeTab === "trainees" && <EngagementTraineesTab engagement={engagement} />}
+            {activeTab === "payments" && <EngagementPaymentsTab engagement={engagement} />}
+
+            {activeTab === "overview" && (
+            <>
             <section aria-label="Engagement summary" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
                 label="Engagement value"
@@ -446,9 +479,13 @@ export default function EngagementDetails() {
                     <Detail label="Payment due window" value={engagement.payment_due_window} />
                   </dl>
 
-                  <div className="rounded-lg border border-slate-200 p-3 text-xs leading-relaxed text-slate-500">
-                    Invoice and payment activity is not available on this engagement record.
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("payments")}
+                    className="rounded-lg border border-slate-200 p-3 text-left text-xs leading-relaxed text-slate-500 transition-colors hover:border-emerald-300 hover:text-emerald-800"
+                  >
+                    Payment activity is tracked in the <span className="font-semibold">Payments</span> tab — generate a Paystack link and monitor receipts there.
+                  </button>
                 </section>
 
                 <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -492,6 +529,8 @@ export default function EngagementDetails() {
                 </section>
               </aside>
             </div>
+            </>
+            )}
           </>
         )}
       </main>

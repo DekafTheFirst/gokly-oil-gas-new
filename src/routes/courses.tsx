@@ -16,8 +16,15 @@ import {
   XCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
-import { fetchPublicCourses, formatShortCourseDate, type CourseEnrollmentBatch, type CoursePagination, type CourseRecord } from "@/lib/courses";
+import { fetchPublicCourses, formatShortCourseDate, type CourseCatalogSort, type CourseEnrollmentBatch, type CoursePagination, type CourseRecord } from "@/lib/courses";
 import type { CourseCatalogEnrollmentFilter } from "@/lib/course-catalog";
 import courseRigImage from "@/assets/course-rig.jpg";
 import courseSubseaImage from "@/assets/course-subsea.jpg";
@@ -54,6 +61,15 @@ function formatPrice(course: CourseRecord) {
   }).format(price);
 }
 
+function formatDeliveryMode(mode: string) {
+  return mode.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatDurationLabel(label: string) {
+  const [value, unit] = label.split(" ");
+  return unit ? `${value} ${unit.toLowerCase()}` : label;
+}
+
 export default function Courses() {
   const { user } = useAuth() as { user: { id?: number; role?: string } | null };
   const location = useLocation();
@@ -69,7 +85,7 @@ export default function Courses() {
 
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [pagination, setPagination] = useState<CoursePagination | null>(null);
-  const [filterOptions, setFilterOptions] = useState<{ categories: string[]; tiers: string[] }>({ categories: [], tiers: [] });
+  const [filterOptions, setFilterOptions] = useState<{ categories: string[]; tiers: string[]; delivery_modes: string[]; durations: string[] }>({ categories: [], tiers: [], delivery_modes: [], durations: [] });
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -77,10 +93,15 @@ export default function Courses() {
   const [category, setCategory] = useState("all");
   const [tier, setTier] = useState("all");
   const [enrollment, setEnrollment] = useState<CourseCatalogEnrollmentFilter>("all");
+  const [deliveryMode, setDeliveryMode] = useState("all");
+  const [price, setPrice] = useState<"all" | "free" | "paid">("all");
+  const [certificate, setCertificate] = useState<"all" | "yes" | "no">("all");
+  const [duration, setDuration] = useState("all");
+  const [sort, setSort] = useState<CourseCatalogSort>("newest");
 
   useEffect(() => {
     setPage(1);
-  }, [search, category, tier, enrollment]);
+  }, [search, category, tier, enrollment, deliveryMode, price, certificate, duration, sort]);
 
   useEffect(() => {
     let active = true;
@@ -95,6 +116,11 @@ export default function Courses() {
         category,
         tier,
         enrollment: enrollment === "all" ? "" : enrollment,
+        delivery_mode: deliveryMode,
+        price: price === "all" ? "" : price,
+        certificate: certificate === "all" ? "" : certificate,
+        duration,
+        sort,
       })
         .then((response) => {
           if (!active) return;
@@ -116,10 +142,21 @@ export default function Courses() {
       active = false;
       clearTimeout(timer);
     };
-  }, [page, search, category, tier, enrollment, user?.id]);
+  }, [page, search, category, tier, enrollment, deliveryMode, price, certificate, duration, sort, user?.id]);
 
   const categories = filterOptions.categories;
   const tiers = filterOptions.tiers;
+  const deliveryModes = filterOptions.delivery_modes;
+  const durations = filterOptions.durations;
+  const activeFilterCount = [
+    category !== "all",
+    tier !== "all",
+    enrollment !== "all",
+    deliveryMode !== "all",
+    price !== "all",
+    certificate !== "all",
+    duration !== "all",
+  ].filter(Boolean).length;
   const filteredCourses = courses;
   const totalCourses = pagination?.total ?? courses.length;
 
@@ -128,6 +165,11 @@ export default function Courses() {
     setCategory("all");
     setTier("all");
     setEnrollment("all");
+    setDeliveryMode("all");
+    setPrice("all");
+    setCertificate("all");
+    setDuration("all");
+    setSort("newest");
   };
 
   const content = (
@@ -196,33 +238,70 @@ export default function Courses() {
             </button>
           </div>
 
-          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <label className="sr-only" htmlFor="course-search">Search courses</label>
-              <input
-                id="course-search"
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search course name, code, discipline, or keyword…"
-                className="h-12 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
-              />
+          <div className="rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <label className="sr-only" htmlFor="course-search">Search courses</label>
+                <input
+                  id="course-search"
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search courses, codes, topics…"
+                  className="h-12 w-full rounded-xl border border-border/70 bg-background pl-11 pr-4 text-sm shadow-sm outline-none transition placeholder:text-muted-foreground hover:border-primary/30 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                />
+              </div>
+              <FilterPill label="Sort" value={sort} onChange={(value) => setSort(value as CourseCatalogSort)} className="lg:w-52">
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="price_asc">Price: low to high</SelectItem>
+                <SelectItem value="price_desc">Price: high to low</SelectItem>
+                <SelectItem value="title">Title A–Z</SelectItem>
+                <SelectItem value="duration">Shortest duration</SelectItem>
+              </FilterPill>
             </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <FilterSelect id="course-category" label="Discipline & category" value={category} onChange={setCategory}>
-                <option value="all">All categories</option>
-                {categories.map((item) => <option key={item} value={item}>{item}</option>)}
-              </FilterSelect>
-              <FilterSelect id="course-tier" label="Certification level" value={tier} onChange={setTier}>
-                <option value="all">All levels</option>
-                {tiers.map((item) => <option key={item} value={item}>{item}</option>)}
-              </FilterSelect>
-              <FilterSelect id="course-enrollment" label="Enrollment option" value={enrollment} onChange={(value) => setEnrollment(value as CourseCatalogEnrollmentFilter)}>
-                <option value="all">All enrollment options</option>
-                <option value="individual">Individual enrollment</option>
-                <option value="organization">Organization enrollment</option>
-              </FilterSelect>
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
+              <FilterPill label="Category" value={category} onChange={setCategory} active={category !== "all"}>
+                <SelectItem value="all">All</SelectItem>
+                {categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+              </FilterPill>
+              <FilterPill label="Level" value={tier} onChange={setTier} active={tier !== "all"}>
+                <SelectItem value="all">All</SelectItem>
+                {tiers.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+              </FilterPill>
+              <FilterPill label="Enrollment" value={enrollment} onChange={(value) => setEnrollment(value as CourseCatalogEnrollmentFilter)} active={enrollment !== "all"}>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="individual">Individual</SelectItem>
+                <SelectItem value="organization">Organization</SelectItem>
+              </FilterPill>
+              <FilterPill label="Delivery" value={deliveryMode} onChange={setDeliveryMode} active={deliveryMode !== "all"}>
+                <SelectItem value="all">All</SelectItem>
+                {deliveryModes.map((item) => <SelectItem key={item} value={item}>{formatDeliveryMode(item)}</SelectItem>)}
+              </FilterPill>
+              <FilterPill label="Price" value={price} onChange={(value) => setPrice(value as "all" | "free" | "paid")} active={price !== "all"}>
+                <SelectItem value="all">Any</SelectItem>
+                <SelectItem value="free">Free</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+              </FilterPill>
+              <FilterPill label="Certificate" value={certificate} onChange={(value) => setCertificate(value as "all" | "yes" | "no")} active={certificate !== "all"}>
+                <SelectItem value="all">Any</SelectItem>
+                <SelectItem value="yes">Included</SelectItem>
+                <SelectItem value="no">None</SelectItem>
+              </FilterPill>
+              <FilterPill label="Duration" value={duration} onChange={setDuration} active={duration !== "all"}>
+                <SelectItem value="all">Any</SelectItem>
+                {durations.map((item) => <SelectItem key={item} value={item}>{formatDurationLabel(item)}</SelectItem>)}
+              </FilterPill>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="ml-auto inline-flex h-10 items-center gap-1.5 rounded-full border border-dashed border-border px-3.5 text-xs font-semibold text-muted-foreground transition hover:border-destructive/40 hover:text-destructive"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Clear {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -342,30 +421,41 @@ export default function Courses() {
   ) : content;
 }
 
-function FilterSelect({
-  id,
+function FilterPill({
   label,
   value,
   onChange,
+  active = false,
+  className = "",
   children,
 }: {
-  id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
+  active?: boolean;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</label>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        {children}
-      </select>
+    <div
+      className={`inline-flex h-10 items-center gap-2 rounded-full border pl-3.5 pr-2 text-sm transition ${
+        active
+          ? "border-primary/50 bg-primary/5 shadow-sm"
+          : "border-border/70 bg-background hover:border-primary/30"
+      } ${className}`}
+    >
+      <span className={`shrink-0 text-xs font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>
+        {label}
+      </span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger
+          aria-label={label}
+          className="h-auto w-auto max-w-44 gap-1 border-0 bg-transparent px-0 py-0 text-sm font-semibold shadow-none focus:ring-0 focus:ring-offset-0 [&>span]:text-foreground [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:text-muted-foreground"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
     </div>
   );
 }

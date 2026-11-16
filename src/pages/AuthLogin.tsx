@@ -76,7 +76,7 @@ const AuthLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 p-4">
+    <div className="min-h-screen flex items-start pt-[100px] justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-4 shadow-lg">
@@ -156,8 +156,8 @@ const AuthLogin = () => {
 
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
                   <span className="text-muted-foreground">Remember me</span>
+                  <input type="checkbox" className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
                 </label>
                 <Link to="/forgot-password" className="text-green-600 hover:text-green-700 font-medium">
                   Forgot password?

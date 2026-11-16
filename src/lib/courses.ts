@@ -174,8 +174,12 @@ export interface PublicCourseListResponse {
   filter_options: {
     categories: string[];
     tiers: string[];
+    delivery_modes: string[];
+    durations: string[];
   };
 }
+
+export type CourseCatalogSort = "newest" | "price_asc" | "price_desc" | "title" | "duration";
 
 export interface PublicCourseQuery {
   page?: number;
@@ -184,6 +188,11 @@ export interface PublicCourseQuery {
   category?: string;
   tier?: string;
   enrollment?: "individual" | "organization" | "";
+  delivery_mode?: string;
+  price?: "free" | "paid" | "";
+  certificate?: "yes" | "no" | "";
+  duration?: string;
+  sort?: CourseCatalogSort;
 }
 
 export const fetchPublicCourses = async (query: PublicCourseQuery = {}): Promise<PublicCourseListResponse> => {
@@ -194,6 +203,11 @@ export const fetchPublicCourses = async (query: PublicCourseQuery = {}): Promise
   if (query.category && query.category !== "all") params.set("category", query.category);
   if (query.tier && query.tier !== "all") params.set("tier", query.tier);
   if (query.enrollment) params.set("enrollment", query.enrollment);
+  if (query.delivery_mode && query.delivery_mode !== "all") params.set("delivery_mode", query.delivery_mode);
+  if (query.price) params.set("price", query.price);
+  if (query.certificate) params.set("certificate", query.certificate);
+  if (query.duration && query.duration !== "all") params.set("duration", query.duration);
+  if (query.sort && query.sort !== "newest") params.set("sort", query.sort);
   const qs = params.toString();
   const token = getAuthToken();
   const data = await apiFetch(`/courses/public${qs ? `?${qs}` : ""}`, {
@@ -202,7 +216,7 @@ export const fetchPublicCourses = async (query: PublicCourseQuery = {}): Promise
   return {
     courses: data.courses || [],
     pagination: data.pagination,
-    filter_options: data.filter_options || { categories: [], tiers: [] },
+    filter_options: data.filter_options || { categories: [], tiers: [], delivery_modes: [], durations: [] },
   };
 };
 

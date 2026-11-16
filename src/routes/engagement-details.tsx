@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -100,7 +100,26 @@ export default function EngagementDetails() {
   const navigate = useNavigate();
   const [engagement, setEngagement] = useState<EngagementRecord | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "trainees" | "payments">("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "trainees" || tabParam === "payments" ? tabParam : "overview";
+  const setActiveTab = (tab: "overview" | "trainees" | "payments") => {
+    setSearchParams(tab === "overview" ? {} : { tab }, { replace: true });
+  };
+
+  const loadEngagement = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!engagementId) return;
+    try {
+      if (!opts?.silent) setLoading(true);
+      const response = await fetchEngagementById(engagementId);
+      setEngagement(response.engagement);
+    } catch (error) {
+      console.error("Failed to load engagement:", error);
+      toast.error("Failed to load engagement details");
+    } finally {
+      if (!opts?.silent) setLoading(false);
+    }
+  }, [engagementId]);
 
   useEffect(() => {
     if (!engagementId) {
@@ -108,26 +127,8 @@ export default function EngagementDetails() {
       toast.error("Engagement ID is missing");
       return;
     }
-
-    let cancelled = false;
-    const loadEngagement = async () => {
-      try {
-        setLoading(true);
-        const response = await fetchEngagementById(engagementId);
-        if (!cancelled) setEngagement(response.engagement);
-      } catch (error) {
-        console.error("Failed to load engagement:", error);
-        if (!cancelled) toast.error("Failed to load engagement details");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
     void loadEngagement();
-    return () => {
-      cancelled = true;
-    };
-  }, [engagementId]);
+  }, [engagementId, loadEngagement]);
 
   const items = engagement?.items ?? [];
   const totalTrainees =
@@ -227,11 +228,21 @@ export default function EngagementDetails() {
                 >
                   <tab.icon className="h-4 w-4" />
                   {tab.label}
+                  {tab.id === "trainees" && (engagement.trainee_count ?? 0) > 0 && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+                      {engagement.trainee_count}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
 
-            {activeTab === "trainees" && <EngagementTraineesTab engagement={engagement} />}
+            {activeTab === "trainees" && (
+              <EngagementTraineesTab
+                engagement={engagement}
+                onTraineesChanged={() => void loadEngagement({ silent: true })}
+              />
+            )}
             {activeTab === "payments" && <EngagementPaymentsTab engagement={engagement} />}
 
             {activeTab === "overview" && (

@@ -1,14 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
-  FileUp,
+  Building2,
+  Check,
+  ExternalLink,
   Loader2,
+  Search,
   Trash2,
-  Upload,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,77 +40,33 @@ import {
   type EngagementRecord,
   type EngagementTrainee,
 } from "@/lib/engagements";
+import {
+  fetchOrganizationTrainees,
+  type OrganizationTrainee,
+} from "@/lib/organizations";
 import { fetchTrainingBatches, type TrainingBatchListItem } from "@/lib/training-batches";
 
-// Minimal CSV parser handling quoted fields and commas inside quotes.
-function parseCsvLine(line: string): string[] {
-  const cells: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    if (inQuotes) {
-      if (char === '"' && line[i + 1] === '"') {
-        current += '"';
-        i += 1;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        current += char;
-      }
-    } else if (char === '"') {
-      inQuotes = true;
-    } else if (char === ",") {
-      cells.push(current);
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  cells.push(current);
-  return cells.map((cell) => cell.trim());
-}
-
-interface ParsedTrainee {
-  full_name: string;
-  email: string;
-  phone?: string;
-}
-
-function parseTraineeCsv(text: string): ParsedTrainee[] {
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) return [];
-
-  const header = parseCsvLine(lines[0]).map((cell) => cell.toLowerCase());
-  const hasHeader = header.some((cell) => ["name", "full_name", "email"].includes(cell));
-  const rows = hasHeader ? lines.slice(1) : lines;
-
-  const nameIdx = hasHeader ? header.findIndex((cell) => ["name", "full_name", "trainee", "trainee_name"].includes(cell)) : 0;
-  const emailIdx = hasHeader ? header.findIndex((cell) => cell === "email" || cell === "email_address") : 1;
-  const phoneIdx = hasHeader ? header.findIndex((cell) => ["phone", "phone_number", "tel", "mobile"].includes(cell)) : 2;
-
-  return rows
-    .map((line) => {
-      const cells = parseCsvLine(line);
-      const pick = (idx: number, fallback = "") => (idx >= 0 ? cells[idx] ?? fallback : fallback);
-      return {
-        full_name: pick(nameIdx < 0 ? 0 : nameIdx),
-        email: pick(emailIdx < 0 ? 1 : emailIdx),
-        phone: phoneIdx >= 0 ? pick(phoneIdx) || undefined : undefined,
-      };
-    })
-    .filter((row) => row.full_name || row.email);
-}
-
-export function EngagementTraineesTab({ engagement }: { engagement: EngagementRecord }) {
+export function EngagementTraineesTab({
+  engagement,
+  onTraineesChanged,
+}: {
+  engagement: EngagementRecord;
+  onTraineesChanged?: () => void;
+}) {
+  const navigate = useNavigate();
   const items = engagement.items ?? [];
+  const organizationId = engagement.organization_id || null;
   const [trainees, setTrainees] = useState<EngagementTrainee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [poolTrainees, setPoolTrainees] = useState<OrganizationTrainee[]>([]);
+  const [poolLoading, setPoolLoading] = useState(false);
   const [batchesByCourse, setBatchesByCourse] = useState<Record<number, TrainingBatchListItem[]>>({});
-  const [defaultBatchByItem, setDefaultBatchByItem] = useState<Record<string, string>>({});
-  const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const [pickerItem, setPickerItem] = useState<EngagementItem | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerBatchId, setPickerBatchId] = useState("");
+  const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const loadTrainees = async () => {
     try {
@@ -129,6 +99,27 @@ export function EngagementTraineesTab({ engagement }: { engagement: EngagementRe
     };
   }, [engagement.id]);
 
+  // Load the organization's trainee pool once — the picker sources from it.
+  useEffect(() => {
+    if (!organizationId) return;
+    let cancelled = false;
+    setPoolLoading(true);
+    fetchOrganizationTrainees(organizationId)
+      .then((response) => {
+        if (!cancelled) setPoolTrainees(response.trainees);
+      })
+      .catch((error) => {
+        console.error("Failed to load organization trainee pool:", error);
+        if (!cancelled) toast.error("Failed to load the organization's trainee pool");
+      })
+      .finally(() => {
+        if (!cancelled) setPoolLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
+
   // Lazily fetch schedulable batches for each item's course.
   useEffect(() => {
     const courseIds = Array.from(
@@ -152,32 +143,61 @@ export function EngagementTraineesTab({ engagement }: { engagement: EngagementRe
 
   const traineesForItem = (itemId: string) => trainees.filter((t) => t.engagement_item_id === itemId);
 
-  const handleFile = async (item: EngagementItem, file: File) => {
-    const parsed = parseTraineeCsv(await file.text());
-    if (!parsed.length) {
-      toast.error("No trainee rows found in that file. Expected columns: name, email, phone.");
-      return;
-    }
-    const batchId = defaultBatchByItem[item.id] || null;
-    setUploadingItemId(item.id);
+  const openPicker = (item: EngagementItem) => {
+    setPickerItem(item);
+    setSelectedIds(new Set());
+    setPickerSearch("");
+    setPickerBatchId("");
+  };
+
+  const pickerCandidates = useMemo(() => {
+    if (!pickerItem) return [];
+    const onRoster = new Set(traineesForItem(pickerItem.id).map((t) => t.email.toLowerCase()));
+    const q = pickerSearch.trim().toLowerCase();
+    return poolTrainees.filter((trainee) => {
+      if (onRoster.has(trainee.email.toLowerCase())) return false;
+      if (!q) return true;
+      return trainee.full_name.toLowerCase().includes(q) || trainee.email.toLowerCase().includes(q);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerItem, poolTrainees, trainees, pickerSearch]);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleConfirmPicker = async () => {
+    if (!pickerItem || !selectedIds.size) return;
+    const batchId = pickerBatchId || null;
+    setAdding(true);
     try {
       const response = await addEngagementTrainees(
         engagement.id,
-        parsed.map((row) => ({ ...row, engagement_item_id: item.id, batch_id: batchId })),
+        Array.from(selectedIds).map((organizationTraineeId) => ({
+          organization_trainee_id: organizationTraineeId,
+          engagement_item_id: pickerItem.id,
+          batch_id: batchId,
+        })),
       );
       if (response.added > 0) {
-        toast.success(`Added ${response.added} ${response.added === 1 ? "trainee" : "trainees"} to ${item.course_name}.`);
+        toast.success(`Added ${response.added} ${response.added === 1 ? "trainee" : "trainees"} to ${pickerItem.course_name}.`);
       }
       if (response.skipped.length) {
-        toast.warning(`${response.skipped.length} row${response.skipped.length === 1 ? "" : "s"} skipped — first reason: ${response.skipped[0].reason}`);
+        toast.warning(`${response.skipped.length} selection${response.skipped.length === 1 ? "" : "s"} skipped — first reason: ${response.skipped[0].reason}`);
       }
+      setPickerItem(null);
       await loadTrainees();
+      onTraineesChanged?.();
     } catch (error) {
-      console.error("Failed to upload trainees:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload trainees");
+      console.error("Failed to add trainees:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to add trainees");
     } finally {
-      setUploadingItemId(null);
-      if (fileInputs.current[item.id]) fileInputs.current[item.id]!.value = "";
+      setAdding(false);
     }
   };
 
@@ -197,6 +217,7 @@ export function EngagementTraineesTab({ engagement }: { engagement: EngagementRe
       await removeEngagementTrainee(engagement.id, trainee.id);
       setTrainees((prev) => prev.filter((t) => t.id !== trainee.id));
       toast.success(`${trainee.full_name} removed from the roster.`);
+      onTraineesChanged?.();
     } catch (error) {
       console.error("Failed to remove trainee:", error);
       toast.error("Failed to remove the trainee");
@@ -218,20 +239,42 @@ export function EngagementTraineesTab({ engagement }: { engagement: EngagementRe
       <div className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
         <Users className="mx-auto h-8 w-8 text-slate-300" />
         <p className="mt-3 text-sm font-semibold text-slate-700">No training items on this engagement</p>
-        <p className="mt-1 text-xs text-slate-500">Add training items to the engagement before uploading trainees.</p>
+        <p className="mt-1 text-xs text-slate-500">Add training items to the engagement before assigning trainees.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
+      {organizationId ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-center gap-2 text-xs text-emerald-900">
+            <Building2 className="h-4 w-4 shrink-0" />
+            Trainees are picked from {engagement.organization_name || "this organization's"} trainee pool.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-emerald-300 bg-white"
+            onClick={() => navigate(`/training/organization-management/${encodeURIComponent(organizationId)}?tab=trainees`)}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Manage org trainees
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-xs text-amber-900">
+          This engagement has no organization linked, so there is no trainee pool to pick from. Link an organization
+          to the engagement to manage trainees here.
+        </div>
+      )}
+
       {items.map((item) => {
         const itemTrainees = traineesForItem(item.id);
         const agreed = Number(item.agreed_quantity) || 0;
         const courseBatches = item.course_id ? batchesByCourse[item.course_id] ?? [] : [];
         const remaining = Math.max(0, agreed - itemTrainees.length);
         const fill = agreed ? Math.min(100, Math.round((itemTrainees.length / agreed) * 100)) : 0;
-        const uploading = uploadingItemId === item.id;
 
         return (
           <section key={item.id} className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -245,50 +288,19 @@ export function EngagementTraineesTab({ engagement }: { engagement: EngagementRe
                     {item.course_name || "Untitled training item"}
                   </h3>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    {itemTrainees.length} of {agreed} agreed trainees uploaded
+                    {itemTrainees.length} of {agreed} agreed trainees assigned
                     {remaining > 0 ? ` · ${remaining} remaining` : " · quota full"}
                   </p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {item.course_id && courseBatches.length > 0 && (
-                  <Select
-                    value={defaultBatchByItem[item.id] || "none"}
-                    onValueChange={(value) =>
-                      setDefaultBatchByItem((prev) => ({ ...prev, [item.id]: value === "none" ? "" : value }))
-                    }
-                  >
-                    <SelectTrigger className="h-9 w-52 text-xs" aria-label={`Default batch for ${item.course_name}`}>
-                      <SelectValue placeholder="No batch (roster only)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No batch (roster only)</SelectItem>
-                      {courseBatches.map((batch) => (
-                        <SelectItem key={batch.id} value={batch.id}>
-                          {batch.batch_code} — {batch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <input
-                  ref={(el) => { fileInputs.current[item.id] = el; }}
-                  type="file"
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void handleFile(item, file);
-                  }}
-                />
                 <Button
                   size="sm"
-                  variant="outline"
-                  disabled={uploading || (agreed > 0 && remaining === 0)}
-                  onClick={() => fileInputs.current[item.id]?.click()}
+                  disabled={!organizationId || (agreed > 0 && remaining === 0) || poolLoading}
+                  onClick={() => openPicker(item)}
                 >
-                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-                  {uploading ? "Uploading…" : "Upload CSV"}
+                  {poolLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                  Add trainees
                 </Button>
               </div>
             </div>
@@ -302,11 +314,11 @@ export function EngagementTraineesTab({ engagement }: { engagement: EngagementRe
 
             {itemTrainees.length === 0 ? (
               <div className="flex flex-col items-center gap-2 rounded-lg bg-slate-50 px-4 py-8 text-center">
-                <Upload className="h-6 w-6 text-slate-300" />
-                <p className="text-sm font-semibold text-slate-700">No trainees uploaded yet</p>
+                <Users className="h-6 w-6 text-slate-300" />
+                <p className="text-sm font-semibold text-slate-700">No trainees assigned yet</p>
                 <p className="max-w-lg text-xs leading-relaxed text-slate-500">
-                  Upload a CSV with columns <code className="rounded bg-slate-200 px-1">full_name, email, phone</code> (a header row is optional).
-                  Trainees matching an existing account are enrolled automatically; others stay on the roster until they register.
+                  Pick trainees from the organization's pool. Anyone with a portal account is enrolled automatically;
+                  others stay on the roster until they activate their account.
                 </p>
               </div>
             ) : (
@@ -377,6 +389,91 @@ export function EngagementTraineesTab({ engagement }: { engagement: EngagementRe
           </section>
         );
       })}
+
+      <Dialog open={Boolean(pickerItem)} onOpenChange={(open) => { if (!open && !adding) setPickerItem(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add trainees — {pickerItem?.course_name}</DialogTitle>
+            <DialogDescription>
+              Select people from {engagement.organization_name || "the organization"}'s trainee pool. Trainees already
+              on this item's roster are hidden.
+            </DialogDescription>
+          </DialogHeader>
+          {pickerItem?.course_id && (batchesByCourse[pickerItem.course_id] ?? []).length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-600">Batch</span>
+              <Select value={pickerBatchId || "none"} onValueChange={(value) => setPickerBatchId(value === "none" ? "" : value)}>
+                <SelectTrigger className="h-9 flex-1 text-xs" aria-label="Batch for selected trainees">
+                  <SelectValue placeholder="No batch (roster only)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No batch (roster only)</SelectItem>
+                  {(batchesByCourse[pickerItem.course_id] ?? []).map((batch) => (
+                    <SelectItem key={batch.id} value={batch.id}>
+                      {batch.batch_code} — {batch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search name or email..."
+                value={pickerSearch}
+                onChange={(event) => setPickerSearch(event.target.value)}
+                className="border-slate-200 bg-white pl-9"
+              />
+            </div>
+            <div className="max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-white">
+            {pickerCandidates.length === 0 ? (
+              <p className="px-4 py-8 text-center text-xs text-slate-500">
+                {poolLoading ? "Loading trainee pool…" : "No matching trainees in the pool."}
+              </p>
+            ) : (
+              pickerCandidates.map((trainee) => {
+                const checked = selectedIds.has(trainee.id);
+                return (
+                  <label
+                    key={trainee.id}
+                    className={`flex cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-sm last:border-b-0 hover:bg-slate-50 ${checked ? "bg-emerald-50/60" : ""}`}
+                  >
+                    <Checkbox checked={checked} onCheckedChange={() => toggleSelected(trainee.id)} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-slate-900">{trainee.full_name}</span>
+                      <span className="block truncate text-xs text-slate-500">{trainee.email}</span>
+                    </span>
+                    {trainee.account_active ? (
+                      <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">Active</Badge>
+                    ) : trainee.invite_pending ? (
+                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Invite pending</Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">No account</Badge>
+                    )}
+                    {checked && <Check className="h-4 w-4 text-emerald-600" />}
+                  </label>
+                );
+              })
+            )}
+            </div>
+          </div>
+          <p className="text-xs text-slate-500">
+            {selectedIds.size} selected
+            {pickerBatchId ? " · will be assigned to the selected batch" : ""}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPickerItem(null)} disabled={adding}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleConfirmPicker()} disabled={adding || !selectedIds.size}>
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              {adding ? "Adding…" : `Add ${selectedIds.size || ""} trainee${selectedIds.size === 1 ? "" : "s"}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

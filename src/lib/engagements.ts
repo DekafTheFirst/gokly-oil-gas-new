@@ -47,6 +47,7 @@ export interface EngagementRecord {
   organization_logo?: string;
   item_count?: number;
   total_trainees?: number;
+  trainee_count?: number;
   payment_status?: "PAID" | "PENDING" | "UNPAID";
   items?: EngagementItem[];
   attachments?: EngagementAttachment[];
@@ -62,6 +63,7 @@ export interface EngagementTrainee {
   status: string;
   enrollment_id: number | null;
   created_at: string;
+  organization_trainee_id?: string | null;
   course_id?: number | null;
   course_name?: string;
   agreed_quantity?: number;
@@ -73,9 +75,10 @@ export interface EngagementTrainee {
 export interface EngagementTraineeInput {
   engagement_item_id: string;
   batch_id?: string | null;
-  full_name: string;
-  email: string;
+  full_name?: string;
+  email?: string;
   phone?: string | null;
+  organization_trainee_id?: string;
 }
 
 export interface EngagementPaymentAttempt {

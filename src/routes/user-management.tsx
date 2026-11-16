@@ -22,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -81,6 +80,7 @@ export default function UserManagement() {
   const [country, setCountry] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
 
   useEffect(() => {
     fetchUsers(1, "", "all", pageSize);
@@ -219,11 +219,13 @@ export default function UserManagement() {
       setActionLoading(true);
       await deleteUser(userId);
       toast.success("User deleted successfully");
+      setDeleteTarget(null);
       fetchUsers(currentPage, searchTerm, roleFilter, pageSize);
     } catch (err) {
       toast.error("Unable to delete user", {
         description: err instanceof Error ? err.message : "Failed to delete user"
       });
+      setDeleteTarget(null);
     } finally {
       setActionLoading(false);
     }
@@ -363,31 +365,13 @@ export default function UserManagement() {
                             <span>Edit</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete user</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete {user.name}? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteUser(user.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteTarget(user)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete</span>
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -658,6 +642,28 @@ export default function UserManagement() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete user</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deleteTarget?.name}? This deactivates their account and removes them
+              from user lists — their enrollment, payment, and certificate history is preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && handleDeleteUser(deleteTarget.id)}
+              disabled={actionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionLoading ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
      </div>
     </AdminPageShell>
   );

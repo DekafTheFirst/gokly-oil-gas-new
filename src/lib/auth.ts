@@ -89,3 +89,14 @@ export const updateProfile = async ({ first_name, middle_name, last_name, phone,
     },
   });
 };
+
+export const fetchAccountInvite = async (token: string): Promise<{ name: string; email: string }> => {
+  return apiFetch(`/auth/invite/${encodeURIComponent(token)}`);
+};
+
+export const acceptAccountInvite = async (token: string, password: string): Promise<{ message: string }> => {
+  return apiFetch(`/auth/invite/${encodeURIComponent(token)}/accept`, {
+    method: "POST",
+    body: { password },
+  });
+};

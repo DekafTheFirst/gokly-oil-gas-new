@@ -123,9 +123,9 @@ export default function EngagementCreation() {
       agreement_execution_date: "",
       expected_delivery_start: "",
       expected_completion: "",
-      payment_terms: "Net 30 Days",
+      payment_terms: "100% Upfront",
       currency: "NGN",
-      invoice_triggers: "Milestone Based",
+      invoice_triggers: "Upfront",
       payment_due_window: "14 days post-invoice receipt",
       statutory_notes: "",
       items: [
@@ -698,6 +698,7 @@ export default function EngagementCreation() {
             <div className="md:col-span-3 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide">Payment Terms</label>
               <Select
+                disabled
                 value={formData.payment_terms}
                 onValueChange={(value) => setValue("payment_terms", value, { shouldDirty: true, shouldValidate: true })}
               >
@@ -705,10 +706,7 @@ export default function EngagementCreation() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Net 30 Days">Net 30 Days</SelectItem>
-                  <SelectItem value="Net 60 Days">Net 60 Days</SelectItem>
-                  <SelectItem value="Milestone Drawdown">Milestone Drawdown (30/40/30)</SelectItem>
-                  <SelectItem value="Advance Escrow Deposit">100% Advance Escrow Deposit</SelectItem>
+                  <SelectItem value="100% Upfront">100% Upfront</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -727,6 +725,7 @@ export default function EngagementCreation() {
             <div className="md:col-span-3 flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide">Invoice Triggers</label>
               <Select
+                disabled
                 value={formData.invoice_triggers}
                 onValueChange={(value) => setValue("invoice_triggers", value, { shouldDirty: true, shouldValidate: true })}
               >

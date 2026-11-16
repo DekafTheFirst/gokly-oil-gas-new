@@ -15,6 +15,7 @@ import Feedbacks from "./pages/Feedbacks";
 import AuthLogin from "./pages/AuthLogin";
 import TraineeRegister from "./pages/TraineeRegister";
 import VerifyEmail from "./pages/VerifyEmail";
+import SetPassword from "./pages/SetPassword";
 import Profile from "./pages/Profile";
 import DashboardRouter from "./components/DashboardRouter";
 import NotFound from "./pages/NotFound";
@@ -55,7 +56,7 @@ const TRAINEE_ROLES = ["TRAINEE", "STUDENT"];
 
 const AppRoutes = () => {
   const location = useLocation();
-  const isEmailVerificationPage = location.pathname === "/auth/verify-email";
+  const isEmailVerificationPage = location.pathname === "/auth/verify-email" || location.pathname === "/auth/set-password";
   const usesTrainingShell = location.pathname.startsWith("/training") || location.pathname === "/profile" || location.pathname.startsWith("/pay");
   const showNavbar = !usesTrainingShell;
   const showFooter = showNavbar && !isEmailVerificationPage;
@@ -73,6 +74,7 @@ const AppRoutes = () => {
         <Route path="/auth/login" element={<AuthLogin />} />
         <Route path="/auth/register" element={<TraineeRegister />} />
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
+        <Route path="/auth/set-password" element={<SetPassword />} />
         <Route path="/register" element={<TraineeRegister />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/courses" element={<TrainingCourses />} />

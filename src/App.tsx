@@ -54,6 +54,11 @@ const queryClient = new QueryClient();
 
 const TRAINEE_ROLES = ["TRAINEE", "STUDENT"];
 
+// Dev-only route to preview the ErrorBoundary fallback. Never ships to prod.
+const DevErrorPreview = () => {
+  throw new Error("Dev error preview — this is what the error boundary catches.");
+};
+
 const AppRoutes = () => {
   const location = useLocation();
   const isEmailVerificationPage = location.pathname === "/auth/verify-email" || location.pathname === "/auth/set-password";
@@ -115,6 +120,7 @@ const AppRoutes = () => {
         <Route path="/training/verify" element={<TrainingVerify />} />
         <Route path="/public-verification" element={<PublicVerification />} />
         <Route path="*" element={<NotFound />} />
+        {import.meta.env.DEV && <Route path="/dev/error" element={<DevErrorPreview />} />}
       </Routes>
       {showFooter && <Footer />}
       {!location.pathname.startsWith("/pay") && <ChatBot />}

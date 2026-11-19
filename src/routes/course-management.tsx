@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, PlusCircle, Search, BookOpen } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, CheckCircle, MoreHorizontal, PlusCircle, Search, BookOpen, Trash2 } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -24,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchAdminCourses, type CourseRecord, type CoursePagination } from "@/lib/courses";
+import { deleteCourse, fetchAdminCourses, updateCourseStatus, type CourseRecord, type CoursePagination, type CourseStatus } from "@/lib/courses";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -50,6 +55,8 @@ export default function CourseManagement() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [pagination, setPagination] = useState<CoursePagination | null>(null);
+  const [busyCourseId, setBusyCourseId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CourseRecord | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -88,6 +95,40 @@ export default function CourseManagement() {
   };
 
   // course management only: removed certificate bulk helpers
+
+  const handleStatusChange = async (course: CourseRecord, status: CourseStatus) => {
+    setBusyCourseId(course.id);
+    setError("");
+    setSuccessMessage("");
+    try {
+      await updateCourseStatus(course.id, status);
+      setSuccessMessage(
+        status === "ARCHIVED"
+          ? `"${course.title}" archived — it no longer appears for enrollment.`
+          : `"${course.title}" is now ${status.toLowerCase()}.`,
+      );
+      await fetchCourseList(currentPage, searchTerm, pageSize);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update course status");
+    } finally {
+      setBusyCourseId(null);
+    }
+  };
+
+  const handleDeleteCourse = async (course: CourseRecord) => {
+    setBusyCourseId(course.id);
+    setError("");
+    setSuccessMessage("");
+    try {
+      await deleteCourse(course.id);
+      setSuccessMessage(`"${course.title}" deleted.`);
+      await fetchCourseList(currentPage, searchTerm, pageSize);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete course");
+    } finally {
+      setBusyCourseId(null);
+    }
+  };
 
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search courses...">
@@ -168,9 +209,42 @@ export default function CourseManagement() {
                       </td>
                       <td className="text-muted-foreground">{new Date(course.created_at).toLocaleDateString()}</td>
                       <td className="text-right">
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigate(`/training/course-creation-details?courseId=${course.id}`); }}>
-                          View
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              aria-label={`Actions for ${course.title}`}
+                              disabled={busyCourseId === course.id}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => navigate(`/training/course-creation-details?courseId=${course.id}`)}>
+                              View details
+                            </DropdownMenuItem>
+                            {course.status === "ARCHIVED" ? (
+                              <DropdownMenuItem onSelect={() => void handleStatusChange(course, "PUBLISHED")}>
+                                <ArchiveRestore className="mr-2 h-4 w-4" />
+                                Restore course
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onSelect={() => void handleStatusChange(course, "ARCHIVED")}>
+                                <Archive className="mr-2 h-4 w-4" />
+                                Archive course
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => setDeleteTarget(course)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete course
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}
@@ -250,6 +324,32 @@ export default function CourseManagement() {
             </div>
           )}
         </div>
+
+        <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete course</AlertDialogTitle>
+              <AlertDialogDescription>
+                Permanently delete &quot;{deleteTarget?.title}&quot; and all of its modules,
+                materials, and assessments. This only works for courses with no
+                enrollments, certificates, batches, or payment records — archive the
+                course instead if trainees have used it.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (deleteTarget) void handleDeleteCourse(deleteTarget);
+                  setDeleteTarget(null);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete course
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminPageShell>
   );

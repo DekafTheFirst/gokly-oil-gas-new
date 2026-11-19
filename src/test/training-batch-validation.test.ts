@@ -15,6 +15,7 @@ const validBatch = {
   capacity: 20,
   min_quorum: 8,
   notes: "",
+  trainer_in_charge: 7,
   sessions: [
     {
       course_module_id: 10,
@@ -139,6 +140,18 @@ describe("training batch validation", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("requires a trainer in charge for ready batches and drafts", () => {
+    const { trainer_in_charge: _omitted, ...withoutTrainer } = validBatch;
+
+    for (const schema of [trainingBatchFormSchema, trainingBatchDraftSchema]) {
+      const result = schema.safeParse(withoutTrainer);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.path)).toContainEqual(["trainer_in_charge"]);
+      }
+    }
   });
 
   it("rejects duplicate open enrollment allocations for ready batches and drafts", () => {

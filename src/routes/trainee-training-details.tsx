@@ -34,6 +34,7 @@ import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { useAuth } from "@/context/AuthContext";
 import { downloadCourseReceipt, initializeCoursePayment } from "@/lib/courses";
 import {
+  downloadTrainingCertificate,
   fetchTraineeTrainingDetail,
   type TraineeTrainingAssessment,
   type TraineeTrainingCertificate,
@@ -897,13 +898,26 @@ export default function TraineeTrainingDetails() {
                     complete={Boolean(activeCertificate)}
                   />
                 </div>
-                {activeCertificate && (
-                  <Link
-                    to="/training/verify"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary transition hover:bg-primary/15"
-                  >
-                    <BadgeCheck className="h-4 w-4" /> View certificate
-                  </Link>
+                {(activeCertificate || trainingStatus === "COMPLETED") && batch && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {activeCertificate && (
+                      <Link
+                        to="/training/verify"
+                        className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-bold text-foreground transition hover:bg-muted"
+                      >
+                        <BadgeCheck className="h-4 w-4" /> View certificate
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void downloadCertificate(batch.id, course?.title, batch.end_date)}
+                      disabled={trainingStatus !== "COMPLETED"}
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary transition hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download certificate (PDF)
+                    </button>
+                  </div>
                 )}
               </section>
 
@@ -1239,3 +1253,26 @@ function AssessmentRow({ assessment }: { assessment: TraineeTrainingAssessment }
     </div>
   );
 }
+
+// Download the certificate PDF for the trainee's completed batch.
+async function downloadCertificate(batchId: string, courseTitle: string | undefined, endDate: string | null) {
+  try {
+    const blob = await downloadTrainingCertificate(batchId);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeTitle = (courseTitle || "Certificate").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "Certificate";
+    const dateValue = endDate
+      ? new Date(endDate).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `GOKLY-Certificate-${safeTitle}-${dateValue}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    toast.success("Certificate downloaded.");
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "Failed to download certificate.");
+  }
+}
+

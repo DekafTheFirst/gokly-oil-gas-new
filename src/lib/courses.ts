@@ -409,4 +409,23 @@ export const updateCourse = async (courseId: number, payload: Partial<CourseReco
   return data.course;
 };
 
+export type CourseStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+export const updateCourseStatus = async (courseId: number, status: CourseStatus) => {
+  const token = getAuthToken();
+  return apiFetch(`/courses/${courseId}/status`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: { status },
+  });
+};
+
+export const deleteCourse = async (courseId: number) => {
+  const token = getAuthToken();
+  return apiFetch(`/courses/${courseId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
 export default { fetchCourses, fetchAdminCourses, createCourse, enrollInCourse, fetchCourseById, updateCourse };

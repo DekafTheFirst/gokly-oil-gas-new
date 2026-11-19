@@ -81,7 +81,7 @@ const baseSchema = z.object({
   capacity: z.number().int().min(1, "Capacity must be at least 1.").max(1000),
   min_quorum: z.number().int().min(1, "Minimum quorum must be at least 1."),
   notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer."),
-  trainer_in_charge: z.number().int().positive().nullable().optional(),
+  trainer_in_charge: z.number().int().positive("Select a trainer in charge."),
   registration_start_date: optionalDateSchema,
   registration_end_date: optionalDateSchema,
   sessions: z.array(sessionSchema),

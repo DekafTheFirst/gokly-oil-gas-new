@@ -937,7 +937,17 @@ export default function TrainingBatchDetails() {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
-                <ActionButton type="button" onClick={() => toast.info("Engagement details are not connected in this UI.")} className="bg-[#e6eeff] px-3 py-2 text-xs text-[#121c2a] hover:bg-[#dee9fc]">
+                <ActionButton
+                  type="button"
+                  onClick={() => {
+                    if (activeEngagement.engagement_id) {
+                      navigate(`/training/engagement-management/${activeEngagement.engagement_id}`);
+                    } else {
+                      toast.info("Engagement details are not connected in this UI.");
+                    }
+                  }}
+                  className="bg-[#e6eeff] px-3 py-2 text-xs text-[#121c2a] hover:bg-[#dee9fc]"
+                >
                   <Eye className="h-4 w-4" />View SOW
                 </ActionButton>
                 <button type="button" aria-label="Dismiss engagement context" onClick={() => setContextVisible(false)} className="p-2 text-[#3f4940] transition-colors hover:text-red-700">
@@ -960,7 +970,7 @@ export default function TrainingBatchDetails() {
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="flex flex-col gap-2 md:col-span-2">
                     <FieldLabel htmlFor="batch-course">
-                      <span>Select Course Module <span className="text-[#ba1a1a]">*</span></span>
+                      <span>Select Course  <span className="text-[#ba1a1a]">*</span></span>
                       <span className="text-[11px] font-normal text-[#3f4940]">IWCF / OPITO Verified</span>
                     </FieldLabel>
                     <Select

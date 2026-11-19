@@ -257,10 +257,17 @@ export async function updateTrainingBatch(batchId: string, payload: TrainingBatc
   }) as Promise<{ batch: TrainingBatchListItem }>;
 }
 
-export async function transitionTrainingBatch(batchId: string, status: "ACTIVE" | "COMPLETED") {
+export async function transitionTrainingBatch(batchId: string, status: "ACTIVE" | "COMPLETED" | "CANCELLED") {
   return apiFetch(`/training-batches/${encodeURIComponent(batchId)}/status`, {
     method: "POST",
     headers: authHeaders(),
     body: { status },
   }) as Promise<{ batch: TrainingBatchDetail }>;
+}
+
+export async function deleteTrainingBatch(batchId: string) {
+  return apiFetch(`/training-batches/${encodeURIComponent(batchId)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  }) as Promise<{ deleted: boolean; batch_id: string }>;
 }

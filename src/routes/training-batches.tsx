@@ -4,6 +4,7 @@ import {
   ArrowDownToLine,
   ArrowLeft,
   ArrowRight,
+  Ban,
   BellRing,
   CalendarDays,
   Check,
@@ -15,16 +16,30 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
 } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
+  deleteTrainingBatch,
   fetchTrainingBatches,
   fetchTrainingBatchStats,
+  transitionTrainingBatch,
   type TrainingBatchListItem,
   type TrainingBatchStats,
 } from "@/lib/training-batches";
@@ -98,6 +113,8 @@ export default function TrainingBatches() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyBatchId, setBusyBatchId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,7 +148,7 @@ export default function TrainingBatches() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [page, pagination.limit, search, statusFilter, courseFilter, locationFilter]);
+  }, [page, pagination.limit, search, statusFilter, courseFilter, locationFilter, refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +176,34 @@ export default function TrainingBatches() {
     navigate(`/training/batches/${batchId}`);
   };
 
+  const refresh = () => setRefreshKey((key) => key + 1);
+
+  const handleCancelBatch = async (batch: TrainingBatchListItem) => {
+    setBusyBatchId(batch.id);
+    try {
+      await transitionTrainingBatch(batch.id, "CANCELLED");
+      toast.success(`Batch ${batch.batch_code} cancelled.`);
+      refresh();
+    } catch (actionError) {
+      toast.error(actionError instanceof Error ? actionError.message : "Failed to cancel batch.");
+    } finally {
+      setBusyBatchId(null);
+    }
+  };
+
+  const handleDeleteBatch = async (batch: TrainingBatchListItem) => {
+    setBusyBatchId(batch.id);
+    try {
+      await deleteTrainingBatch(batch.id);
+      toast.success(`Batch ${batch.batch_code} deleted.`);
+      refresh();
+    } catch (actionError) {
+      toast.error(actionError instanceof Error ? actionError.message : "Failed to delete batch.");
+    } finally {
+      setBusyBatchId(null);
+    }
+  };
+
   return (
     <AdminPageShell withSidebar searchPlaceholder="Search certification, rig crew, batch...">
       <div className="page-padding space-y-6">
@@ -183,10 +228,10 @@ export default function TrainingBatches() {
                 </span>
               )}
             </Button>
-            <Button variant="outline" onClick={() => exportSchedule(batches)} disabled={batches.length === 0}>
+            {/* <Button variant="outline" onClick={() => exportSchedule(batches)} disabled={batches.length === 0}>
               <ArrowDownToLine className="h-4 w-4" />
               Export Current Page
-            </Button>
+            </Button> */}
             <Button onClick={() => navigate("/training/batches/create")}>
               <Plus className="h-4 w-4" />
               Create Batch
@@ -347,6 +392,71 @@ export default function TrainingBatches() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {["DRAFT", "UPCOMING", "ACTIVE"].includes(batch.status) && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  aria-label={`Cancel ${batch.batch_code}`}
+                                  size="icon"
+                                  variant="ghost"
+                                  title="Cancel batch"
+                                  disabled={busyBatchId === batch.id}
+                                >
+                                  <Ban className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Cancel batch</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Cancel {batch.batch_code} — &quot;{batch.name}&quot;? Enrolled trainees keep
+                                    their records, but the batch will no longer run.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Keep batch</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => void handleCancelBatch(batch)}>
+                                    Cancel batch
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                          {["DRAFT", "CANCELLED"].includes(batch.status) && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  aria-label={`Delete ${batch.batch_code}`}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive"
+                                  title="Delete batch"
+                                  disabled={busyBatchId === batch.id}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete batch</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Permanently delete {batch.batch_code} — &quot;{batch.name}&quot; and its
+                                    sessions and seat allocations. Only batches with no enrollments or
+                                    engagement roster rows can be deleted.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Keep batch</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => void handleDeleteBatch(batch)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete batch
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -376,7 +486,7 @@ export default function TrainingBatches() {
         )}
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          {/* <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch workflow</p>
@@ -397,19 +507,8 @@ export default function TrainingBatches() {
               <span className="text-muted-foreground">Draft batches</span>
               <span className="font-semibold">{stats?.draft_count ?? "—"}</span>
             </div>
-          </section>
-          <section className="rounded-xl border border-amber-300/70 bg-amber-50 p-5">
-            <div className="flex items-start gap-3">
-              <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-900">Scheduling note</p>
-                <h2 className="mt-1 font-heading text-lg font-semibold text-amber-950">Trainer assignment is not configured</h2>
-                <p className="mt-2 text-sm leading-6 text-amber-900">
-                  Trainer assignment is intentionally left for a later workflow. Review session dates, venues, and allocations before marking a batch upcoming.
-                </p>
-              </div>
-            </div>
-          </section>
+          </section> */}
+          
         </div>
       </div>
     </AdminPageShell>

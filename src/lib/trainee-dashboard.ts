@@ -1,4 +1,4 @@
-import { apiFetch } from "./api";
+import { apiFetch, API_BASE_URL } from "./api";
 import { getAuthToken } from "./auth";
 import type { ModuleMaterial } from "../components/educert/ModuleMaterials";
 
@@ -197,4 +197,19 @@ export async function fetchTraineeTrainingDetail(courseId: number): Promise<Trai
   return apiFetch(`/courses/my-training/${courseId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+}
+
+export async function downloadTrainingCertificate(batchId: string): Promise<Blob> {
+  const token = getAuthToken();
+  const response = await fetch(`${API_BASE_URL}/training-batches/${encodeURIComponent(batchId)}/certificate/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const error = errorData.error || `Failed to download certificate (HTTP ${response.status})`;
+    throw new Error(error);
+  }
+
+  return response.blob();
 }

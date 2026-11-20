@@ -216,6 +216,16 @@ export default function TraineeTrainingDetails() {
   const name = displayName(user);
   const numericCourseId = Number(courseId);
 
+  // The Paystack redirect leaves "Connecting…" set; clear it when the browser
+  // restores this page from bfcache via the back button.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setContinuingPayment(false);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   useEffect(() => {
     let active = true;
     if (!Number.isInteger(numericCourseId) || numericCourseId <= 0) {

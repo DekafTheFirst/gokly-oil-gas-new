@@ -39,6 +39,17 @@ export interface CourseRecord {
   certificate_authority?: string | null;
   certificate_license_id?: string | null;
   certificate_portal_url?: string | null;
+  // Certificate design/issuance config collected in the wizard (step 5).
+  certificate_title?: string | null;
+  certificate_template?: string | null;
+  certificate_issuance_mode?: string | null;
+  certificate_validity_framework?: string | null;
+  certificate_validity_duration?: number | null;
+  certificate_validity_unit?: string | null;
+  certificate_id_prefix?: string | null;
+  certificate_id_separator?: string | null;
+  certificate_id_year_schema?: string | null;
+  certificate_id_sequence_type?: string | null;
   thumbnail_url?: string | null;
   image?: string | null;
   min_class_size?: number;

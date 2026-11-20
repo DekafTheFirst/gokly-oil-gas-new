@@ -193,6 +193,16 @@ export default function Dashboard() {
   const [continuingPayment, setContinuingPayment] = useState<number | null>(null);
   const name = displayName(user);
 
+  // The Paystack redirect leaves "Connecting…" set; clear it when the browser
+  // restores this page from bfcache via the back button.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setContinuingPayment(null);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -543,11 +553,11 @@ function TrainingCard({
 
       <div className="flex shrink-0 flex-col items-start justify-between gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center lg:flex-col lg:items-end lg:border-0 lg:pt-0">
         {(completed || pendingPayment) && (
-          <div className="lg:text-right">
+          <div className="lg:text-right flex items-center gap-4">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {completed ? "Certificate" : "Registration"}
+              {completed ? "" : "Registration"}
             </span>
-            <p className={`mt-1 inline-flex items-center gap-1.5 text-xs font-semibold ${certificate ? "text-primary" : "text-muted-foreground"}`}>
+            <p className={` inline-flex items-center gap-1.5 text-xs font-semibold ${certificate ? "text-primary" : "text-muted-foreground"}`}>
               {certificate ? <ShieldCheck className="h-4 w-4" /> : pendingPayment ? <Clock3 className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />}
               {certificate ? `Certified · ${certificate}` : pendingPayment ? "Checkout required" : "No active certificate recorded"}
             </p>

@@ -14,16 +14,6 @@ import type { CourseModule } from "./courses";
  * API whitelists its own insert anyway, but stripping keeps the request honest.
  */
 const WIZARD_ONLY_KEYS = [
-  "certificate_title",
-  "certificate_template",
-  "certificate_issuance_mode",
-  "certificate_validity_framework",
-  "certificate_validity_duration",
-  "certificate_validity_unit",
-  "certificate_id_prefix",
-  "certificate_id_separator",
-  "certificate_id_year_schema",
-  "certificate_id_sequence_type",
   "attendance_required",
   "attendance_percentage",
   "strict_attendance",

@@ -411,8 +411,25 @@ export default function CourseDetails() {
     window.scrollTo({ top: 0, behavior: shouldReduceMotion ? "auto" : "smooth" });
   }, [paymentResult, shouldReduceMotion]);
 
+  // The checkout redirect leaves the loading flag set; when the browser
+  // restores this page from bfcache (back button), clear it so the CTA works.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setPaymentLoading(false);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   useEffect(() => {
     if (!isPaymentCallback) return;
+    // Consume the callback params so back/forward navigation doesn't re-run
+    // verification for a payment that already settled.
+    const callbackUrl = new URL(window.location.href);
+    callbackUrl.searchParams.delete("payment");
+    callbackUrl.searchParams.delete("reference");
+    callbackUrl.searchParams.delete("trxref");
+    window.history.replaceState(null, "", `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`);
     setPaymentExpanded(true);
     if (!paymentReference) {
       setPaymentResult("failed");

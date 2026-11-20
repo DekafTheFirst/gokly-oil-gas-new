@@ -50,6 +50,19 @@ export default function EngagementInvoicePage() {
   const [paid, setPaid] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
 
+  // The Paystack redirect leaves "paying" set; clear it when the browser
+  // restores this page from bfcache via the back button.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setPaying(false);
+        setCheckingStatus(false);
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   useEffect(() => {
     if (!reference) {
       setNotFound(true);

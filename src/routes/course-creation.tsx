@@ -996,7 +996,7 @@ export default function CourseCreation() {
     // certificate canvas (title, Gold Foil template, auto issuance, 2-year
     // validity, hyphen / YY / 3-digit ID syntax). The ID prefix starts empty
     // on purpose: it is auto-suggested from the course name as they type.
-    certificate_title: "Advanced Offshore Well Control & Blowout Prevention Qualification",
+    certificate_title: "",
     certificate_template: "Gokly Industrial Gold Foil & Guilloche Standard",
     certificate_issuance_mode: "automatic",
     certificate_validity_framework: "Fixed Term Validity",

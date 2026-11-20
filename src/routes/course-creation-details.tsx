@@ -1094,7 +1094,7 @@ export default function CourseCreation() {
             final_assessment: finalAssessmentData,
             assessments: [...moduleAssessments, ...(finalAssessmentData ? [finalAssessmentData] : [])],
             // Certificate design fields (saved on the course; fall back to wizard defaults)
-            certificate_title: course.certificate_title || prev.certificate_title,
+            certificate_title: course.certificate_title || course.title || prev.certificate_title,
             certificate_template: course.certificate_template || prev.certificate_template,
             certificate_issuance_mode: course.certificate_issuance_mode || prev.certificate_issuance_mode,
             certificate_validity_framework: course.certificate_validity_framework || prev.certificate_validity_framework,
@@ -1157,7 +1157,7 @@ export default function CourseCreation() {
     // certificate canvas (title, Gold Foil template, auto issuance, 2-year
     // validity, hyphen / YY / 3-digit ID syntax). The ID prefix starts empty
     // on purpose: it is auto-suggested from the course name as they type.
-    certificate_title: "Advanced Offshore Well Control & Blowout Prevention Qualification",
+    certificate_title: "",
     certificate_template: "Gokly Industrial Gold Foil & Guilloche Standard",
     certificate_issuance_mode: "automatic",
     certificate_validity_framework: "Fixed Term Validity",

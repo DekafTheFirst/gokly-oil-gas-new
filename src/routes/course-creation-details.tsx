@@ -1396,6 +1396,7 @@ export default function CourseCreation() {
 
   const addModule = () => {
     clearErrorsFor((k) => k.startsWith("modules"));
+    const nextIndex = formData.modules.length;
     setFormData((prev) => ({
       ...prev,
       modules: [
@@ -1413,6 +1414,12 @@ export default function CourseCreation() {
       ],
       expandedModules: [...prev.expandedModules, prev.modules.length],
     }));
+    // The new card mounts on the next render — scroll it into view once it exists.
+    setTimeout(() => {
+      document
+        .getElementById(`module-card-${nextIndex}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
   };
 
   const moduleAssessmentLabel = (type?: string) =>
@@ -2860,7 +2867,7 @@ export default function CourseCreation() {
                 </div>
               </div>
               <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                <Button
+                {/* <Button
                   type="button"
                   variant="outline"
                   size="sm"
@@ -2868,7 +2875,7 @@ export default function CourseCreation() {
                 >
                   <BookOpen className="h-4 w-4" />
                   Import Template
-                </Button>
+                </Button> */}
                 <Button
                   type="button"
                   size="sm"
@@ -2896,6 +2903,7 @@ export default function CourseCreation() {
                 return (
                   <Card
                     key={index}
+                    id={`module-card-${index}`}
                     className={cn(
                       "bg-white rounded-xl shadow-md overflow-hidden",
                       moduleHasErrors && "ring-2 ring-rose-400",
@@ -5069,25 +5077,39 @@ export default function CourseCreation() {
                   </Button>
                 ) : (
                   <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
-                    <Button
-                      type="button"
-                      onClick={() => handleSubmit(false)}
-                      disabled={loading}
-                      variant="outline"
-                      className="h-10 gap-1.5 border-slate-300 px-3 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-4 sm:text-[13px]"
-                    >
-                      {loading ? "Saving…" : isEditMode ? "Save Changes" : "Save as Draft"}
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => handleSubmit(true)}
-                      disabled={loading}
-                      className="h-10 gap-1.5 bg-emerald-700 px-3 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
-                    >
-                      {loading ? (isEditMode ? "Publishing…" : "Creating & publishing…") : (isEditMode ? "Publish Course" : "Create & Publish")}
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
+                    {isEditMode ? (
+                      <Button
+                        type="button"
+                        onClick={() => handleSubmit(false)}
+                        disabled={loading}
+                        className="h-10 gap-1.5 bg-emerald-700 px-3 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
+                      >
+                        {loading ? "Saving…" : "Save Changes"}
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          onClick={() => handleSubmit(false)}
+                          disabled={loading}
+                          variant="outline"
+                          className="h-10 gap-1.5 border-slate-300 px-3 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-4 sm:text-[13px]"
+                        >
+                          {loading ? "Saving…" : "Save as Draft"}
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => handleSubmit(true)}
+                          disabled={loading}
+                          className="h-10 gap-1.5 bg-emerald-700 px-3 text-[12px] font-semibold text-white hover:bg-emerald-800 sm:gap-2 sm:px-5 sm:text-[13px]"
+                        >
+                          {loading ? "Creating & publishing…" : "Create & Publish"}
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
 

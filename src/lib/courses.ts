@@ -54,6 +54,8 @@ export interface CourseRecord {
   my_enrollment?: boolean;
   /** Latest WAITLISTED entry for the signed-in user, if any. */
   my_waitlist?: CourseWaitlistSummary | null;
+  /** Present on /courses/admin/all responses. */
+  module_count?: number;
   created_at: string;
 }
 

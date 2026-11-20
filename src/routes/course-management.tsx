@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Archive, ArchiveRestore, CheckCircle, MoreHorizontal, PlusCircle, Search, BookOpen, Trash2 } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, CheckCircle, MoreHorizontal, PlusCircle, Search, BookOpen, Trash2, Eye } from "lucide-react";
 import { AdminPageShell } from "@/components/educert/AdminPageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,6 +191,7 @@ export default function CourseManagement() {
                     <th>Title</th>
                     <th>Code</th>
                     <th>Category</th>
+                    <th>Modules</th>
                     <th>Price</th>
                     <th>Status</th>
                     <th>Created</th>
@@ -203,6 +204,7 @@ export default function CourseManagement() {
                       <td className="font-medium text-foreground">{course.title}</td>
                       <td className="text-muted-foreground">{course.code || "—"}</td>
                       <td className="text-muted-foreground">{course.category}</td>
+                      <td className="text-muted-foreground">{course.module_count ?? "—"}</td>
                       <td className="font-medium text-foreground">{formatCoursePrice(course.price, course.currency)}</td>
                       <td>
                         {course.status ? <Badge variant={course.status === "PUBLISHED" ? "default" : "secondary"}>{course.status}</Badge> : <span className="text-muted-foreground">—</span>}
@@ -222,22 +224,41 @@ export default function CourseManagement() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => navigate(`/training/course-creation-details?courseId=${course.id}`)}>
+                            <DropdownMenuItem
+                              onSelect={() => navigate(`/training/course-creation-details?courseId=${course.id}`)}
+                              className="cursor-pointer hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
                               View details
                             </DropdownMenuItem>
+                            {course.status === "DRAFT" && (
+                              <DropdownMenuItem
+                                onSelect={() => void handleStatusChange(course, "PUBLISHED")}
+                                className="cursor-pointer"
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Publish course
+                              </DropdownMenuItem>
+                            )}
                             {course.status === "ARCHIVED" ? (
-                              <DropdownMenuItem onSelect={() => void handleStatusChange(course, "PUBLISHED")}>
+                              <DropdownMenuItem
+                                onSelect={() => void handleStatusChange(course, "PUBLISHED")}
+                                className="cursor-pointer"
+                              >
                                 <ArchiveRestore className="mr-2 h-4 w-4" />
                                 Restore course
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem onSelect={() => void handleStatusChange(course, "ARCHIVED")}>
+                              <DropdownMenuItem
+                                onSelect={() => void handleStatusChange(course, "ARCHIVED")}
+                                className="cursor-pointer"
+                              >
                                 <Archive className="mr-2 h-4 w-4" />
                                 Archive course
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
+                              className="cursor-pointer text-destructive focus:text-destructive"
                               onSelect={() => setDeleteTarget(course)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />

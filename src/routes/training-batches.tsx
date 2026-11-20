@@ -13,6 +13,7 @@ import {
   Clock3,
   Eye,
   MapPin,
+  MoreVertical,
   Pencil,
   Plus,
   Search,
@@ -32,8 +33,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
   deleteTrainingBatch,
@@ -114,6 +120,7 @@ export default function TrainingBatches() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyBatchId, setBusyBatchId] = useState<string | null>(null);
+  const [batchAction, setBatchAction] = useState<{ batch: TrainingBatchListItem; type: "cancel" | "delete" } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -374,90 +381,53 @@ export default function TrainingBatches() {
                       </td>
                       <td><Badge variant="outline" className={STATUS_STYLES[batch.status]}>{STATUS_LABELS[batch.status]}</Badge></td>
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            aria-label={`Edit ${batch.batch_code}`}
-                            size="icon"
-                            variant="ghost"
-                            title="Edit batch"
-                            onClick={() => navigate(`/training/batches/${batch.id}?edit=1`)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            aria-label={`Preview ${batch.batch_code}`}
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openBatchDetails(batch.id)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {["DRAFT", "UPCOMING", "ACTIVE"].includes(batch.status) && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  aria-label={`Cancel ${batch.batch_code}`}
-                                  size="icon"
-                                  variant="ghost"
-                                  title="Cancel batch"
-                                  disabled={busyBatchId === batch.id}
-                                >
-                                  <Ban className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Cancel batch</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Cancel {batch.batch_code} — &quot;{batch.name}&quot;? Enrolled trainees keep
-                                    their records, but the batch will no longer run.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Keep batch</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => void handleCancelBatch(batch)}>
-                                    Cancel batch
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          {["DRAFT", "CANCELLED"].includes(batch.status) && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  aria-label={`Delete ${batch.batch_code}`}
-                                  size="icon"
-                                  variant="ghost"
-                                  className="text-destructive hover:text-destructive"
-                                  title="Delete batch"
-                                  disabled={busyBatchId === batch.id}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete batch</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Permanently delete {batch.batch_code} — &quot;{batch.name}&quot; and its
-                                    sessions and seat allocations. Only batches with no enrollments or
-                                    engagement roster rows can be deleted.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Keep batch</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => void handleDeleteBatch(batch)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete batch
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              aria-label={`Actions for ${batch.batch_code}`}
+                              disabled={busyBatchId === batch.id}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onSelect={() => navigate(`/training/batches/${batch.id}?edit=1`)}
+                              className="cursor-pointer"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit batch
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => openBatchDetails(batch.id)}
+                              className="cursor-pointer"
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View details
+                            </DropdownMenuItem>
+                            {["UPCOMING", "ACTIVE"].includes(batch.status) && (
+                              <DropdownMenuItem
+                                onSelect={() => setBatchAction({ batch, type: "cancel" })}
+                                className="cursor-pointer"
+                              >
+                                <Ban className="mr-2 h-4 w-4" />
+                                Cancel batch
+                              </DropdownMenuItem>
+                            )}
+                            {["DRAFT", "CANCELLED"].includes(batch.status) && (
+                              <DropdownMenuItem
+                                onSelect={() => setBatchAction({ batch, type: "delete" })}
+                                className="cursor-pointer text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {batch.status === "DRAFT" ? "Delete draft" : "Delete batch"}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   );
@@ -484,6 +454,54 @@ export default function TrainingBatches() {
             {error}
           </div>
         )}
+
+        <AlertDialog
+          open={batchAction !== null}
+          onOpenChange={(open) => {
+            if (!open) setBatchAction(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {batchAction?.type === "delete" ? "Delete batch" : "Cancel batch"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {batchAction?.type === "delete" ? (
+                  <>
+                    Permanently delete {batchAction.batch.batch_code} — &quot;{batchAction.batch.name}&quot; and
+                    its sessions and seat allocations. Only batches with no enrollments or engagement roster
+                    rows can be deleted.
+                  </>
+                ) : (
+                  <>
+                    Cancel {batchAction?.batch.batch_code} — &quot;{batchAction?.batch.name}&quot;? Enrolled
+                    trainees keep their records, but the batch will no longer run.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep batch</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  const action = batchAction;
+                  setBatchAction(null);
+                  if (!action) return;
+                  if (action.type === "delete") void handleDeleteBatch(action.batch);
+                  else void handleCancelBatch(action.batch);
+                }}
+                className={
+                  batchAction?.type === "delete"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : undefined
+                }
+              >
+                {batchAction?.type === "delete" ? "Delete batch" : "Cancel batch"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="grid gap-4 lg:grid-cols-2">
           {/* <section className="rounded-xl border border-border bg-card p-5 shadow-sm">

@@ -489,7 +489,7 @@ export default function TraineeTrainingDetails() {
                   </a>
                 ) : activeCertificate ? (
                   <Link
-                    to="/training/verify"
+                    to={`/training/verify?cert=${encodeURIComponent(activeCertificate.certificate_number)}`}
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                   >
                     <Award className="h-4 w-4" /> View certificate
@@ -762,7 +762,7 @@ export default function TraineeTrainingDetails() {
                 )}
                 {!certificateUrl && activeCertificate && (
                   <Link
-                    to="/training/verify"
+                    to={`/training/verify?cert=${encodeURIComponent(activeCertificate.certificate_number)}`}
                     className="inline-flex items-center justify-center gap-2 rounded-lg bg-muted px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted/70"
                   >
                     <BadgeCheck className="h-4 w-4" /> Verify certificate
@@ -902,7 +902,7 @@ export default function TraineeTrainingDetails() {
                   <div className="flex flex-wrap items-center gap-3">
                     {activeCertificate && (
                       <Link
-                        to="/training/verify"
+                        to={`/training/verify?cert=${encodeURIComponent(activeCertificate.certificate_number)}`}
                         className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-bold text-foreground transition hover:bg-muted"
                       >
                         <BadgeCheck className="h-4 w-4" /> View certificate

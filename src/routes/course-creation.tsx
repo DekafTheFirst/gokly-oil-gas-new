@@ -1247,6 +1247,7 @@ export default function CourseCreation() {
 
   const addModule = () => {
     clearErrorsFor((k) => k.startsWith("modules"));
+    const nextIndex = formData.modules.length;
     setFormData((prev) => ({
       ...prev,
       modules: [
@@ -1265,6 +1266,12 @@ export default function CourseCreation() {
       ],
       expandedModules: [...prev.expandedModules, prev.modules.length],
     }));
+    // The new card mounts on the next render — scroll it into view once it exists.
+    setTimeout(() => {
+      document
+        .getElementById(`module-card-${nextIndex}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
   };
 
   const moduleAssessmentLabel = (type?: string) =>
@@ -2170,7 +2177,7 @@ export default function CourseCreation() {
                 </div>
               </div>
               <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                <Button
+                {/* <Button
                   type="button"
                   variant="outline"
                   size="sm"
@@ -2178,7 +2185,7 @@ export default function CourseCreation() {
                 >
                   <BookOpen className="h-4 w-4" />
                   Import Template
-                </Button>
+                </Button> */}
                 <Button
                   type="button"
                   size="sm"
@@ -2206,6 +2213,7 @@ export default function CourseCreation() {
                 return (
                   <Card
                     key={index}
+                    id={`module-card-${index}`}
                     className={cn(
                       "bg-white rounded-xl shadow-md overflow-hidden",
                       moduleHasErrors && "ring-2 ring-rose-400",

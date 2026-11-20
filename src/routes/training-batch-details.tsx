@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TimePicker } from "@/components/ui/time-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -238,47 +239,6 @@ function DatePickerField({
         )}
       </PopoverContent>
     </Popover>
-  );
-}
-
-const TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
-  const hour = Math.floor(index / 4);
-  const minute = (index % 4) * 15;
-  const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  const date = new Date(2000, 0, 1, hour, minute);
-  return { value, label: format(date, "p") };
-});
-
-function TimeSelect({
-  id,
-  value,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const timeOptions = value && !TIME_OPTIONS.some((option) => option.value === value)
-    ? [{ value, label: value }, ...TIME_OPTIONS]
-    : TIME_OPTIONS;
-
-  return (
-    <Select value={value || undefined} onValueChange={onChange}>
-      <SelectTrigger
-        id={id}
-        aria-label={id}
-        className="h-auto min-w-0 rounded-lg border-0 bg-white px-2 py-2 text-xs text-[#121c2a] shadow-none focus:ring-2 focus:ring-[#1b7a43]"
-      >
-        <SelectValue placeholder="Select time" />
-      </SelectTrigger>
-      <SelectContent className="max-h-60">
-        {timeOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value} className="text-xs">
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 
@@ -1179,7 +1139,7 @@ export default function TrainingBatchDetails() {
                             <div className="grid grid-cols-2 gap-2">
                               <div className="flex min-w-0 flex-col gap-1">
                                 <span className="text-[11px] font-semibold text-[#121c2a]">Start time</span>
-                                <TimeSelect
+                                <TimePicker
                                   id={`Session ${index + 1} start time`}
                                   value={watch(`sessions.${index}.start_time`)}
                                   onChange={(value) => setValue(`sessions.${index}.start_time`, value, {
@@ -1191,7 +1151,7 @@ export default function TrainingBatchDetails() {
                               </div>
                               <div className="flex min-w-0 flex-col gap-1">
                                 <span className="text-[11px] font-semibold text-[#121c2a]">End time</span>
-                                <TimeSelect
+                                <TimePicker
                                   id={`Session ${index + 1} end time`}
                                   value={watch(`sessions.${index}.end_time`)}
                                   onChange={(value) => setValue(`sessions.${index}.end_time`, value, {

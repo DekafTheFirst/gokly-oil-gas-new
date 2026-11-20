@@ -564,7 +564,7 @@ function TrainingCard({
               <CreditCard className="h-4 w-4" /> {continuingPayment ? "Connecting…" : "Complete payment"}
             </button>
           ) : certificate ? (
-            <Link to="/training/verify" className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-primary/15 sm:flex-none">
+            <Link to={`/training/verify?cert=${encodeURIComponent(certificate)}`} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-primary/15 sm:flex-none">
               <Award className="h-4 w-4" /> View certificate
             </Link>
           ) : null}
